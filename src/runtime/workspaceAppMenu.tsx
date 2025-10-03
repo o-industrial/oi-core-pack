@@ -19,7 +19,7 @@ import {
   TeamManagementModal,
   WarmQueryAPIsModal,
   WorkspaceSettingsModal,
-} from 'jsr:@o-industrial/atomic@0.0.5-integration/organisms';
+} from 'jsr:@o-industrial/atomic@0.0.6-integration/organisms';
 
 export type WorkspaceAppMenuHandles = {
   handleMenu: (item: { id: string }) => void;
