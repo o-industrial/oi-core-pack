@@ -16,7 +16,14 @@ export { Position as ReactPosition } from 'npm:reactflow@11.11.4';
 export { merge, type NullableArrayOrObject } from 'jsr:@fathym/common@0.2.274';
 export { z } from 'jsr:@fathym/common@0.2.274/third-party/zod';
 
-export { type EaCWarmQueryDetails } from 'jsr:@fathym/eac-azure@0.0.115';
+export type { EverythingAsCode } from 'jsr:@fathym/eac@0.2.131';
+
+export {
+  type EaCWarmQueryDetails,
+  type EverythingAsCodeClouds,
+} from 'jsr:@fathym/eac-azure@0.0.115';
+
+export type { EverythingAsCodeLicensing } from 'jsr:@fathym/eac-licensing@0.0.58';
 
 export {
   Action,
@@ -25,48 +32,46 @@ export {
   Input,
   NodeHandle,
   NodeStatTile,
-} from 'jsr:@o-industrial/common@0.0.473-integration/atomic/atoms';
+} from 'jsr:@o-industrial/atomic@0.0.5-integration/atoms';
 export {
   ConnectionManagementForm,
   LinePreviewWithValue,
+  type MenuRoot,
   Modal,
   SurfaceConnectionManagementForm,
   SurfaceManagementForm,
   TabbedPanel,
-} from 'jsr:@o-industrial/common@0.0.473-integration/atomic/molecules';
+} from 'jsr:@o-industrial/atomic@0.0.5-integration/molecules';
 export {
   SimulatorManagementForm,
   TemplateEditor,
   VariablesEditor,
-} from 'jsr:@o-industrial/common@0.0.473-integration/atomic/molecules';
-export { parseTimeAgoString } from 'jsr:@o-industrial/common@0.0.473-integration/atomic/utils';
+} from 'jsr:@o-industrial/atomic@0.0.5-integration/molecules';
+export { parseTimeAgoString } from 'jsr:@o-industrial/atomic@0.0.5-integration/utils';
 export {
   AziPanel,
   InspectorBase,
   WorkspaceNodeRendererBase,
-} from 'jsr:@o-industrial/common@0.0.473-integration/atomic/organisms';
-export { SurfaceWarmQueryModal } from 'jsr:@o-industrial/common@0.0.473-integration/atomic/organisms';
-export {
-  DeleteIcon,
-  TriggerMatchIcon,
-} from 'jsr:@o-industrial/common@0.0.473-integration/atomic/icons';
+} from 'jsr:@o-industrial/atomic@0.0.5-integration/organisms';
+export { SurfaceWarmQueryModal } from 'jsr:@o-industrial/atomic@0.0.5-integration/organisms';
+export { DeleteIcon, TriggerMatchIcon } from 'jsr:@o-industrial/atomic@0.0.5-integration/icons';
 
 export {
   type NodeEventRouter,
   type NodePreset,
-} from 'jsr:@o-industrial/common@0.0.473-integration/flow';
+} from 'jsr:@o-industrial/common@0.0.475-integration/flow';
 
-export { shaHash } from 'jsr:@o-industrial/common@0.0.473-integration/utils/client';
+export { shaHash } from 'jsr:@o-industrial/common@0.0.475-integration/utils/client';
 
-export { OpenIndustrialAPIClient } from 'jsr:@o-industrial/common@0.0.473-integration/api';
+export { OpenIndustrialAPIClient } from 'jsr:@o-industrial/common@0.0.475-integration/api';
 
 export {
   IntentTypes,
   RuntimeStatsSchema,
-} from 'jsr:@o-industrial/common@0.0.473-integration/types';
-export type { IngestOption } from 'jsr:@o-industrial/common@0.0.473-integration/types';
+} from 'jsr:@o-industrial/common@0.0.475-integration/types';
+export type { IngestOption } from 'jsr:@o-industrial/common@0.0.475-integration/types';
 
-export { Pack, PackModuleBuilder } from 'jsr:@o-industrial/common@0.0.473-integration/fluent/packs';
+export { Pack, PackModuleBuilder } from 'jsr:@o-industrial/common@0.0.475-integration/fluent/packs';
 
 export type {
   AziState,
@@ -79,12 +84,12 @@ export type {
   FlowGraphNode,
   FlowNodeData,
   InspectorCommonProps,
-} from 'jsr:@o-industrial/common@0.0.473-integration/flow';
+} from 'jsr:@o-industrial/common@0.0.475-integration/flow';
 export {
   EaCNodeCapabilityManager,
   SurfaceEventRouter,
   WorkspaceManager,
-} from 'jsr:@o-industrial/common@0.0.473-integration/flow';
+} from 'jsr:@o-industrial/common@0.0.475-integration/flow';
 
 export type {
   EaCAgentDetails,
@@ -111,4 +116,4 @@ export type {
   SurfaceInterfaceSettings,
   SurfaceSchemaSettings,
   SurfaceWarmQuerySettings,
-} from 'jsr:@o-industrial/common@0.0.473-integration/eac';
+} from 'jsr:@o-industrial/common@0.0.475-integration/eac';
