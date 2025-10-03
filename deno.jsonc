@@ -1,0 +1,80 @@
+{
+  "name": "@o-industrial/oi-core-pack",
+  "version": "0.0.0",
+  "exports": {
+    ".": "./src/.pack.ts",
+    "./connections": "./src/capabilities/connection/.exports.ts",
+    "./simulators": "./src/capabilities/simulator/.exports.ts",
+    "./surfaces": "./src/capabilities/surface/.exports.ts",
+    "./surfaces/agents": "./src/capabilities/surface-agent/.exports.ts",
+    "./surfaces/connections": "./src/capabilities/surface-connection/.exports.ts",
+    "./surfaces/interfaces": "./src/capabilities/surface-interface/.exports.ts",
+    "./surfaces/schemas": "./src/capabilities/surface-schema/.exports.ts",
+    "./surfaces/warm-queries": "./src/capabilities/surface-warmquery/.exports.ts"
+  },
+  "license": "MIT",
+  "tasks": {
+    "build": "deno task build:fmt && deno task build:lint && deno task publish:check && deno task test",
+    "build:fmt": "deno fmt",
+    "build:lint": "deno lint",
+    "check": "deno fmt --check && deno lint && deno check **/*.ts && deno check **/*.tsx",
+    "deploy": "npx rimraf cov && deno task build && ftm git",
+    "publish:check": "deno publish --dry-run --allow-dirty",
+    "test": "npx rimraf cov && deno test -A ./tests/tests.ts --coverage=cov",
+    "version": "deno run -A jsr:@fathym/common@0.2.267/build/version"
+  },
+  "exclude": ["**/_eac-runtime/*", "!src/**/.exports.ts", "!mod.ts"],
+  "lint": {
+    "include": ["apps/", "configs/", "src/", "tests/"],
+    "exclude": [],
+    "rules": {
+      "tags": ["recommended"],
+      "include": ["ban-untagged-todo"],
+      "exclude": []
+    }
+  },
+  "fmt": {
+    "include": ["apps/", "configs/", "src/", "tests/"],
+    "exclude": [],
+    "indentWidth": 2,
+    "lineWidth": 100,
+    "proseWrap": "preserve",
+    "semiColons": true,
+    "singleQuote": true,
+    "useTabs": false
+  },
+  "unstable": ["kv"],
+  "lock": false,
+  "imports": {
+    // "jsr:@o-industrial/common@0.0.466-hmis/atomic/atoms": "../open-industrial-reference-architecture/atomic/atoms/.exports.ts",
+    // "jsr:@o-industrial/common@0.0.466-hmis/atomic/molecules": "../open-industrial-reference-architecture/atomic/molecules/.exports.ts",
+    // "jsr:@o-industrial/common@0.0.466-hmis/atomic/organisms": "../open-industrial-reference-architecture/atomic/organisms/.exports.ts",
+    // "jsr:@o-industrial/common@0.0.466-hmis/atomic/templates": "../open-industrial-reference-architecture/atomic/templates/.exports.ts",
+    // "jsr:@o-industrial/common@0.0.466-hmis/atomic/utils": "../open-industrial-reference-architecture/atomic/utils/.exports.ts",
+    // "jsr:@o-industrial/common@0.0.466-hmis/atomic/icons": "../open-industrial-reference-architecture/build/iconset/icons/.exports.ts",
+
+    // "jsr:@o-industrial/common@0.0.466-hmis/eac": "../open-industrial-reference-architecture/src/eac/.exports.ts",
+    // "jsr:@o-industrial/common@0.0.466-hmis/secrets": "../open-industrial-reference-architecture/src/secrets/.exports.ts",
+    // "jsr:@o-industrial/common@0.0.466-hmis/sop": "../open-industrial-reference-architecture/src/sop/.exports.ts",
+    // "jsr:@o-industrial/common@0.0.466-hmis/types": "../open-industrial-reference-architecture/src/types/.exports.ts",
+    // "jsr:@o-industrial/common@0.0.466-hmis/utils": "../open-industrial-reference-architecture/src/utils/.exports.ts",
+
+    // "jsr:@o-industrial/common@0.0.466-hmis/flow": "../open-industrial-reference-architecture/src/flow/.exports.ts",
+
+    // "jsr:@o-industrial/common@0.0.466-hmis/fluent": "../open-industrial-reference-architecture/src/fluent/_/.exports.ts",
+    // "jsr:@o-industrial/common@0.0.466-hmis/fluent/connections": "../open-industrial-reference-architecture/src/fluent/connections/.exports.ts",
+    // "jsr:@o-industrial/common@0.0.466-hmis/fluent/packs": "../open-industrial-reference-architecture/src/fluent/packs/.exports.ts",
+    // "jsr:@o-industrial/common@0.0.466-hmis/fluent/simulators": "../open-industrial-reference-architecture/src/fluent/simulators/.exports.ts",
+    // "jsr:@o-industrial/common@0.0.466-hmis/fluent/steps": "../open-industrial-reference-architecture/src/fluent/steps/.exports.ts",
+    // "jsr:@o-industrial/common@0.0.466-hmis/fluent/types": "../open-industrial-reference-architecture/src/fluent/types/.exports.ts",
+    // "jsr:@o-industrial/common@0.0.466-hmis/fluent/warm-queries": "../open-industrial-reference-architecture/src/fluent/warm-queries/.exports.ts",
+    // "jsr:@o-industrial/common@0.0.466-hmis/fluent/utils": "../open-industrial-reference-architecture/src/fluent/utils/.exports.ts",
+
+    // "jsr:@o-industrial/common@0.0.466-hmis/runtimes": "../open-industrial-reference-architecture/src/runtimes/.exports.ts",
+    // "jsr:@o-industrial/common@0.0.466-hmis/tailwind/preset": "../open-industrial-reference-architecture/configs/tailwind/preset.ts"
+  },
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "npm:preact@10.20.1"
+  }
+}
