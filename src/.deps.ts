@@ -25,7 +25,7 @@ export {
   Input,
   NodeHandle,
   NodeStatTile,
-} from 'jsr:@o-industrial/common@0.0.473-hmis/atomic/atoms';
+} from 'jsr:@o-industrial/common@0.0.473-integration/atomic/atoms';
 export {
   ConnectionManagementForm,
   LinePreviewWithValue,
@@ -33,31 +33,40 @@ export {
   SurfaceConnectionManagementForm,
   SurfaceManagementForm,
   TabbedPanel,
-} from 'jsr:@o-industrial/common@0.0.473-hmis/atomic/molecules';
+} from 'jsr:@o-industrial/common@0.0.473-integration/atomic/molecules';
 export {
   SimulatorManagementForm,
   TemplateEditor,
   VariablesEditor,
-} from 'jsr:@o-industrial/common@0.0.473-hmis/atomic/molecules';
-export { parseTimeAgoString } from 'jsr:@o-industrial/common@0.0.473-hmis/atomic/utils';
+} from 'jsr:@o-industrial/common@0.0.473-integration/atomic/molecules';
+export { parseTimeAgoString } from 'jsr:@o-industrial/common@0.0.473-integration/atomic/utils';
 export {
   AziPanel,
   InspectorBase,
   WorkspaceNodeRendererBase,
-} from 'jsr:@o-industrial/common@0.0.473-hmis/atomic/organisms';
-export { SurfaceWarmQueryModal } from 'jsr:@o-industrial/common@0.0.473-hmis/atomic/organisms';
-export { DeleteIcon, TriggerMatchIcon } from 'jsr:@o-industrial/common@0.0.473-hmis/atomic/icons';
+} from 'jsr:@o-industrial/common@0.0.473-integration/atomic/organisms';
+export { SurfaceWarmQueryModal } from 'jsr:@o-industrial/common@0.0.473-integration/atomic/organisms';
+export {
+  DeleteIcon,
+  TriggerMatchIcon,
+} from 'jsr:@o-industrial/common@0.0.473-integration/atomic/icons';
 
-export { type NodeEventRouter, type NodePreset } from 'jsr:@o-industrial/common@0.0.473-hmis/flow';
+export {
+  type NodeEventRouter,
+  type NodePreset,
+} from 'jsr:@o-industrial/common@0.0.473-integration/flow';
 
-export { shaHash } from 'jsr:@o-industrial/common@0.0.473-hmis/utils/client';
+export { shaHash } from 'jsr:@o-industrial/common@0.0.473-integration/utils/client';
 
-export { OpenIndustrialAPIClient } from 'jsr:@o-industrial/common@0.0.473-hmis/api';
+export { OpenIndustrialAPIClient } from 'jsr:@o-industrial/common@0.0.473-integration/api';
 
-export { IntentTypes, RuntimeStatsSchema } from 'jsr:@o-industrial/common@0.0.473-hmis/types';
-export type { IngestOption } from 'jsr:@o-industrial/common@0.0.473-hmis/types';
+export {
+  IntentTypes,
+  RuntimeStatsSchema,
+} from 'jsr:@o-industrial/common@0.0.473-integration/types';
+export type { IngestOption } from 'jsr:@o-industrial/common@0.0.473-integration/types';
 
-export { Pack, PackModuleBuilder } from 'jsr:@o-industrial/common@0.0.473-hmis/fluent/packs';
+export { Pack, PackModuleBuilder } from 'jsr:@o-industrial/common@0.0.473-integration/fluent/packs';
 
 export type {
   AziState,
@@ -70,12 +79,12 @@ export type {
   FlowGraphNode,
   FlowNodeData,
   InspectorCommonProps,
-} from 'jsr:@o-industrial/common@0.0.473-hmis/flow';
+} from 'jsr:@o-industrial/common@0.0.473-integration/flow';
 export {
   EaCNodeCapabilityManager,
   SurfaceEventRouter,
   WorkspaceManager,
-} from 'jsr:@o-industrial/common@0.0.473-hmis/flow';
+} from 'jsr:@o-industrial/common@0.0.473-integration/flow';
 
 export type {
   EaCAgentDetails,
@@ -102,4 +111,4 @@ export type {
   SurfaceInterfaceSettings,
   SurfaceSchemaSettings,
   SurfaceWarmQuerySettings,
-} from 'jsr:@o-industrial/common@0.0.473-hmis/eac';
+} from 'jsr:@o-industrial/common@0.0.473-integration/eac';
