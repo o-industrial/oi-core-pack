@@ -1,6 +1,6 @@
 // deno-lint-ignore-file jsx-no-useless-fragment
 import { useCallback, useEffect, useMemo, useRef, useState } from '../../.deps.ts';
-import { AziPanel, Modal, TabbedPanel } from '../../.deps.ts';
+import { AziPanel, CodeMirrorEditor, Modal, TabbedPanel } from '../../.deps.ts';
 import { marked } from 'npm:marked@15.0.1';
 import type { InterfaceSpec } from '../../.deps.ts';
 import type { EaCInterfaceDetails, SurfaceInterfaceSettings } from '../../.deps.ts';
@@ -118,6 +118,10 @@ export function SurfaceInterfaceModal({
   const [currentSpec, setCurrentSpec] = useState<InterfaceSpec>(
     ensureInterfaceSpec(draftSpec ?? spec),
   );
+  const [codeContent, setCodeContent] = useState<string>(() =>
+    JSON.stringify(ensureInterfaceSpec(draftSpec ?? spec), null, 2)
+  );
+  const [codeError, setCodeError] = useState<string | null>(null);
   const persistTimerRef = useRef<number | null>(null);
 
   const enterpriseLookup = workspaceMgr.EaC.GetEaC().EnterpriseLookup ?? 'workspace';
@@ -161,6 +165,15 @@ export function SurfaceInterfaceModal({
     () => JSON.stringify(currentSpec),
     [currentSpec],
   );
+  const formattedSpec = useMemo(
+    () => JSON.stringify(currentSpec, null, 2),
+    [currentSpecSignature],
+  );
+
+  useEffect(() => {
+    setCodeContent((existing) => (existing === formattedSpec ? existing : formattedSpec));
+    setCodeError(null);
+  }, [formattedSpec]);
 
   const persistSpec = useCallback(
     (next: InterfaceSpec, immediate = false) => {
@@ -185,6 +198,34 @@ export function SurfaceInterfaceModal({
       }, 300) as unknown as number;
     },
     [onSpecChange],
+  );
+
+  const handleCodeContentChange = useCallback(
+    (next: string) => {
+      setCodeContent(next);
+
+      if (!next.trim()) {
+        setCodeError('Interface spec JSON cannot be empty.');
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(next) as InterfaceSpec;
+        const ensured = ensureInterfaceSpec(parsed);
+        setCodeError(null);
+
+        const ensuredSignature = JSON.stringify(ensured);
+        if (ensuredSignature !== currentSpecSignature) {
+          persistSpec(ensured);
+        }
+      } catch (error) {
+        const message = error instanceof Error
+          ? error.message
+          : 'Invalid JSON input.';
+        setCodeError(message);
+      }
+    },
+    [currentSpecSignature, persistSpec],
   );
 
   const handleSpecFromEditor = useCallback(
@@ -253,7 +294,6 @@ export function SurfaceInterfaceModal({
               spec={currentSpec}
               draftSpec={draftSpec}
               onSpecChange={handleSpecFromEditor}
-              visualOnly
             />
           </div>
         ),
@@ -306,8 +346,17 @@ export function SurfaceInterfaceModal({
           </svg>
         ),
         content: (
-          <div class='flex h-full items-center justify-center text-sm text-neutral-500'>
-            Code view coming soon.
+          <div class='flex h-full min-h-0 flex-col gap-2'>
+            <CodeMirrorEditor
+              fileContent={codeContent}
+              onContentChange={handleCodeContentChange}
+              class='flex-1 min-h-0 [&>.cm-editor]:h-full [&>.cm-editor]:min-h-0 [&>.cm-editor]:rounded-md [&>.cm-editor]:border [&>.cm-editor]:border-neutral-700 [&>.cm-editor]:bg-neutral-950'
+            />
+            <p class={`text-xs ${codeError ? 'text-red-400' : 'text-neutral-400'}`}>
+              {codeError
+                ? `Invalid JSON: ${codeError}`
+                : 'Edit the JSON spec to update the interface definition.'}
+            </p>
           </div>
         ),
       },
@@ -318,6 +367,9 @@ export function SurfaceInterfaceModal({
       handleSpecFromEditor,
       interfaceName,
       previewUrl,
+      codeContent,
+      codeError,
+      handleCodeContentChange,
     ],
   );
 
@@ -388,3 +440,11 @@ export function SurfaceInterfaceModal({
     </Modal>
   );
 }
+
+
+
+
+
+
+
+
