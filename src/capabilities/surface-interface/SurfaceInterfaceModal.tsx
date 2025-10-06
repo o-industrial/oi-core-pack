@@ -219,9 +219,7 @@ export function SurfaceInterfaceModal({
           persistSpec(ensured);
         }
       } catch (error) {
-        const message = error instanceof Error
-          ? error.message
-          : 'Invalid JSON input.';
+        const message = error instanceof Error ? error.message : 'Invalid JSON input.';
         setCodeError(message);
       }
     },
@@ -440,11 +438,3 @@ export function SurfaceInterfaceModal({
     </Modal>
   );
 }
-
-
-
-
-
-
-
-

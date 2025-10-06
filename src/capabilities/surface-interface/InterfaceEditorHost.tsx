@@ -1,6 +1,4 @@
-import { IntentTypes } from '../../.deps.ts';
-import { Action, ActionStyleTypes, Input } from '../../.deps.ts';
-import { JSX, useEffect, useMemo, useState } from '../../.deps.ts';
+import { JSX, useEffect, useState } from '../../.deps.ts';
 import type { InterfaceSpec } from '../../.deps.ts';
 import { VisualBuilderCanvas } from './VisualBuilderCanvas.tsx';
 
@@ -10,7 +8,7 @@ export type InterfaceEditorHostProps = {
   onSpecChange?: (next: InterfaceSpec) => void;
 };
 
-function countLayoutNodes(nodes: InterfaceSpec['Layout']): number {
+function _countLayoutNodes(nodes: InterfaceSpec['Layout']): number {
   const walk = (list: InterfaceSpec['Layout']): number => {
     return list.reduce((acc, node) => {
       const children = Array.isArray(node.Children) ? walk(node.Children) : 0;
@@ -52,10 +50,10 @@ export function InterfaceEditorHost({
   draftSpec,
   onSpecChange,
 }: InterfaceEditorHostProps): JSX.Element {
-  const [editorValue, setEditorValue] = useState<string>('');
-  const [lastError, setLastError] = useState<string>('');
+  const [_editorValue, setEditorValue] = useState<string>('');
+  const [_lastError, setLastError] = useState<string>('');
   const [currentSpec, setCurrentSpec] = useState<InterfaceSpec>(
-    ensureInterfaceSpec(draftSpec ?? spec)
+    ensureInterfaceSpec(draftSpec ?? spec),
   );
 
   useEffect(() => {
@@ -68,9 +66,9 @@ export function InterfaceEditorHost({
     Theme: 'default',
   };
 
-  const themeName = meta.Theme ?? 'default';
+  const _themeName = meta.Theme ?? 'default';
 
-  const handleEditorChange = (value: string) => {
+  const _handleEditorChange = (value: string) => {
     setEditorValue(value);
     try {
       const parsed = JSON.parse(value) as InterfaceSpec;
@@ -84,8 +82,8 @@ export function InterfaceEditorHost({
   };
 
   return (
-    <div class="flex h-full flex-col gap-4">
-      <section class="flex-1 overflow-hidden rounded-md p-1">
+    <div class='flex h-full flex-col gap-4'>
+      <section class='flex-1 overflow-hidden rounded-md p-1'>
         <VisualBuilderCanvas
           spec={currentSpec}
           onSpecChange={(next) => {
