@@ -1,4 +1,4 @@
-import { type OpenIndustrialAPIClient, Pack, type PackModuleBuilder } from './.deps.ts';
+import { OpenIndustrialAPIClient, Pack, type PackModuleBuilder } from './.deps.ts';
 import { DataConnectionNodeCapabilityManager } from './capabilities/connection/DataConnectionNodeCapabilityManager.ts';
 import { SimulatorNodeCapabilityManager } from './capabilities/simulator/SimulatorNodeCapabilityManager.ts';
 import { SurfaceAgentNodeCapabilityManager } from './capabilities/surface-agent/SurfaceAgentNodeCapabilityManager.ts';
@@ -9,7 +9,7 @@ import { SurfaceWarmQueryNodeCapabilityManager } from './capabilities/surface-wa
 import { SurfaceInterfaceNodeCapabilityManager } from './capabilities/surface-interface/SurfaceInterfaceNodeCapabilityManager.tsx';
 
 export default Pack().Capabilities(async (ioc) => {
-  const oiSvc = await ioc.Resolve<OpenIndustrialAPIClient>(ioc.Symbol('OpenIndustrialAPIClient'));
+  const oiSvc = await ioc.Resolve(OpenIndustrialAPIClient);
 
   return {
     surface: [
