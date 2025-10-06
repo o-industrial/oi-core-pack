@@ -11,6 +11,7 @@ export type InterfaceEditorHostProps = {
   draftSpec?: InterfaceSpec;
   onSpecChange?: (next: InterfaceSpec) => void;
   defaultMode?: InterfaceEditorMode;
+  visualOnly?: boolean;
 };
 
 function countLayoutNodes(nodes: InterfaceSpec['Layout']): number {
@@ -55,6 +56,7 @@ export function InterfaceEditorHost({
   draftSpec,
   onSpecChange,
   defaultMode = 'overview',
+  visualOnly = false,
 }: InterfaceEditorHostProps): JSX.Element {
   const [mode, setMode] = useState<InterfaceEditorMode>(defaultMode);
   const [editorValue, setEditorValue] = useState<string>('');
@@ -63,15 +65,17 @@ export function InterfaceEditorHost({
     ensureInterfaceSpec(draftSpec ?? spec),
   );
 
+  const activeMode: InterfaceEditorMode = visualOnly ? 'visual' : mode;
+
   useEffect(() => {
     setCurrentSpec(ensureInterfaceSpec(draftSpec ?? spec));
   }, [draftSpec, spec]);
 
   useEffect(() => {
-    if (mode === 'code') {
+    if (activeMode === 'code') {
       setEditorValue(JSON.stringify(currentSpec, null, 2));
     }
-  }, [mode, currentSpec]);
+  }, [activeMode, currentSpec]);
 
   const summary = useMemo(() => {
     const providers = currentSpec.Data?.Providers?.length ?? 0;
@@ -116,27 +120,30 @@ export function InterfaceEditorHost({
 
   return (
     <div class='flex h-full flex-col gap-4 text-slate-100'>
-      <nav class='flex gap-2 rounded-md border border-slate-700 bg-slate-900/60 p-2'>
-        {modes.map((item) => {
-          const isActive = mode === item.key;
-          return (
-            <Action
-              key={item.key}
-              type='button'
-              styleType={isActive
-                ? ActionStyleTypes.Solid | ActionStyleTypes.Rounded
-                : ActionStyleTypes.Outline | ActionStyleTypes.UltraThin | ActionStyleTypes.Rounded}
-              intentType={isActive ? IntentTypes.Primary : IntentTypes.Secondary}
-              onClick={() => setMode(item.key)}
-            >
-              {item.label}
-            </Action>
-          );
-        })}
-      </nav>
+      {!visualOnly && (
+        <nav class='flex gap-2 rounded-md border border-slate-700 bg-slate-900/60 p-2'>
+          {modes.map((item) => {
+            const isActive = mode === item.key;
+            return (
+              <Action
+                key={item.key}
+                type='button'
+                styleType={isActive
+                  ? ActionStyleTypes.Solid | ActionStyleTypes.Rounded
+                  : ActionStyleTypes.Outline | ActionStyleTypes.UltraThin |
+                    ActionStyleTypes.Rounded}
+                intentType={isActive ? IntentTypes.Primary : IntentTypes.Secondary}
+                onClick={() => setMode(item.key)}
+              >
+                {item.label}
+              </Action>
+            );
+          })}
+        </nav>
+      )}
 
       <section class='flex-1 overflow-hidden rounded-md border border-slate-800 bg-slate-950/70 p-4'>
-        {mode === 'overview' && (
+        {(!visualOnly && activeMode === 'overview') && (
           <div class='flex h-full flex-col gap-4'>
             <header>
               <h2 class='text-lg font-semibold text-slate-50'>Spec Snapshot</h2>
@@ -180,7 +187,7 @@ export function InterfaceEditorHost({
           </div>
         )}
 
-        {mode === 'visual' && (
+        {(visualOnly || activeMode === 'visual') && (
           <VisualBuilderCanvas
             spec={currentSpec}
             onSpecChange={(next) => {
@@ -191,7 +198,7 @@ export function InterfaceEditorHost({
           />
         )}
 
-        {mode === 'code' && (
+        {(!visualOnly && activeMode === 'code') && (
           <div class='flex h-full flex-col gap-3'>
             <Input
               multiline
@@ -208,7 +215,7 @@ export function InterfaceEditorHost({
           </div>
         )}
 
-        {mode === 'preview' && (
+        {(!visualOnly && activeMode === 'preview') && (
           <div class='flex h-full flex-col items-center justify-center gap-4 text-center text-slate-300'>
             <span class='rounded-full border border-slate-700 px-4 py-1 text-xs uppercase tracking-wide'>
               Preview

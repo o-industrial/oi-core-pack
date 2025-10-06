@@ -1,7 +1,6 @@
 // deno-lint-ignore-file jsx-no-useless-fragment
 import { useCallback, useEffect, useMemo, useRef, useState } from '../../.deps.ts';
-import { IntentTypes } from '../../.deps.ts';
-import { Action, ActionStyleTypes, AziPanel, Modal, TabbedPanel } from '../../.deps.ts';
+import { AziPanel, Modal, TabbedPanel } from '../../.deps.ts';
 import { marked } from 'npm:marked@15.0.1';
 import type { InterfaceSpec } from '../../.deps.ts';
 import type { EaCInterfaceDetails, SurfaceInterfaceSettings } from '../../.deps.ts';
@@ -103,76 +102,13 @@ function extractSpecFromState(
   return null;
 }
 
-
-function SurfaceInterfaceDemoView({ spec }: { spec: InterfaceSpec }) {
-  const safeSpec = ensureInterfaceSpec(spec);
-  const meta = safeSpec.Meta;
-  const themeName = meta.Theme ?? 'default';
-  const totalNodes = countInterfaceNodes(safeSpec.Layout);
-  const providerCount = safeSpec.Data?.Providers?.length ?? 0;
-  const bindingCount = Object.keys(safeSpec.Data?.Bindings ?? {}).length;
-  const actionCount = safeSpec.Actions?.length ?? 0;
-
-  const layoutElements = renderInterfaceNodes(safeSpec.Layout);
-
-  return (
-    <div class='flex h-full flex-col gap-4'>
-      <section class='rounded border border-slate-800 bg-slate-900/60 p-3 text-xs text-slate-400'>
-        <p class='font-semibold text-slate-200'>Interactive demo</p>
-        <div class='mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4'>
-          <div>
-            <span class='block text-[10px] uppercase tracking-wide text-slate-500'>
-              Theme
-            </span>
-            <span class='font-semibold text-slate-100'>{themeName}</span>
-          </div>
-          <div>
-            <span class='block text-[10px] uppercase tracking-wide text-slate-500'>
-              Layout nodes
-            </span>
-            <span class='font-semibold text-slate-100'>{totalNodes}</span>
-          </div>
-          <div>
-            <span class='block text-[10px] uppercase tracking-wide text-slate-500'>
-              Providers
-            </span>
-            <span class='font-semibold text-slate-100'>{providerCount}</span>
-          </div>
-          <div>
-            <span class='block text-[10px] uppercase tracking-wide text-slate-500'>
-              Bindings
-            </span>
-            <span class='font-semibold text-slate-100'>{bindingCount}</span>
-          </div>
-          <div>
-            <span class='block text-[10px] uppercase tracking-wide text-slate-500'>
-              Actions
-            </span>
-            <span class='font-semibold text-slate-100'>{actionCount}</span>
-          </div>
-        </div>
-      </section>
-
-      <div class='flex-1 overflow-auto rounded border border-slate-800 bg-slate-950/70 p-4'>
-        {layoutElements.length > 0
-          ? <div class='flex flex-col gap-4'>{layoutElements}</div>
-          : (
-            <div class='flex h-full items-center justify-center text-sm text-slate-500'>
-              No layout nodes defined in this spec.
-            </div>
-          )}
-      </div>
-    </div>
-  );
-}
-
 export function SurfaceInterfaceModal({
   isOpen,
   onClose,
   interfaceLookup,
   surfaceLookup,
   details,
-  settings,
+  settings: _settings,
   spec,
   draftSpec,
   workspaceMgr,
@@ -219,7 +155,7 @@ export function SurfaceInterfaceModal({
       globalThis.clearTimeout(persistTimerRef.current);
       persistTimerRef.current = null;
     }
-  }, [isOpen, onSpecChange, currentSpec]);
+  }, [isOpen, onSpecChange]);
 
   const currentSpecSignature = useMemo(
     () => JSON.stringify(currentSpec),
@@ -286,37 +222,15 @@ export function SurfaceInterfaceModal({
   );
 
   const interfaceAzi = workspaceMgr.InterfaceAzis?.[interfaceLookup];
+  const interfaceName = details.Name ?? interfaceLookup;
   const themeName = currentSpec.Meta.Theme ?? 'default';
-  const versionLabel = `v${details.Version ?? 1}`;
-  const draftPath = details.DraftState?.SpecPath ?? 'N/A';
-  const webPath = details.WebPath ?? 'N/A';
-  const refreshSummary = settings?.RefreshMs ? `${settings.RefreshMs} ms` : 'disabled';
-  const editorRoute = `/workspace/interface/${interfaceLookup}`;
-
-  const metadataItems = useMemo(() => {
-    const items: Array<{ label: string; value: string }> = [
-      { label: 'Lookup', value: interfaceLookup },
-      { label: 'Version', value: versionLabel },
-      { label: 'Theme', value: themeName },
-      { label: 'Web Path', value: webPath },
-      { label: 'Draft Path', value: draftPath },
-      { label: 'Refresh', value: refreshSummary },
-    ];
-
-    if (surfaceLookup) {
-      items.splice(1, 0, { label: 'Surface', value: surfaceLookup });
-    }
-
-    return items;
-  }, [
-    interfaceLookup,
-    surfaceLookup,
-    versionLabel,
-    themeName,
-    webPath,
-    draftPath,
-    refreshSummary,
-  ]);
+  const previewUrl = useMemo(() => {
+    const path = details.WebPath?.trim();
+    if (!path) return null;
+    if (/^https?:\/\//i.test(path)) return path;
+    if (path.startsWith('/')) return path;
+    return `/${path}`;
+  }, [details.WebPath]);
 
   const tabData = useMemo(
     () => [
@@ -339,14 +253,14 @@ export function SurfaceInterfaceModal({
               spec={currentSpec}
               draftSpec={draftSpec}
               onSpecChange={handleSpecFromEditor}
-              defaultMode='visual'
+              visualOnly
             />
           </div>
         ),
       },
       {
-        key: TAB_DEMO,
-        label: 'Demo',
+        key: TAB_PREVIEW,
+        label: 'Preview',
         icon: (
           <svg
             xmlns='http://www.w3.org/2000/svg'
@@ -354,79 +268,98 @@ export function SurfaceInterfaceModal({
             fill='currentColor'
             class='h-5 w-5'
           >
-            <path d='M4 4h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2m0 2v8h12V6zm2 2h5l-2.5 3z' />
+            <path d='M2 4.5A2.5 2.5 0 0 1 4.5 2h11A2.5 2.5 0 0 1 18 4.5v7A2.5 2.5 0 0 1 15.5 14H11l2.29 2.29L12.17 17.4L8.77 14H4.5A2.5 2.5 0 0 1 2 11.5z' />
           </svg>
         ),
-        content: <SurfaceInterfaceDemoView spec={currentSpec} />,
+        content: previewUrl
+          ? (
+            <div class='flex h-full min-h-0 flex-col gap-3'>
+              <iframe
+                src={previewUrl}
+                title={`Interface preview for ${interfaceName}`}
+                loading='lazy'
+                class='flex-1 min-h-0 w-full rounded border border-neutral-700 bg-neutral-900'
+                allow='clipboard-write; fullscreen'
+              />
+              <p class='text-xs text-neutral-400'>
+                Rendering {previewUrl} in an embedded preview.
+              </p>
+            </div>
+          )
+          : (
+            <div class='flex h-full items-center justify-center text-sm text-neutral-500'>
+              Preview unavailable. Set a web path to enable the embedded view.
+            </div>
+          ),
+      },
+      {
+        key: TAB_CODE,
+        label: 'Code',
+        icon: (
+          <svg
+            xmlns='http://www.w3.org/2000/svg'
+            viewBox='0 0 20 20'
+            fill='currentColor'
+            class='h-5 w-5'
+          >
+            <path d='M7.41 6.59L2 12l5.41 5.41L8.82 16l-4-4 4-4zm4.18 0L11.18 8l4 4-4 4l1.41 1.41L18 12z' />
+          </svg>
+        ),
+        content: (
+          <div class='flex h-full items-center justify-center text-sm text-neutral-500'>
+            Code view coming soon.
+          </div>
+        ),
       },
     ],
-    [currentSpec, draftSpec, handleSpecFromEditor],
-  );
-
-  const threadId = useMemo(
-    () => `workspace-${enterpriseLookup}-interface-${interfaceLookup}`,
-    [enterpriseLookup, interfaceLookup],
+    [
+      currentSpec,
+      draftSpec,
+      handleSpecFromEditor,
+      interfaceName,
+      previewUrl,
+    ],
   );
 
   if (!isOpen) return <></>;
 
   return (
     <Modal
-      title={`Interface: ${details.Name ?? interfaceLookup}`}
+      title={`Interface: ${interfaceName}`}
       onClose={onClose}
-      class='max-w-[1200px] border border-slate-800 bg-slate-950 text-slate-100 shadow-lg'
+      class='max-w-[1200px] border border-neutral-700 bg-neutral-900'
       style={{ height: '90vh' }}
     >
       <div
-        class='flex h-full min-h-0 gap-4 bg-slate-950'
+        class='flex flex-row gap-4 h-full min-h-0 bg-neutral-900'
         style={{ height: '75vh' }}
       >
-        <div class='flex w-2/3 min-h-0 flex-col overflow-hidden pr-2'>
-          <section class='rounded border border-slate-800 bg-slate-900/60 p-4 text-xs text-slate-300'>
-            <div class='grid grid-cols-2 gap-3 sm:grid-cols-3'>
-              {metadataItems.map((item) => (
-                <div key={`${item.label}-${item.value}`}>
-                  <span class='block text-[10px] uppercase tracking-wide text-slate-500'>
-                    {item.label}
-                  </span>
-                  <span class='font-semibold text-slate-100'>{item.value}</span>
-                </div>
-              ))}
+        <div class='w-2/3 flex flex-col overflow-hidden pr-2 min-h-0'>
+          <div
+            class='flex-1 min-h-0 overflow-hidden bg-neutral-900 p-4 flex flex-col'
+            style={{ height: '82vh' }}
+          >
+            <div class='mt-2 flex-1 min-h-0 flex flex-col'>
+              <TabbedPanel
+                tabs={tabData}
+                activeTab={activeTab}
+                onTabChange={(key) => {
+                  if (key === TAB_PREVIEW || key === TAB_CODE || key === TAB_EDITOR) {
+                    setActiveTab(key as SurfaceInterfaceTabKey);
+                    return;
+                  }
+
+                  setActiveTab(TAB_EDITOR);
+                }}
+                stickyTabs
+                scrollableContent
+                class='flex-1 min-h-0 flex flex-col h-full overflow-hidden'
+              />
             </div>
-          </section>
-
-          <div class='mt-3 flex-1 min-h-0 overflow-hidden rounded border border-slate-800 bg-slate-900/50 p-3'>
-            <TabbedPanel
-              tabs={tabData}
-              activeTab={activeTab}
-              onTabChange={(key) => setActiveTab(key === TAB_DEMO ? TAB_DEMO : TAB_EDITOR)}
-              stickyTabs
-              scrollableContent
-              class='flex-1 min-h-0 flex flex-col'
-            />
           </div>
-
-          <footer class='mt-4 flex flex-wrap items-center justify-between gap-2 rounded border border-slate-800 bg-slate-900/60 p-3 text-xs text-slate-400'>
-            <span>
-              Azi threads are stored under{' '}
-              <code class='ml-1 rounded bg-slate-800 px-2 py-1 font-mono text-[10px] text-slate-200'>
-                {threadId}
-              </code>
-              .
-            </span>
-            <Action
-              href={editorRoute}
-              target='_blank'
-              rel='noreferrer'
-              styleType={ActionStyleTypes.Outline | ActionStyleTypes.Rounded}
-              intentType={IntentTypes.Secondary}
-            >
-              Open full editor
-            </Action>
-          </footer>
         </div>
 
-        <div class='w-1/3 min-h-0 border-l border-slate-800 pl-4'>
+        <div class='w-1/3 min-h-0 border-l border-gray-700 pl-4 overflow-y-auto'>
           {interfaceAzi
             ? (
               <AziPanel
@@ -446,7 +379,7 @@ export function SurfaceInterfaceModal({
               />
             )
             : (
-              <div class='flex h-full items-center justify-center text-sm text-slate-500'>
+              <div class='flex h-full items-center justify-center text-sm text-neutral-500'>
                 Initializing interface collaborator...
               </div>
             )}
@@ -455,5 +388,3 @@ export function SurfaceInterfaceModal({
     </Modal>
   );
 }
-
-
