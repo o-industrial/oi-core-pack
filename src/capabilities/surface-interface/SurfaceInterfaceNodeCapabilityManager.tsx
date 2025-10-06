@@ -236,6 +236,7 @@ export class SurfaceInterfaceNodeCapabilityManager
       'SchemaLookups',
       'WarmQueryLookups',
       'DataConnectionLookups',
+      'ChildInterfaceLookups',
       'Theme',
       'RefreshMs',
     ];
@@ -317,6 +318,15 @@ export class SurfaceInterfaceNodeCapabilityManager
       );
     } else if (source.Type.includes('schema')) {
       next.SchemaLookups = this.addLookup(next.SchemaLookups, source.ID);
+    } else if (source.Type.includes(this.Type)) {
+      if (source.ID === target.ID) {
+        return null;
+      }
+
+      next.ChildInterfaceLookups = this.addLookup(
+        next.ChildInterfaceLookups,
+        source.ID,
+      );
     } else {
       return null;
     }
@@ -359,6 +369,15 @@ export class SurfaceInterfaceNodeCapabilityManager
       );
     } else if (source.Type.includes('schema')) {
       next.SchemaLookups = this.removeLookup(next.SchemaLookups, source.ID);
+    } else if (source.Type.includes(this.Type)) {
+      if (source.ID === target.ID) {
+        return null;
+      }
+
+      next.ChildInterfaceLookups = this.removeLookup(
+        next.ChildInterfaceLookups,
+        source.ID,
+      );
     } else {
       return null;
     }
@@ -408,6 +427,15 @@ export class SurfaceInterfaceNodeCapabilityManager
         Source: connectionLookup,
         Target: node.ID,
         Label: 'connection',
+      });
+    }
+
+    for (const childLookup of settings.ChildInterfaceLookups ?? []) {
+      edges.push({
+        ID: `${childLookup}->${node.ID}`,
+        Source: childLookup,
+        Target: node.ID,
+        Label: 'child',
       });
     }
 
