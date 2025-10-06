@@ -32,7 +32,7 @@ export {
   Input,
   NodeHandle,
   NodeStatTile,
-} from 'jsr:@o-industrial/atomic@0.0.6-integration/atoms';
+} from 'jsr:@o-industrial/atomic@0.0.7/atoms';
 export {
   ConnectionManagementForm,
   LinePreviewWithValue,
@@ -41,20 +41,20 @@ export {
   SurfaceConnectionManagementForm,
   SurfaceManagementForm,
   TabbedPanel,
-} from 'jsr:@o-industrial/atomic@0.0.6-integration/molecules';
+} from 'jsr:@o-industrial/atomic@0.0.7/molecules';
 export {
   SimulatorManagementForm,
   TemplateEditor,
   VariablesEditor,
-} from 'jsr:@o-industrial/atomic@0.0.6-integration/molecules';
-export { parseTimeAgoString } from 'jsr:@o-industrial/atomic@0.0.6-integration/utils';
+} from 'jsr:@o-industrial/atomic@0.0.7/molecules';
+export { parseTimeAgoString } from 'jsr:@o-industrial/atomic@0.0.7/utils';
 export {
   AziPanel,
   InspectorBase,
   WorkspaceNodeRendererBase,
-} from 'jsr:@o-industrial/atomic@0.0.6-integration/organisms';
-export { SurfaceWarmQueryModal } from 'jsr:@o-industrial/atomic@0.0.6-integration/organisms';
-export { DeleteIcon, TriggerMatchIcon } from 'jsr:@o-industrial/atomic@0.0.6-integration/icons';
+} from 'jsr:@o-industrial/atomic@0.0.7/organisms';
+export { SurfaceWarmQueryModal } from 'jsr:@o-industrial/atomic@0.0.7/organisms';
+export { DeleteIcon, TriggerMatchIcon } from 'jsr:@o-industrial/atomic@0.0.7/icons';
 
 export { type NodeEventRouter, type NodePreset } from 'jsr:@o-industrial/common@0.0.477/flow';
 
