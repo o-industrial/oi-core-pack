@@ -58,8 +58,23 @@ export {
   InspectorBase,
   WorkspaceNodeRendererBase,
 } from 'jsr:@o-industrial/atomic@0.0.10/organisms';
-export { SurfaceWarmQueryModal } from 'jsr:@o-industrial/atomic@0.0.10/organisms';
 export { DeleteIcon, TriggerMatchIcon } from 'jsr:@o-industrial/atomic@0.0.10/icons';
+
+export {
+  AccountProfileModal,
+  APIKeysModal,
+  BillingDetailsModal,
+  CloudConnectionsModal,
+  CurrentLicenseModal,
+  DataAPISuiteModal,
+  ManageWorkspacesModal,
+  PrivateCALZModal,
+  SimulatorLibraryModal,
+  SurfaceWarmQueryModal,
+  TeamManagementModal,
+  WarmQueryAPIsModal,
+  WorkspaceSettingsModal,
+} from 'jsr:@o-industrial/atomic@0.0.10/organisms';
 
 export { type NodeEventRouter, type NodePreset } from 'jsr:@o-industrial/common@0.0.479/flow';
 

@@ -1,11 +1,3 @@
-import { JSX, WorkspaceManager } from '../.deps.ts';
-import type {
-  EverythingAsCode,
-  EverythingAsCodeClouds,
-  EverythingAsCodeLicensing,
-  MenuRoot,
-} from '../.deps.ts';
-
 import {
   AccountProfileModal,
   APIKeysModal,
@@ -13,13 +5,19 @@ import {
   CloudConnectionsModal,
   CurrentLicenseModal,
   DataAPISuiteModal,
+  type EverythingAsCode,
+  type EverythingAsCodeClouds,
+  type EverythingAsCodeLicensing,
+  JSX,
   ManageWorkspacesModal,
+  type MenuRoot,
   PrivateCALZModal,
   SimulatorLibraryModal,
   TeamManagementModal,
   WarmQueryAPIsModal,
+  WorkspaceManager,
   WorkspaceSettingsModal,
-} from 'jsr:@o-industrial/atomic@0.0.10/organisms';
+} from '../.deps.ts';
 
 export type WorkspaceAppMenuHandles = {
   handleMenu: (item: { id: string }) => void;
@@ -51,7 +49,10 @@ export function createWorkspaceAppMenu(
   const { Modal: apiKeysModal, Show: showApiKeys } = APIKeysModal.Modal(workspaceMgr);
   const { Modal: dataSuiteModal, Show: showDataSuite } = DataAPISuiteModal.Modal(workspaceMgr);
   const { Modal: billingModal, Show: showBilling } = BillingDetailsModal.Modal(workspaceMgr);
-  const { Modal: licenseModal, Show: showLicense } = CurrentLicenseModal.Modal(eac, workspaceMgr);
+  const { Modal: licenseModal, Show: showLicense } = CurrentLicenseModal.Modal(
+    eac,
+    workspaceMgr,
+  );
   const { Modal: cloudConnsModal, Show: showCloudConns } = CloudConnectionsModal.Modal(
     workspaceMgr,
   );
