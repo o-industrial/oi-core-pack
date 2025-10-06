@@ -9,10 +9,11 @@ import { InterfaceEditorHost } from './InterfaceEditorHost.tsx';
 import type { AziState, WorkspaceManager } from '../../.deps.ts';
 import type { JSX } from '../../.deps.ts';
 
-type SurfaceInterfaceTabKey = 'editor' | 'demo';
+type SurfaceInterfaceTabKey = 'editor' | 'preview' | 'code';
 
 const TAB_EDITOR: SurfaceInterfaceTabKey = 'editor';
-const TAB_DEMO: SurfaceInterfaceTabKey = 'demo';
+const TAB_PREVIEW: SurfaceInterfaceTabKey = 'preview';
+const TAB_CODE: SurfaceInterfaceTabKey = 'code';
 
 export type SurfaceInterfaceModalProps = {
   isOpen: boolean;
@@ -26,12 +27,6 @@ export type SurfaceInterfaceModalProps = {
   workspaceMgr: WorkspaceManager;
   onSpecChange?: (next: InterfaceSpec) => void;
 };
-
-const DEFAULT_CONTAINER_CLASS =
-  'rounded border border-slate-800/80 bg-slate-900/70 p-4 shadow-sm flex flex-col gap-3';
-const DEFAULT_TEXT_CLASS = 'text-sm text-slate-200';
-
-type LayoutNode = InterfaceSpec['Layout'][number];
 
 function ensureInterfaceSpec(spec?: InterfaceSpec): InterfaceSpec {
   if (!spec) {
@@ -108,111 +103,6 @@ function extractSpecFromState(
   return null;
 }
 
-function resolveClassName(
-  props: Record<string, unknown> | undefined,
-  fallback: string,
-): string {
-  if (!props) return fallback;
-
-  const candidates = [
-    props.className,
-    props.ClassName,
-    props.class,
-  ] as Array<unknown>;
-
-  for (const value of candidates) {
-    if (typeof value === 'string' && value.trim().length) {
-      return value;
-    }
-  }
-
-  return fallback;
-}
-
-function countInterfaceNodes(nodes?: InterfaceSpec['Layout']): number {
-  if (!nodes?.length) return 0;
-
-  return nodes.reduce(
-    (total, node) => total + 1 + countInterfaceNodes(node.Children),
-    0,
-  );
-}
-
-function renderInterfaceNodes(
-  nodes: InterfaceSpec['Layout'] | undefined,
-  depth = 0,
-): JSX.Element[] {
-  if (!nodes?.length) return [];
-
-  return nodes.map((node) => renderInterfaceNode(node, depth));
-}
-
-function renderInterfaceNode(node: LayoutNode, depth: number): JSX.Element {
-  const props = (node.Props ?? {}) as Record<string, unknown>;
-  const typeKey = node.Type.toLowerCase();
-
-  if (typeKey === 'container') {
-    const className = resolveClassName(
-      props,
-      `${DEFAULT_CONTAINER_CLASS} ${depth === 0 ? 'w-full' : ''}`,
-    );
-
-    const children = node.Children?.length ? renderInterfaceNodes(node.Children, depth + 1) : null;
-
-    return (
-      <div key={node.ID} class={className} data-interface-node={node.ID}>
-        {children ?? (
-          <p class='text-xs italic text-slate-500'>
-            No child components defined.
-          </p>
-        )}
-      </div>
-    );
-  }
-
-  if (typeKey === 'text') {
-    const className = resolveClassName(props, DEFAULT_TEXT_CLASS);
-    const rawValue = (props.value as unknown) ??
-      (props.text as unknown) ??
-      (props.content as unknown) ??
-      node.ID;
-
-    const value = typeof rawValue === 'string'
-      ? rawValue
-      : rawValue == null
-      ? ''
-      : Array.isArray(rawValue)
-      ? rawValue.join(' ')
-      : typeof rawValue === 'number'
-      ? String(rawValue)
-      : JSON.stringify(rawValue);
-
-    return (
-      <p key={node.ID} class={className} data-interface-node={node.ID}>
-        {value}
-      </p>
-    );
-  }
-
-  const children = node.Children?.length ? renderInterfaceNodes(node.Children, depth + 1) : null;
-
-  return (
-    <div
-      key={node.ID}
-      class={`${DEFAULT_CONTAINER_CLASS} border-dashed`}
-      data-interface-node={node.ID}
-    >
-      <p class='text-xs font-semibold uppercase tracking-wide text-slate-400'>
-        {node.Type}
-      </p>
-      {children ?? (
-        <p class='mt-2 text-xs text-slate-500'>
-          No renderer registered for this component type.
-        </p>
-      )}
-    </div>
-  );
-}
 
 function SurfaceInterfaceDemoView({ spec }: { spec: InterfaceSpec }) {
   const safeSpec = ensureInterfaceSpec(spec);
@@ -565,3 +455,5 @@ export function SurfaceInterfaceModal({
     </Modal>
   );
 }
+
+
