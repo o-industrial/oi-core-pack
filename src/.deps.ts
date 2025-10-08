@@ -28,7 +28,8 @@ export type { EverythingAsCodeLicensing } from 'jsr:@fathym/eac-licensing@0.0.58
 export {
   CodeMirrorEditor,
   type CodeMirrorEditorProps,
-} from 'jsr:@fathym/code-editor@0.0.30-integration';
+} from '../../code-editor/mod.ts';
+// } from 'jsr:@fathym/code-editor@0.0.34-integration';
 
 export {
   Action,
@@ -57,10 +58,6 @@ export {
   AziPanel,
   InspectorBase,
   WorkspaceNodeRendererBase,
-} from 'jsr:@o-industrial/atomic@0.0.10/organisms';
-export { DeleteIcon, TriggerMatchIcon } from 'jsr:@o-industrial/atomic@0.0.10/icons';
-
-export {
   AccountProfileModal,
   APIKeysModal,
   BillingDetailsModal,
@@ -74,18 +71,33 @@ export {
   TeamManagementModal,
   WarmQueryAPIsModal,
   WorkspaceSettingsModal,
-} from 'jsr:@o-industrial/atomic@0.0.10/organisms';
+  // } from 'jsr:@o-industrial/atomic@0.0.10/organisms';
+} from '../../open-industrial-atomic/src/organisms/.exports.ts';
 
-export { type NodeEventRouter, type NodePreset } from 'jsr:@o-industrial/common@0.0.479/flow';
+export {
+  DeleteIcon,
+  TriggerMatchIcon,
+} from 'jsr:@o-industrial/atomic@0.0.10/icons';
+
+export {
+  type NodeEventRouter,
+  type NodePreset,
+} from 'jsr:@o-industrial/common@0.0.479/flow';
 
 export { shaHash } from 'jsr:@o-industrial/common@0.0.479/utils/client';
 
 export { OpenIndustrialAPIClient } from 'jsr:@o-industrial/common@0.0.479/api';
 
-export { IntentTypes, RuntimeStatsSchema } from 'jsr:@o-industrial/common@0.0.479/types';
+export {
+  IntentTypes,
+  RuntimeStatsSchema,
+} from 'jsr:@o-industrial/common@0.0.479/types';
 export type { IngestOption } from 'jsr:@o-industrial/common@0.0.479/types';
 
-export { Pack, PackModuleBuilder } from 'jsr:@o-industrial/common@0.0.479/fluent/packs';
+export {
+  Pack,
+  PackModuleBuilder,
+} from 'jsr:@o-industrial/common@0.0.479/fluent/packs';
 
 export type {
   AziState,
