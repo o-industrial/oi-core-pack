@@ -74,7 +74,7 @@ export {
   TeamManagementModal,
   WarmQueryAPIsModal,
   WorkspaceSettingsModal,
-} from 'jsr:@o-industrial/atomic@0.0.10/organisms';
+} from '../../open-industrial-atomic/src/organisms/.exports.ts';
 
 export { type NodeEventRouter, type NodePreset } from 'jsr:@o-industrial/common@0.0.479/flow';
 
