@@ -65,6 +65,8 @@ export {
   CurrentLicenseModal,
   DataAPISuiteModal,
   ManageWorkspacesModal,
+  ManageIoTModal,
+  OEMIntegrationsModal,
   PrivateCALZModal,
   SimulatorLibraryModal,
   SurfaceWarmQueryModal,

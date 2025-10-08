@@ -9,8 +9,10 @@ import {
   type EverythingAsCodeClouds,
   type EverythingAsCodeLicensing,
   JSX,
+  ManageIoTModal,
   ManageWorkspacesModal,
   type MenuRoot,
+  OEMIntegrationsModal,
   PrivateCALZModal,
   SimulatorLibraryModal,
   TeamManagementModal,
@@ -28,7 +30,9 @@ export type WorkspaceAppMenuHandles = {
   showCloudConns: () => void;
   showDataSuite: () => void;
   showLicense: () => void;
+  showManageIot: () => void;
   showMngWksps: () => void;
+  showOemIntegrations: () => void;
   showSimLib: () => void;
   showTeamMgmt: () => void;
   showWarmQuery: () => void;
@@ -57,6 +61,10 @@ export function createWorkspaceAppMenu(
     workspaceMgr,
   );
   const { Modal: privateCalzModal, Show: showPrivateCalz } = PrivateCALZModal.Modal(workspaceMgr);
+  const { Modal: manageIotModal, Show: showManageIot } = ManageIoTModal.Modal(workspaceMgr);
+  const { Modal: oemIntegrationsModal, Show: showOemIntegrations } = OEMIntegrationsModal.Modal(
+    workspaceMgr,
+  );
 
   const modals = (
     <>
@@ -67,6 +75,8 @@ export function createWorkspaceAppMenu(
       {wkspSetsModal}
       {cloudConnsModal}
       {privateCalzModal}
+      {manageIotModal}
+      {oemIntegrationsModal}
       {warmQueryModal}
       {apiKeysModal}
       {dataSuiteModal}
@@ -102,6 +112,12 @@ export function createWorkspaceAppMenu(
       case 'env.calz':
         showPrivateCalz();
         break;
+      case 'env.iot':
+        showManageIot();
+        break;
+      case 'env.oem':
+        showOemIntegrations();
+        break;
       case 'billing.details':
         showBilling();
         break;
@@ -120,7 +136,9 @@ export function createWorkspaceAppMenu(
     showCloudConns,
     showDataSuite,
     showLicense,
+    showManageIot,
     showMngWksps,
+    showOemIntegrations,
     showSimLib,
     showTeamMgmt,
     showWarmQuery,
@@ -137,6 +155,8 @@ export function getWorkspaceRuntimeMenus(
     stack: 'https://api.iconify.design/lucide:layers-3.svg',
     link: 'https://api.iconify.design/mdi:link-variant.svg',
     privateCloud: 'https://api.iconify.design/lucide:server.svg',
+    iot: 'https://api.iconify.design/lucide:radar.svg',
+    oem: 'https://api.iconify.design/lucide:puzzle.svg',
     warmQuery: 'https://api.iconify.design/mdi:sql-query.svg',
     key: 'https://api.iconify.design/lucide:key.svg',
     license: 'https://api.iconify.design/lucide:badge-check.svg',
@@ -188,6 +208,18 @@ export function getWorkspaceRuntimeMenus(
               id: 'env.calz',
               label: 'Manage Private CALZ',
               iconSrc: icons.privateCloud,
+            },
+            {
+              type: 'item' as const,
+              id: 'env.iot',
+              label: 'Manage IoT',
+              iconSrc: icons.iot,
+            },
+            {
+              type: 'item' as const,
+              id: 'env.oem',
+              label: 'OEM Integrations',
+              iconSrc: icons.oem,
             },
           ]
           : []),
