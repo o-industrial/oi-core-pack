@@ -234,7 +234,9 @@ export function SurfaceInterfaceModal({
   );
 
   const handleAziFinishSend = useCallback(
-    (state: AziState) => {
+    (state?: AziState) => {
+      if (!state) return;
+
       const extracted = extractSpecFromState(state);
       if (!extracted) return;
 

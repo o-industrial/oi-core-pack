@@ -9,7 +9,7 @@ import { SurfaceWarmQueryNodeCapabilityManager } from './capabilities/surface-wa
 import { SurfaceInterfaceNodeCapabilityManager } from './capabilities/surface-interface/SurfaceInterfaceNodeCapabilityManager.tsx';
 
 export default Pack().Capabilities(async (ioc) => {
-  const oiSvc = await ioc.Resolve(OpenIndustrialAPIClient);
+  const oiSvc = await ioc.Resolve<OpenIndustrialAPIClient>(ioc.Symbol('OpenIndustrialAPIClient'));
 
   return {
     surface: [
