@@ -47,11 +47,11 @@
   "unstable": ["kv"],
   "lock": false,
   "imports": {
-    // "jsr:@o-industrial/atomic@0.0.21/atoms": "../open-industrial-atomic/src/atoms/.exports.ts",
-    // "jsr:@o-industrial/atomic@0.0.21/icons": "../open-industrial-atomic/build/iconset/icons/.exports.ts",
-    // "jsr:@o-industrial/atomic@0.0.21/molecules": "../open-industrial-atomic/src/molecules/.exports.ts",
-    // "jsr:@o-industrial/atomic@0.0.21/organisms": "../open-industrial-atomic/src/organisms/.exports.ts",
-    // "jsr:@o-industrial/atomic@0.0.21/utils": "../open-industrial-atomic/src/utils/.exports.ts",
+    // "jsr:@o-industrial/atomic@0.0.24-hmis/atoms": "../open-industrial-atomic/src/atoms/.exports.ts",
+    // "jsr:@o-industrial/atomic@0.0.24-hmis/icons": "../open-industrial-atomic/build/iconset/icons/.exports.ts",
+    // "jsr:@o-industrial/atomic@0.0.24-hmis/molecules": "../open-industrial-atomic/src/molecules/.exports.ts",
+    // "jsr:@o-industrial/atomic@0.0.24-hmis/organisms": "../open-industrial-atomic/src/organisms/.exports.ts",
+    // "jsr:@o-industrial/atomic@0.0.24-hmis/utils": "../open-industrial-atomic/src/utils/.exports.ts",
 
     // "jsr:@o-industrial/common@0.0.488-hmis/api": "../open-industrial-reference-architecture/src/api/.exports.ts",
     // "jsr:@o-industrial/common@0.0.488-hmis/eac": "../open-industrial-reference-architecture/src/eac/.exports.ts",
