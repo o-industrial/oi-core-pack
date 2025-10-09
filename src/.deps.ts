@@ -35,7 +35,7 @@ export {
   Input,
   NodeHandle,
   NodeStatTile,
-} from 'jsr:@o-industrial/atomic@0.0.10/atoms';
+} from 'jsr:@o-industrial/atomic@0.0.24-hmis/atoms';
 export {
   ConnectionManagementForm,
   LinePreviewWithValue,
@@ -44,13 +44,15 @@ export {
   SurfaceConnectionManagementForm,
   SurfaceManagementForm,
   TabbedPanel,
-} from 'jsr:@o-industrial/atomic@0.0.10/molecules';
+} from 'jsr:@o-industrial/atomic@0.0.24-hmis/molecules';
 export {
   SimulatorManagementForm,
   TemplateEditor,
   VariablesEditor,
-} from 'jsr:@o-industrial/atomic@0.0.10/molecules';
-export { parseTimeAgoString } from 'jsr:@o-industrial/atomic@0.0.10/utils';
+} from 'jsr:@o-industrial/atomic@0.0.24-hmis/molecules';
+export { parseTimeAgoString } from 'jsr:@o-industrial/atomic@0.0.24-hmis/utils';
+export { DeleteIcon, TriggerMatchIcon } from 'jsr:@o-industrial/atomic@0.0.24-hmis/icons';
+
 export {
   AccountProfileModal,
   APIKeysModal,
@@ -70,10 +72,7 @@ export {
   WarmQueryAPIsModal,
   WorkspaceNodeRendererBase,
   WorkspaceSettingsModal,
-  // } from 'jsr:@o-industrial/atomic@0.0.10/organisms';
-} from '../../open-industrial-atomic/src/organisms/.exports.ts';
-
-export { DeleteIcon, TriggerMatchIcon } from 'jsr:@o-industrial/atomic@0.0.10/icons';
+} from 'jsr:@o-industrial/atomic@0.0.24-hmis/organisms';
 
 export { type NodeEventRouter, type NodePreset } from 'jsr:@o-industrial/common@0.0.488-hmis/flow';
 
