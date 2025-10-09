@@ -25,8 +25,11 @@ export {
 
 export type { EverythingAsCodeLicensing } from 'jsr:@fathym/eac-licensing@0.0.58';
 
-export { CodeMirrorEditor, type CodeMirrorEditorProps } from '../../code-editor/mod.ts';
-// } from 'jsr:@fathym/code-editor@0.0.34-integration';
+export {
+  CodeMirrorEditor,
+  type CodeMirrorEditorProps,
+} from 'jsr:@fathym/code-editor@0.0.34-integration';
+// } from '../../code-editor/mod.ts';
 
 export {
   Action,
