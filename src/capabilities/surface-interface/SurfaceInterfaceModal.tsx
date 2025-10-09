@@ -1,106 +1,33 @@
-// deno-lint-ignore-file jsx-no-useless-fragment
-import { useCallback, useEffect, useMemo, useRef, useState } from '../../.deps.ts';
+import { useEffect, useMemo, useState } from '../../.deps.ts';
 import { AziPanel, CodeMirrorEditor, Modal, TabbedPanel } from '../../.deps.ts';
+import type {
+  EaCInterfaceCodeBlock,
+  EaCInterfaceDetails,
+  SurfaceInterfaceSettings,
+} from '../../.deps.ts';
+import { Action, ActionStyleTypes, IntentTypes } from '../../.deps.ts';
 import { marked } from 'npm:marked@15.0.1';
-import type { InterfaceSpec } from '../../.deps.ts';
-import type { EaCInterfaceDetails, SurfaceInterfaceSettings } from '../../.deps.ts';
-import { InterfaceEditorHost } from './InterfaceEditorHost.tsx';
-import type { AziState, WorkspaceManager } from '../../.deps.ts';
 import type { JSX } from '../../.deps.ts';
+import type { WorkspaceManager } from '../../.deps.ts';
+import { ensureInterfaceDetails } from './interfaceDefaults.ts';
 
-type SurfaceInterfaceTabKey = 'editor' | 'preview' | 'code';
-
-const TAB_EDITOR: SurfaceInterfaceTabKey = 'editor';
-const TAB_PREVIEW: SurfaceInterfaceTabKey = 'preview';
-const TAB_CODE: SurfaceInterfaceTabKey = 'code';
-
-export type SurfaceInterfaceModalProps = {
+type SurfaceInterfaceModalProps = {
   isOpen: boolean;
   onClose: () => void;
   interfaceLookup: string;
   surfaceLookup?: string;
   details: EaCInterfaceDetails;
   settings?: SurfaceInterfaceSettings;
-  spec: InterfaceSpec;
-  draftSpec?: InterfaceSpec;
   workspaceMgr: WorkspaceManager;
-  onSpecChange?: (next: InterfaceSpec) => void;
+  onDetailsChange?: (next: Partial<EaCInterfaceDetails>) => void;
 };
 
-function ensureInterfaceSpec(spec?: InterfaceSpec): InterfaceSpec {
-  if (!spec) {
-    return {
-      Meta: { Name: 'Untitled Interface', Version: 1, Theme: 'default' },
-      Layout: [],
-      Data: { Providers: [], Bindings: {} },
-      Actions: [],
-    };
-  }
+type SurfaceInterfaceTabKey = 'imports' | 'data' | 'handler' | 'page';
 
-  const meta = spec.Meta ?? { Name: 'Untitled Interface', Version: 1 };
-
-  return {
-    ...spec,
-    Meta: {
-      ...meta,
-      Name: meta.Name ?? 'Untitled Interface',
-      Version: meta.Version ?? 1,
-      Theme: meta.Theme ?? 'default',
-    },
-    Data: spec.Data ?? { Providers: [], Bindings: {} },
-    Layout: spec.Layout ?? [],
-    Actions: spec.Actions ?? [],
-  };
-}
-
-function cloneSpec(spec: InterfaceSpec): InterfaceSpec {
-  const g = globalThis as typeof globalThis & {
-    structuredClone?: <T>(value: T) => T;
-  };
-
-  if (typeof g.structuredClone === 'function') {
-    return ensureInterfaceSpec(g.structuredClone(spec));
-  }
-
-  return ensureInterfaceSpec(JSON.parse(JSON.stringify(spec)) as InterfaceSpec);
-}
-
-function extractSpecFromState(
-  state: AziState | undefined,
-): InterfaceSpec | null {
-  if (!state) return null;
-
-  const source = state as Record<string, unknown>;
-  const directKeys = [
-    'InterfaceSpec',
-    'Spec',
-    'DraftSpec',
-    'NextSpec',
-    'ProposedSpec',
-    'PreviewSpec',
-  ];
-
-  for (const key of directKeys) {
-    const value = source[key];
-    if (value && typeof value === 'object') {
-      return ensureInterfaceSpec(value as InterfaceSpec);
-    }
-  }
-
-  const nestedInterface = source.Interface;
-  if (
-    nestedInterface &&
-    typeof nestedInterface === 'object' &&
-    (nestedInterface as Record<string, unknown>).Spec &&
-    typeof (nestedInterface as Record<string, unknown>).Spec === 'object'
-  ) {
-    return ensureInterfaceSpec(
-      (nestedInterface as { Spec: InterfaceSpec }).Spec,
-    );
-  }
-
-  return null;
-}
+const TAB_IMPORTS: SurfaceInterfaceTabKey = 'imports';
+const TAB_DATA: SurfaceInterfaceTabKey = 'data';
+const TAB_HANDLER: SurfaceInterfaceTabKey = 'handler';
+const TAB_PAGE: SurfaceInterfaceTabKey = 'page';
 
 export function SurfaceInterfaceModal({
   isOpen,
@@ -108,304 +35,229 @@ export function SurfaceInterfaceModal({
   interfaceLookup,
   surfaceLookup,
   details,
-  settings: _settings,
-  spec,
-  draftSpec,
   workspaceMgr,
-  onSpecChange,
-}: SurfaceInterfaceModalProps): JSX.Element {
-  const [activeTab, setActiveTab] = useState<SurfaceInterfaceTabKey>(TAB_EDITOR);
-  const [currentSpec, setCurrentSpec] = useState<InterfaceSpec>(
-    ensureInterfaceSpec(draftSpec ?? spec),
+  onDetailsChange,
+}: SurfaceInterfaceModalProps): JSX.Element | null {
+  const resolvedDetails = useMemo(
+    () => ensureInterfaceDetails(details, interfaceLookup),
+    [details, interfaceLookup],
   );
-  const [codeContent, setCodeContent] = useState<string>(() =>
-    JSON.stringify(ensureInterfaceSpec(draftSpec ?? spec), null, 2)
-  );
-  const [codeError, setCodeError] = useState<string | null>(null);
-  const persistTimerRef = useRef<number | null>(null);
 
+  const [activeTab, setActiveTab] = useState<SurfaceInterfaceTabKey>(TAB_PAGE);
+
+  const [importsText, setImportsText] = useState(
+    formatImports(resolvedDetails.Imports),
+  );
+  const [pageDataType, setPageDataType] = useState(
+    resolvedDetails.PageDataType ?? '{\n  message: string;\n}',
+  );
+
+  const [handlerCode, setHandlerCode] = useState(
+    resolvedDetails.PageHandler?.Code ?? '',
+  );
+  const [handlerDescription, setHandlerDescription] = useState(
+    resolvedDetails.PageHandler?.Description ?? '',
+  );
+  const [handlerMessagesText, setHandlerMessagesText] = useState(
+    formatMessages(resolvedDetails.PageHandler?.Messages),
+  );
+  const [handlerMessageGroups] = useState(
+    resolvedDetails.PageHandler?.MessageGroups ?? [],
+  );
+
+  const [pageCode, setPageCode] = useState(resolvedDetails.Page?.Code ?? '');
+  const [pageDescription, setPageDescription] = useState(
+    resolvedDetails.Page?.Description ?? '',
+  );
+  const [pageMessagesText, setPageMessagesText] = useState(
+    formatMessages(resolvedDetails.Page?.Messages),
+  );
+  const [pageMessageGroups] = useState(
+    resolvedDetails.Page?.MessageGroups ?? [],
+  );
+
+  useEffect(() => {
+    setImportsText(formatImports(resolvedDetails.Imports));
+    setPageDataType(resolvedDetails.PageDataType ?? '{\n  message: string;\n}');
+
+    setHandlerCode(resolvedDetails.PageHandler?.Code ?? '');
+    setHandlerDescription(resolvedDetails.PageHandler?.Description ?? '');
+    setHandlerMessagesText(
+      formatMessages(resolvedDetails.PageHandler?.Messages),
+    );
+
+    setPageCode(resolvedDetails.Page?.Code ?? '');
+    setPageDescription(resolvedDetails.Page?.Description ?? '');
+    setPageMessagesText(formatMessages(resolvedDetails.Page?.Messages));
+  }, [resolvedDetails]);
+
+  const interfaceAzi = workspaceMgr.InterfaceAzis?.[interfaceLookup];
   const enterpriseLookup = workspaceMgr.EaC.GetEaC().EnterpriseLookup ?? 'workspace';
 
-  useEffect(() => {
-    workspaceMgr.CreateInterfaceAziIfNotExist(interfaceLookup);
-  }, [workspaceMgr, interfaceLookup]);
+  if (!isOpen) return null;
 
-  useEffect(() => {
-    if (persistTimerRef.current) {
-      globalThis.clearTimeout(persistTimerRef.current);
-      persistTimerRef.current = null;
-    }
+  const extraInputs = {
+    interfaceLookup,
+    surfaceLookup,
+    enterpriseLookup,
+    imports: parseImports(importsText),
+    pageDataType,
+    handler: {
+      code: handlerCode,
+      description: handlerDescription,
+      messages: parseMessages(handlerMessagesText),
+    },
+    page: {
+      code: pageCode,
+      description: pageDescription,
+      messages: parseMessages(pageMessagesText),
+    },
+  };
 
-    setCurrentSpec(ensureInterfaceSpec(draftSpec ?? spec));
-  }, [draftSpec, spec]);
+  const tabData = [
+    {
+      key: TAB_IMPORTS,
+      label: 'Imports',
+      content: (
+        <div class='flex h-full min-h-0 flex-col gap-2'>
+          <CodeMirrorEditor
+            fileContent={importsText}
+            onContentChange={setImportsText}
+            class='flex-1 min-h-0 [&>.cm-editor]:h-full [&>.cm-editor]:min-h-0'
+          />
+          <p class='text-xs text-neutral-400'>
+            One import statement per line. Leave empty to rely on default runtime imports.
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: TAB_DATA,
+      label: 'Page Data',
+      content: (
+        <div class='flex h-full min-h-0 flex-col gap-2'>
+          <CodeMirrorEditor
+            fileContent={pageDataType}
+            onContentChange={setPageDataType}
+            class='flex-1 min-h-0 [&>.cm-editor]:h-full [&>.cm-editor]:min-h-0'
+          />
+          <p class='text-xs text-neutral-400'>
+            Provide the structure returned from `loadPageData`. This snippet becomes the
+            interface&apos;s TypeScript contract.
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: TAB_HANDLER,
+      label: 'Handler',
+      content: (
+        <div class='flex h-full min-h-0 flex-col'>
+          <CodeEditorPanel
+            code={handlerCode}
+            description={handlerDescription}
+            messages={handlerMessagesText}
+            onCodeChange={setHandlerCode}
+            onDescriptionChange={setHandlerDescription}
+            onMessagesChange={setHandlerMessagesText}
+            placeholder='export async function loadPageData(...) { ... }'
+          />
+        </div>
+      ),
+    },
+    {
+      key: TAB_PAGE,
+      label: 'Page',
+      content: (
+        <div class='flex h-full min-h-0 flex-col'>
+          <CodeEditorPanel
+            code={pageCode}
+            description={pageDescription}
+            messages={pageMessagesText}
+            onCodeChange={setPageCode}
+            onDescriptionChange={setPageDescription}
+            onMessagesChange={setPageMessagesText}
+            placeholder='export default function InterfacePage({ data }: { data?: InterfacePageData }) { ... }'
+          />
+        </div>
+      ),
+    },
+  ];
 
-  useEffect(() => {
-    return () => {
-      if (persistTimerRef.current) {
-        globalThis.clearTimeout(persistTimerRef.current);
-        persistTimerRef.current = null;
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (isOpen) {
-      setActiveTab(TAB_EDITOR);
+  const handleSave = () => {
+    if (!onDetailsChange) {
+      onClose();
       return;
     }
 
-    if (!isOpen && persistTimerRef.current && onSpecChange) {
-      onSpecChange(currentSpec);
-      globalThis.clearTimeout(persistTimerRef.current);
-      persistTimerRef.current = null;
-    }
-  }, [isOpen, onSpecChange]);
+    const nextDetails: Partial<EaCInterfaceDetails> = {
+      Imports: parseImports(importsText),
+      PageDataType: pageDataType.trim().length ? pageDataType : undefined,
+      PageHandler: buildCodeBlock(
+        resolvedDetails.PageHandler,
+        handlerCode,
+        handlerDescription,
+        parseMessages(handlerMessagesText),
+        handlerMessageGroups,
+      ),
+      Page: buildCodeBlock(
+        resolvedDetails.Page,
+        pageCode,
+        pageDescription,
+        parseMessages(pageMessagesText),
+        pageMessageGroups,
+      ),
+    };
 
-  const currentSpecSignature = useMemo(
-    () => JSON.stringify(currentSpec),
-    [currentSpec],
-  );
-  const formattedSpec = useMemo(
-    () => JSON.stringify(currentSpec, null, 2),
-    [currentSpecSignature],
-  );
-
-  useEffect(() => {
-    setCodeContent((existing) => (existing === formattedSpec ? existing : formattedSpec));
-    setCodeError(null);
-  }, [formattedSpec]);
-
-  const persistSpec = useCallback(
-    (next: InterfaceSpec, immediate = false) => {
-      const safeNext = cloneSpec(next);
-      setCurrentSpec(safeNext);
-
-      if (!onSpecChange) return;
-
-      if (persistTimerRef.current) {
-        globalThis.clearTimeout(persistTimerRef.current);
-        persistTimerRef.current = null;
-      }
-
-      if (immediate) {
-        onSpecChange(safeNext);
-        return;
-      }
-
-      persistTimerRef.current = globalThis.setTimeout(() => {
-        onSpecChange(safeNext);
-        persistTimerRef.current = null;
-      }, 300) as unknown as number;
-    },
-    [onSpecChange],
-  );
-
-  const handleCodeContentChange = useCallback(
-    (next: string) => {
-      setCodeContent(next);
-
-      if (!next.trim()) {
-        setCodeError('Interface spec JSON cannot be empty.');
-        return;
-      }
-
-      try {
-        const parsed = JSON.parse(next) as InterfaceSpec;
-        const ensured = ensureInterfaceSpec(parsed);
-        setCodeError(null);
-
-        const ensuredSignature = JSON.stringify(ensured);
-        if (ensuredSignature !== currentSpecSignature) {
-          persistSpec(ensured);
-        }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Invalid JSON input.';
-        setCodeError(message);
-      }
-    },
-    [currentSpecSignature, persistSpec],
-  );
-
-  const handleSpecFromEditor = useCallback(
-    (next: InterfaceSpec) => {
-      persistSpec(next);
-    },
-    [persistSpec],
-  );
-
-  const handleAziFinishSend = useCallback(
-    (state: AziState) => {
-      const extracted = extractSpecFromState(state);
-      if (!extracted) return;
-
-      const nextSignature = JSON.stringify(extracted);
-      if (nextSignature === currentSpecSignature) return;
-
-      persistSpec(extracted, true);
-      setActiveTab(TAB_EDITOR);
-    },
-    [currentSpecSignature, persistSpec],
-  );
-
-  const handleAziStateChange = useCallback(
-    (state: AziState) => {
-      const extracted = extractSpecFromState(state);
-      if (!extracted) return;
-
-      const nextSignature = JSON.stringify(extracted);
-      if (nextSignature === currentSpecSignature) return;
-
-      persistSpec(extracted);
-    },
-    [currentSpecSignature, persistSpec],
-  );
-
-  const interfaceAzi = workspaceMgr.InterfaceAzis?.[interfaceLookup];
-  const interfaceName = details.Name ?? interfaceLookup;
-  const themeName = currentSpec.Meta.Theme ?? 'default';
-  const previewUrl = useMemo(() => {
-    const path = details.WebPath?.trim();
-    if (!path) return null;
-    if (/^https?:\/\//i.test(path)) return path;
-    if (path.startsWith('/')) return path;
-    return `/${path}`;
-  }, [details.WebPath]);
-
-  const tabData = useMemo(
-    () => [
-      {
-        key: TAB_EDITOR,
-        label: 'Editor',
-        icon: (
-          <svg
-            xmlns='http://www.w3.org/2000/svg'
-            viewBox='0 0 20 20'
-            fill='currentColor'
-            class='h-5 w-5'
-          >
-            <path d='M4 13.5V17h3.5l10-10.01-3.5-3.49zm13.71-7.29a1 1 0 0 0 0-1.41L15.2 2.29a1 1 0 0 0-1.41 0l-1.38 1.38 3.5 3.5z' />
-          </svg>
-        ),
-        content: (
-          <div class='flex h-full min-h-0 flex-col'>
-            <InterfaceEditorHost
-              spec={currentSpec}
-              draftSpec={draftSpec}
-              onSpecChange={handleSpecFromEditor}
-            />
-          </div>
-        ),
-      },
-      {
-        key: TAB_PREVIEW,
-        label: 'Preview',
-        icon: (
-          <svg
-            xmlns='http://www.w3.org/2000/svg'
-            viewBox='0 0 20 20'
-            fill='currentColor'
-            class='h-5 w-5'
-          >
-            <path d='M2 4.5A2.5 2.5 0 0 1 4.5 2h11A2.5 2.5 0 0 1 18 4.5v7A2.5 2.5 0 0 1 15.5 14H11l2.29 2.29L12.17 17.4L8.77 14H4.5A2.5 2.5 0 0 1 2 11.5z' />
-          </svg>
-        ),
-        content: previewUrl
-          ? (
-            <div class='flex h-full min-h-0 flex-col gap-3'>
-              <iframe
-                src={previewUrl}
-                title={`Interface preview for ${interfaceName}`}
-                loading='lazy'
-                class='flex-1 min-h-0 w-full rounded border border-neutral-700 bg-neutral-900'
-                allow='clipboard-write; fullscreen'
-              />
-              <p class='text-xs text-neutral-400'>
-                Rendering {previewUrl} in an embedded preview.
-              </p>
-            </div>
-          )
-          : (
-            <div class='flex h-full items-center justify-center text-sm text-neutral-500'>
-              Preview unavailable. Set a web path to enable the embedded view.
-            </div>
-          ),
-      },
-      {
-        key: TAB_CODE,
-        label: 'Code',
-        icon: (
-          <svg
-            xmlns='http://www.w3.org/2000/svg'
-            viewBox='0 0 20 20'
-            fill='currentColor'
-            class='h-5 w-5'
-          >
-            <path d='M7.41 6.59L2 12l5.41 5.41L8.82 16l-4-4 4-4zm4.18 0L11.18 8l4 4-4 4l1.41 1.41L18 12z' />
-          </svg>
-        ),
-        content: (
-          <div class='flex h-full min-h-0 flex-col gap-2'>
-            <CodeMirrorEditor
-              fileContent={codeContent}
-              onContentChange={handleCodeContentChange}
-              class='flex-1 min-h-0 [&>.cm-editor]:h-full [&>.cm-editor]:min-h-0 [&>.cm-editor]:rounded-md [&>.cm-editor]:border [&>.cm-editor]:border-neutral-700 [&>.cm-editor]:bg-neutral-950'
-            />
-            <p class={`text-xs ${codeError ? 'text-red-400' : 'text-neutral-400'}`}>
-              {codeError
-                ? `Invalid JSON: ${codeError}`
-                : 'Edit the JSON spec to update the interface definition.'}
-            </p>
-          </div>
-        ),
-      },
-    ],
-    [
-      currentSpec,
-      draftSpec,
-      handleSpecFromEditor,
-      interfaceName,
-      previewUrl,
-      codeContent,
-      codeError,
-      handleCodeContentChange,
-    ],
-  );
-
-  if (!isOpen) return <></>;
+    onDetailsChange(nextDetails);
+    onClose();
+  };
 
   return (
     <Modal
-      title={`Interface: ${interfaceName}`}
+      title={`Interface: ${resolvedDetails.Name ?? interfaceLookup}`}
       onClose={onClose}
       class='max-w-[1200px] border border-neutral-700 bg-neutral-900'
       style={{ height: '90vh' }}
     >
       <div
-        class='flex flex-row gap-4 h-full min-h-0 bg-neutral-900'
+        class='flex h-full min-h-0 flex-row gap-4 bg-neutral-900'
         style={{ height: '75vh' }}
       >
-        <div class='w-2/3 flex flex-col overflow-hidden pr-2 min-h-0'>
-          <div
-            class='flex-1 min-h-0 overflow-hidden bg-neutral-900 p-4 flex flex-col'
-            style={{ height: '82vh' }}
-          >
-            <div class='mt-2 flex-1 min-h-0 flex flex-col'>
-              <TabbedPanel
-                tabs={tabData}
-                activeTab={activeTab}
-                onTabChange={(key) => {
-                  if (key === TAB_PREVIEW || key === TAB_CODE || key === TAB_EDITOR) {
-                    setActiveTab(key as SurfaceInterfaceTabKey);
-                    return;
-                  }
+        <div class='w-2/3 flex min-h-0 flex-col gap-3'>
+          <TabbedPanel
+            tabs={tabData}
+            activeTab={activeTab}
+            onTabChange={(key) => {
+              if (
+                key === TAB_IMPORTS ||
+                key === TAB_DATA ||
+                key === TAB_HANDLER ||
+                key === TAB_PAGE
+              ) {
+                setActiveTab(key as SurfaceInterfaceTabKey);
+              }
+            }}
+            stickyTabs
+            scrollableContent
+            class='flex-1 min-h-0'
+          />
 
-                  setActiveTab(TAB_EDITOR);
-                }}
-                stickyTabs
-                scrollableContent
-                class='flex-1 min-h-0 flex flex-col h-full overflow-hidden'
-              />
-            </div>
+          <div class='flex justify-end gap-2'>
+            <Action
+              styleType={ActionStyleTypes.Outline | ActionStyleTypes.Rounded}
+              intentType={IntentTypes.Secondary}
+              onClick={onClose}
+            >
+              Cancel
+            </Action>
+            <Action
+              styleType={ActionStyleTypes.Solid | ActionStyleTypes.Rounded}
+              intentType={IntentTypes.Primary}
+              onClick={handleSave}
+            >
+              Save Changes
+            </Action>
           </div>
         </div>
 
@@ -415,17 +267,8 @@ export function SurfaceInterfaceModal({
               <AziPanel
                 workspaceMgr={workspaceMgr}
                 aziMgr={interfaceAzi}
-                onStartSend={() => setActiveTab(TAB_EDITOR)}
-                onFinishSend={handleAziFinishSend}
-                onStateChange={handleAziStateChange}
                 renderMessage={(message) => marked.parse(message) as string}
-                extraInputs={{
-                  interfaceLookup,
-                  surfaceLookup,
-                  enterpriseLookup,
-                  spec: currentSpec,
-                  theme: themeName,
-                }}
+                extraInputs={extraInputs}
               />
             )
             : (
@@ -437,4 +280,94 @@ export function SurfaceInterfaceModal({
       </div>
     </Modal>
   );
+}
+
+type CodeEditorPanelProps = {
+  code: string;
+  description: string;
+  messages: string;
+  onCodeChange: (value: string) => void;
+  onDescriptionChange: (value: string) => void;
+  onMessagesChange: (value: string) => void;
+  placeholder: string;
+};
+
+function CodeEditorPanel({
+  code,
+  description,
+  messages,
+  onCodeChange,
+  onDescriptionChange,
+  onMessagesChange,
+  placeholder,
+}: CodeEditorPanelProps) {
+  return (
+    <div class='flex flex-1 min-h-0 flex-col gap-3'>
+      <CodeMirrorEditor
+        fileContent={code}
+        onContentChange={onCodeChange}
+        placeholder={placeholder}
+        class='flex-1 min-h-[320px] [&>.cm-editor]:h-full [&>.cm-editor]:min-h-0'
+      />
+      <textarea
+        class='h-16 w-full resize-none rounded border border-neutral-700 bg-neutral-950 p-2 text-sm text-neutral-200 outline-none focus:border-teal-400'
+        placeholder='Optional description for this code block'
+        value={description}
+        onInput={(event) => onDescriptionChange((event.target as HTMLTextAreaElement).value)}
+      />
+      <textarea
+        class='h-24 w-full resize-none rounded border border-neutral-800 bg-neutral-950 p-2 text-xs text-neutral-300 outline-none focus:border-teal-400'
+        placeholder='Guidance messages (one per line) to share with AI collaborators'
+        value={messages}
+        onInput={(event) => onMessagesChange((event.target as HTMLTextAreaElement).value)}
+      />
+    </div>
+  );
+}
+
+function formatImports(imports?: string[]): string {
+  return (imports ?? []).join('\n');
+}
+
+function parseImports(text: string): string[] {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length);
+}
+
+function formatMessages(messages?: string[]): string {
+  return (messages ?? []).join('\n');
+}
+
+function parseMessages(text: string): string[] {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length);
+}
+
+function buildCodeBlock(
+  base: EaCInterfaceCodeBlock | undefined,
+  code: string,
+  description: string,
+  messages: string[],
+  messageGroups: EaCInterfaceCodeBlock['MessageGroups'] | undefined,
+): EaCInterfaceCodeBlock | undefined {
+  const trimmedCode = code.trim();
+  const trimmedDescription = description.trim();
+  const hasMessages = messages.length > 0;
+  const hasGroups = messageGroups && messageGroups.length > 0;
+
+  if (!trimmedCode && !trimmedDescription && !hasMessages && !hasGroups) {
+    return undefined;
+  }
+
+  return {
+    ...(base ?? {}),
+    ...(trimmedCode ? { Code: trimmedCode } : { Code: undefined }),
+    ...(trimmedDescription ? { Description: trimmedDescription } : { Description: undefined }),
+    ...(hasMessages ? { Messages: messages } : { Messages: undefined }),
+    ...(hasGroups ? { MessageGroups: messageGroups } : { MessageGroups: undefined }),
+  };
 }

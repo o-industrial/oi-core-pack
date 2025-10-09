@@ -2,18 +2,15 @@ import { IntentTypes } from '../../.deps.ts';
 import { JSX, useEffect, useMemo, useRef, useState } from '../../.deps.ts';
 import { Action, ActionStyleTypes, Input, InspectorBase } from '../../.deps.ts';
 import { InspectorCommonProps } from '../../.deps.ts';
-import type { EaCInterfaceDetails, InterfaceSpec, SurfaceInterfaceSettings } from '../../.deps.ts';
+import type { EaCInterfaceDetails, SurfaceInterfaceSettings } from '../../.deps.ts';
 import type { SurfaceInterfaceStats } from './SurfaceInterfaceStats.tsx';
 import { SurfaceInterfaceModal } from './SurfaceInterfaceModal.tsx';
+import { ensureInterfaceDetails, type InterfaceCodeBlock } from './interfaceDefaults.ts';
 
 type SurfaceInterfaceInspectorProps = InspectorCommonProps<
   EaCInterfaceDetails & SurfaceInterfaceSettings,
   SurfaceInterfaceStats
 >;
-
-const NAME_MAX_LENGTH = 30;
-const DESCRIPTION_MAX_LENGTH = 200;
-const WEB_PATH_MAX_LENGTH = 30;
 
 export function SurfaceInterfaceInspector({
   lookup,
@@ -28,28 +25,21 @@ export function SurfaceInterfaceInspector({
 }: SurfaceInterfaceInspectorProps): JSX.Element {
   const stats = useStats();
   const [isModalOpen, setModalOpen] = useState(false);
-
   const resolvedDetails = useMemo(
     () => ensureInterfaceDetails(details, lookup),
     [details, lookup],
   );
-  const resolvedSpec = resolvedDetails.Spec;
 
-  const [name, setName] = useState(details.Name ?? '');
-  const [description, setDescription] = useState(details.Description ?? '');
-  const [webPath, setWebPath] = useState(details.WebPath ?? '');
+  const [name, setName] = useState(resolvedDetails.Name ?? '');
+  const [description, setDescription] = useState(resolvedDetails.Description ?? '');
 
   const userEditedRef = useRef(false);
   const debounceRef = useRef<number | null>(null);
 
-  useEffect(() => setName(details.Name ?? ''), [details.Name]);
+  useEffect(() => setName(resolvedDetails.Name ?? ''), [resolvedDetails.Name]);
   useEffect(
-    () => setDescription(details.Description ?? ''),
-    [details.Description],
-  );
-  useEffect(
-    () => setWebPath(details.WebPath ? sanitizeWebPath(details.WebPath) : ''),
-    [details.WebPath],
+    () => setDescription(resolvedDetails.Description ?? ''),
+    [resolvedDetails.Description],
   );
 
   useEffect(() => {
@@ -57,9 +47,7 @@ export function SurfaceInterfaceInspector({
   }, [workspaceMgr, lookup]);
 
   useEffect(() => {
-    if (!onDetailsChanged || !userEditedRef.current) {
-      return;
-    }
+    if (!onDetailsChanged || !userEditedRef.current) return;
 
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
@@ -69,21 +57,24 @@ export function SurfaceInterfaceInspector({
       onDetailsChanged({
         Name: name,
         Description: description,
-        WebPath: webPath,
       });
       debounceRef.current = null;
-    }, 300);
+    }, 250);
 
     return () => {
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
       }
     };
-  }, [name, description, webPath, onDetailsChanged]);
+  }, [name, description, onDetailsChanged]);
 
   const nameInvalid = name.trim().length === 0;
   const descriptionInvalid = description.trim().length === 0;
-  const webPathInvalid = webPath.trim().length === 0;
+
+  const importsCount = resolvedDetails.Imports?.length ?? 0;
+  const handlerSummary = summarizeBlock(resolvedDetails.PageHandler);
+  const pageSummary = summarizeBlock(resolvedDetails.Page);
+
   const lastPublished = stats?.LastPublishedAt
     ? new Date(stats.LastPublishedAt).toLocaleString()
     : 'Never';
@@ -103,7 +94,7 @@ export function SurfaceInterfaceInspector({
             <Input
               label='Name'
               value={name}
-              maxLength={NAME_MAX_LENGTH}
+              maxLength={60}
               intentType={nameInvalid ? IntentTypes.Error : undefined}
               placeholder='interface-your-node'
               onInput={(event: JSX.TargetedEvent<HTMLInputElement, Event>) => {
@@ -119,110 +110,40 @@ export function SurfaceInterfaceInspector({
               multiline
               rows={3}
               value={description}
-              maxLength={DESCRIPTION_MAX_LENGTH}
+              maxLength={200}
               intentType={descriptionInvalid ? IntentTypes.Error : undefined}
-              placeholder='Describe the purpose of this HMI page'
+              placeholder='Describe the intent of this interface'
               onInput={(
                 event: JSX.TargetedEvent<HTMLTextAreaElement, Event>,
               ) => {
                 userEditedRef.current = true;
-                setDescription(
-                  (event.currentTarget as HTMLTextAreaElement).value,
-                );
+                setDescription((event.currentTarget as HTMLTextAreaElement).value);
               }}
             />
           </section>
 
-          <section class='space-y-2'>
-            <Input
-              label='Web Path'
-              value={webPath}
-              maxLength={WEB_PATH_MAX_LENGTH}
-              intentType={webPathInvalid ? IntentTypes.Error : undefined}
-              placeholder='/w/:workspace/ui/:interface'
-              onInput={(event: JSX.TargetedEvent<HTMLInputElement, Event>) => {
-                userEditedRef.current = true;
-                const input = event.currentTarget as HTMLInputElement;
-                const filtered = sanitizeWebPath(input.value).slice(
-                  0,
-                  WEB_PATH_MAX_LENGTH,
-                );
-                input.value = filtered;
-                setWebPath(filtered);
-              }}
-              onKeyDown={(
-                event: JSX.TargetedKeyboardEvent<HTMLInputElement>,
-              ) => {
-                const allowed = [
-                  'Backspace',
-                  'Delete',
-                  'ArrowLeft',
-                  'ArrowRight',
-                  'ArrowUp',
-                  'ArrowDown',
-                  'Tab',
-                  'Home',
-                  'End',
-                ];
-                const key = event.key;
-                const ctrl = event.ctrlKey || event.metaKey;
-                if (
-                  !/^[a-z0-9-]$/.test(key) &&
-                  !ctrl &&
-                  !allowed.includes(key)
-                ) {
-                  event.preventDefault();
-                }
-              }}
-            />
+          <section class='rounded border border-slate-800/70 bg-slate-900/60 p-3'>
+            <h3 class='text-xs font-semibold uppercase tracking-wide text-slate-400'>
+              Authoring Snapshot
+            </h3>
+            <div class='mt-2 grid grid-cols-3 gap-2 text-center text-[13px]'>
+              <StatTile label='Imports' value={importsCount.toString()} />
+              <StatTile label='Handler' value={handlerSummary} />
+              <StatTile label='Page' value={pageSummary} />
+            </div>
           </section>
 
-          <section class='rounded border border-slate-800 bg-slate-900/60 p-3 text-xs text-slate-400'>
-            <p class='font-semibold text-slate-300'>Publish Summary</p>
-            <ul class='mt-2 space-y-1'>
-              <li>
-                Published Version:{' '}
-                <span class='font-semibold text-slate-100'>
-                  v{details.Version ?? 1}
-                </span>
-              </li>
-              <li>
-                Last Published:{' '}
-                <span class='font-semibold text-slate-100'>
-                  {lastPublished}
-                </span>
-              </li>
-              <li>
-                Draft Path:{' '}
-                <span class='font-semibold text-slate-100'>
-                  {details.DraftState?.SpecPath ?? 'N/A'}
-                </span>
-              </li>
-            </ul>
-          </section>
-
-          <div class='flex flex-col gap-2'>
-            {resolvedDetails.WebPath && !webPathInvalid && (
-              <Action
-                href={resolvedDetails.WebPath}
-                target='_blank'
-                rel='noreferrer'
-                styleType={ActionStyleTypes.Outline | ActionStyleTypes.Rounded}
-                intentType={IntentTypes.Secondary}
-              >
-                Open Interface
-              </Action>
-            )}
+          <section class='flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400'>
+            <span>Last Published: {lastPublished}</span>
             <Action
               type='button'
               styleType={ActionStyleTypes.Solid | ActionStyleTypes.Rounded}
               intentType={IntentTypes.Primary}
-              disabled={nameInvalid || descriptionInvalid || webPathInvalid}
               onClick={() => setModalOpen(true)}
             >
               Manage Interface
             </Action>
-          </div>
+          </section>
         </div>
       </InspectorBase>
 
@@ -234,106 +155,35 @@ export function SurfaceInterfaceInspector({
           surfaceLookup={surfaceLookup}
           details={resolvedDetails}
           settings={details as SurfaceInterfaceSettings}
-          spec={resolvedSpec}
-          draftSpec={undefined}
           workspaceMgr={workspaceMgr}
-          onSpecChange={(next) => onDetailsChanged({ Spec: next })}
+          onDetailsChange={(next) => onDetailsChanged?.(next)}
         />
       )}
     </>
   );
 }
 
-function sanitizeWebPath(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+type StatTileProps = {
+  label: string;
+  value: string;
+};
+
+function StatTile({ label, value }: StatTileProps) {
+  return (
+    <div class='rounded border border-slate-800 bg-slate-900/70 px-2 py-3'>
+      <p class='text-[10px] uppercase tracking-wide text-slate-500'>{label}</p>
+      <p class='mt-1 text-base font-semibold text-slate-100'>{value}</p>
+    </div>
+  );
 }
 
-function ensureInterfaceDetails(
-  details: Partial<EaCInterfaceDetails>,
-  fallbackLookup: string,
-): EaCInterfaceDetails {
-  const fallbackName = details.Name?.trim()?.length ? details.Name : fallbackLookup;
-  const fallbackVersion = details.Version ?? 1;
+function summarizeBlock(block?: InterfaceCodeBlock): string {
+  if (!block) return 'Pending';
+  if (block.Code?.trim()?.length) return 'Code';
 
-  return {
-    Name: fallbackName,
-    Description: details.Description,
-    Version: fallbackVersion,
-    WebPath: details.WebPath,
-    Spec: ensureInterfaceSpec(details.Spec, fallbackName, fallbackVersion),
-    ComponentTag: details.ComponentTag,
-    EmbedOptions: details.EmbedOptions,
-    Assets: details.Assets,
-    DraftState: details.DraftState,
-    Thumbnails: details.Thumbnails,
-  };
-}
+  const messageCount = block.Messages?.length ?? 0;
+  const groupCount = block.MessageGroups?.length ?? 0;
+  const total = messageCount + groupCount;
 
-function ensureInterfaceSpec(
-  spec: InterfaceSpec | undefined,
-  fallbackName: string,
-  fallbackVersion: number,
-): InterfaceSpec {
-  const defaultSpec: InterfaceSpec = {
-    Meta: {
-      Name: fallbackName,
-      Version: fallbackVersion,
-      Theme: 'default',
-    },
-    Data: { Providers: [], Bindings: {} },
-    Layout: [
-      {
-        ID: 'root',
-        Type: 'Container',
-        IsContainer: true,
-        Props: {
-          className:
-            'flex min-h-[320px] flex-col gap-4 bg-slate-950/80 p-6 rounded-xl border border-slate-800',
-        },
-        Children: [
-          {
-            ID: 'headline',
-            Type: 'Text',
-            Props: {
-              value: 'Interface title',
-              className: 'text-2xl font-semibold text-slate-100',
-            },
-          },
-          {
-            ID: 'subtitle',
-            Type: 'Text',
-            Props: {
-              value: 'Describe the purpose of this HMI page',
-              className: 'text-sm text-slate-400',
-            },
-          },
-        ],
-      },
-    ],
-    Actions: [],
-  };
-
-  if (!spec) {
-    return defaultSpec;
-  }
-
-  const meta = spec.Meta ?? {
-    Name: fallbackName,
-    Version: fallbackVersion,
-  };
-
-  const layout = spec.Layout?.length ? spec.Layout : defaultSpec.Layout;
-
-  return {
-    ...spec,
-    Meta: {
-      ...meta,
-      Name: meta.Name ?? fallbackName,
-      Version: meta.Version ?? fallbackVersion,
-      Theme: meta.Theme ?? defaultSpec.Meta.Theme,
-    },
-    Data: spec.Data ?? defaultSpec.Data,
-    Layout: layout,
-    Actions: spec.Actions ?? defaultSpec.Actions,
-  };
+  return total > 0 ? `${total} cues` : 'Pending';
 }

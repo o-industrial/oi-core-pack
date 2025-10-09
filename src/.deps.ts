@@ -25,10 +25,7 @@ export {
 
 export type { EverythingAsCodeLicensing } from 'jsr:@fathym/eac-licensing@0.0.58';
 
-export {
-  CodeMirrorEditor,
-  type CodeMirrorEditorProps,
-} from '../../code-editor/mod.ts';
+export { CodeMirrorEditor, type CodeMirrorEditorProps } from '../../code-editor/mod.ts';
 // } from 'jsr:@fathym/code-editor@0.0.34-integration';
 
 export {
@@ -55,51 +52,39 @@ export {
 } from 'jsr:@o-industrial/atomic@0.0.10/molecules';
 export { parseTimeAgoString } from 'jsr:@o-industrial/atomic@0.0.10/utils';
 export {
-  AziPanel,
-  InspectorBase,
-  WorkspaceNodeRendererBase,
   AccountProfileModal,
   APIKeysModal,
+  AziPanel,
   BillingDetailsModal,
   CloudConnectionsModal,
   CurrentLicenseModal,
   DataAPISuiteModal,
-  ManageWorkspacesModal,
+  InspectorBase,
   ManageIoTModal,
+  ManageWorkspacesModal,
   OEMIntegrationsModal,
   PrivateCALZModal,
   SimulatorLibraryModal,
   SurfaceWarmQueryModal,
   TeamManagementModal,
   WarmQueryAPIsModal,
+  WorkspaceNodeRendererBase,
   WorkspaceSettingsModal,
   // } from 'jsr:@o-industrial/atomic@0.0.10/organisms';
 } from '../../open-industrial-atomic/src/organisms/.exports.ts';
 
-export {
-  DeleteIcon,
-  TriggerMatchIcon,
-} from 'jsr:@o-industrial/atomic@0.0.10/icons';
+export { DeleteIcon, TriggerMatchIcon } from 'jsr:@o-industrial/atomic@0.0.10/icons';
 
-export {
-  type NodeEventRouter,
-  type NodePreset,
-} from 'jsr:@o-industrial/common@0.0.479/flow';
+export { type NodeEventRouter, type NodePreset } from 'jsr:@o-industrial/common@0.0.488-hmis/flow';
 
-export { shaHash } from 'jsr:@o-industrial/common@0.0.479/utils/client';
+export { shaHash } from 'jsr:@o-industrial/common@0.0.488-hmis/utils/client';
 
-export { OpenIndustrialAPIClient } from 'jsr:@o-industrial/common@0.0.479/api';
+export { OpenIndustrialAPIClient } from 'jsr:@o-industrial/common@0.0.488-hmis/api';
 
-export {
-  IntentTypes,
-  RuntimeStatsSchema,
-} from 'jsr:@o-industrial/common@0.0.479/types';
-export type { IngestOption } from 'jsr:@o-industrial/common@0.0.479/types';
+export { IntentTypes, RuntimeStatsSchema } from 'jsr:@o-industrial/common@0.0.488-hmis/types';
+export type { IngestOption } from 'jsr:@o-industrial/common@0.0.488-hmis/types';
 
-export {
-  Pack,
-  PackModuleBuilder,
-} from 'jsr:@o-industrial/common@0.0.479/fluent/packs';
+export { Pack, PackModuleBuilder } from 'jsr:@o-industrial/common@0.0.488-hmis/fluent/packs';
 
 export type {
   AziState,
@@ -112,12 +97,12 @@ export type {
   FlowGraphNode,
   FlowNodeData,
   InspectorCommonProps,
-} from 'jsr:@o-industrial/common@0.0.479/flow';
+} from 'jsr:@o-industrial/common@0.0.488-hmis/flow';
 export {
   EaCNodeCapabilityManager,
   SurfaceEventRouter,
   WorkspaceManager,
-} from 'jsr:@o-industrial/common@0.0.479/flow';
+} from 'jsr:@o-industrial/common@0.0.488-hmis/flow';
 
 export type {
   EaCAgentDetails,
@@ -128,6 +113,7 @@ export type {
   EaCDataConnectionDetails,
   EaCFlowNodeMetadata,
   EaCInterfaceAsCode,
+  EaCInterfaceCodeBlock,
   EaCInterfaceDetails,
   EaCRootSchemaDetails,
   EaCSchemaAsCode,
@@ -137,11 +123,10 @@ export type {
   EaCSurfaceAsCode,
   EaCSurfaceDetails,
   EverythingAsCodeOIWorkspace,
-  InterfaceSpec,
   Position,
   SurfaceAgentSettings,
   SurfaceDataConnectionSettings,
   SurfaceInterfaceSettings,
   SurfaceSchemaSettings,
   SurfaceWarmQuerySettings,
-} from 'jsr:@o-industrial/common@0.0.479/eac';
+} from 'jsr:@o-industrial/common@0.0.488-hmis/eac';
