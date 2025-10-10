@@ -147,44 +147,44 @@ export class SurfaceInterfaceNodeCapabilityManager
     };
   }
 
-  protected override buildPresetPatch(
-    id: string,
-    position: Position,
-    context: EaCNodeCapabilityContext,
-  ): Partial<EverythingAsCodeOIWorkspace> {
-    const surfaceLookup = this.ensureSurfaceLookup(context);
+  // protected override buildPresetPatch(
+  //   id: string,
+  //   position: Position,
+  //   context: EaCNodeCapabilityContext,
+  // ): Partial<EverythingAsCodeOIWorkspace> {
+  //   const surfaceLookup = this.ensureSurfaceLookup(context);
 
-    const initialSpec = createDefaultInterfaceSpec(id);
+  //   const initialSpec = createDefaultInterfaceSpec(id);
 
-    const interfaceDetails: EaCInterfaceDetails = {
-      Name: `${id}`,
-      Description: 'Auto-generated interface stub',
-      Version: 1,
-      Spec: ensureInterfaceSpecValue(initialSpec, id),
-    };
+  //   const interfaceDetails: EaCInterfaceDetails = {
+  //     Name: `${id}`,
+  //     Description: 'Auto-generated interface stub',
+  //     Version: 1,
+  //     Spec: ensureInterfaceSpecValue(initialSpec, id),
+  //   };
 
-    return {
-      Interfaces: {
-        [id]: {
-          Details: interfaceDetails,
-          Metadata: { Enabled: true },
-        } as EaCInterfaceAsCode,
-      },
-      Surfaces: {
-        [surfaceLookup]: {
-          Interfaces: {
-            [id]: {
-              Metadata: {
-                Position: position,
-                Enabled: true,
-              },
-              Theme: INTERFACE_PRESET_THEME,
-            } satisfies SurfaceInterfaceSettings,
-          },
-        },
-      },
-    };
-  }
+  //   return {
+  //     Interfaces: {
+  //       [id]: {
+  //         Details: interfaceDetails,
+  //         Metadata: { Enabled: true },
+  //       } as EaCInterfaceAsCode,
+  //     },
+  //     Surfaces: {
+  //       [surfaceLookup]: {
+  //         Interfaces: {
+  //           [id]: {
+  //             Metadata: {
+  //               Position: position,
+  //               Enabled: true,
+  //             },
+  //             Theme: INTERFACE_PRESET_THEME,
+  //           } satisfies SurfaceInterfaceSettings,
+  //         },
+  //       },
+  //     },
+  //   };
+  // }
 
   protected override buildDeletePatch(
     node: FlowGraphNode,
@@ -481,9 +481,9 @@ export class SurfaceInterfaceNodeCapabilityManager
     return SurfaceInterfaceInspector;
   }
 
-  protected override getPreset(): NodePreset {
-    return { Type: this.Type, Label: 'Interface', IconKey: 'interface' };
-  }
+  // protected override getPreset(): NodePreset {
+  //   return { Type: this.Type, Label: 'Interface', IconKey: 'interface' };
+  // }
 
   protected override getRenderer(): ComponentType<any> {
     return SurfaceInterfaceNodeCapabilityManager.renderer;
