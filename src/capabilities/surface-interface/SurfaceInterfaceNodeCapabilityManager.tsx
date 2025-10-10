@@ -1,5 +1,5 @@
 // deno-lint-ignore-file no-explicit-any
-import { NodePreset, Position } from '../../.deps.ts';
+//import { NodePreset, Position } from '../../.deps.ts';
 import { EaCInterfaceAsCode, EaCInterfaceDetails, SurfaceInterfaceSettings } from '../../.deps.ts';
 import { EverythingAsCodeOIWorkspace } from '../../.deps.ts';
 import {
@@ -15,9 +15,10 @@ import { ComponentType, FunctionComponent, memo, NullableArrayOrObject } from '.
 import SurfaceInterfaceNodeRenderer from './SurfaceInterfaceNodeRenderer.tsx';
 import { SurfaceInterfaceInspector } from './SurfaceInterfaceInspector.tsx';
 import { SurfaceInterfaceNodeDetails } from './SurfaceInterfaceNodeData.ts';
-import { createDefaultInterfaceDetails, ensureInterfaceDetails } from './interfaceDefaults.ts';
+//import { createDefaultInterfaceDetails, ensureInterfaceDetails } from './interfaceDefaults.ts';
+import { ensureInterfaceDetails } from './interfaceDefaults.ts';
 
-const INTERFACE_PRESET_THEME = 'oi-default';
+//const INTERFACE_PRESET_THEME = 'oi-default';
 
 export class SurfaceInterfaceNodeCapabilityManager
   extends EaCNodeCapabilityManager<SurfaceInterfaceNodeDetails> {
@@ -57,29 +58,29 @@ export class SurfaceInterfaceNodeCapabilityManager
   // ): Partial<EverythingAsCodeOIWorkspace> {
   //   const surfaceLookup = this.ensureSurfaceLookup(context);
 
-    const interfaceDetails = createDefaultInterfaceDetails(id);
+  //   const interfaceDetails = createDefaultInterfaceDetails(id);
 
-    return {
-      Interfaces: {
-        [id]: {
-          Details: interfaceDetails,
-        } as EaCInterfaceAsCode,
-      },
-      Surfaces: {
-        [surfaceLookup]: {
-          Interfaces: {
-            [id]: {
-              Metadata: {
-                Position: position,
-                Enabled: true,
-              },
-              Theme: INTERFACE_PRESET_THEME,
-            } satisfies SurfaceInterfaceSettings,
-          },
-        },
-      },
-    };
-  }
+  //   return {
+  //     Interfaces: {
+  //       [id]: {
+  //         Details: interfaceDetails,
+  //       } as EaCInterfaceAsCode,
+  //     },
+  //     Surfaces: {
+  //       [surfaceLookup]: {
+  //         Interfaces: {
+  //           [id]: {
+  //             Metadata: {
+  //               Position: position,
+  //               Enabled: true,
+  //             },
+  //             Theme: INTERFACE_PRESET_THEME,
+  //           } satisfies SurfaceInterfaceSettings,
+  //         },
+  //       },
+  //     },
+  //   };
+  // }
 
   protected override buildDeletePatch(
     node: FlowGraphNode,

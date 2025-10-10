@@ -78,10 +78,9 @@ export {
   InspectorBase,
   SimulatorCard,
   SimulatorPackCard,
-  SurfaceWarmQueryModal,
   WorkspaceNodeRendererBase,
-} from 'jsr:@o-industrial/atomic@0.0.31/organisms';
-// } from '../../open-industrial-atomic/src/organisms/.exports.ts';
+  //} from 'jsr:@o-industrial/atomic@0.0.31/organisms';
+} from '../../open-industrial-atomic/src/organisms/.exports.ts';
 
 export * from './runtime/modals/.exports.ts';
 
@@ -91,7 +90,11 @@ export { shaHash } from 'jsr:@o-industrial/common@0.0.493/utils/client';
 
 export { OpenIndustrialAPIClient } from 'jsr:@o-industrial/common@0.0.493/api';
 
-export { IntentTypes, RuntimeStatsSchema } from 'jsr:@o-industrial/common@0.0.493/types';
+export {
+  type AzureDataExplorerOutput,
+  IntentTypes,
+  RuntimeStatsSchema,
+} from 'jsr:@o-industrial/common@0.0.493/types';
 export type {
   AccountProfile,
   IngestOption,
