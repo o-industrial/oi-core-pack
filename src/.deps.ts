@@ -39,7 +39,7 @@ export {
   NodeStatTile,
   Select,
   ToggleCheckbox,
-} from 'jsr:@o-industrial/atomic@0.0.30/atoms';
+} from 'jsr:@o-industrial/atomic@0.0.31/atoms';
 export {
   CloudConnectAzureForm,
   type CloudConnectAzureFormProps,
@@ -50,7 +50,7 @@ export {
   type MenuRoot,
   Modal,
   TabbedPanel,
-} from 'jsr:@o-industrial/atomic@0.0.30/molecules';
+} from 'jsr:@o-industrial/atomic@0.0.31/molecules';
 export {
   CloseIcon,
   DeleteIcon,
@@ -61,7 +61,7 @@ export {
   SettingsIcon,
   TriggerMatchIcon,
   UndoIcon,
-} from 'jsr:@o-industrial/atomic@0.0.30/icons';
+} from 'jsr:@o-industrial/atomic@0.0.31/icons';
 
 export { ConnectionInfoPanel } from './capabilities/connection/views/ConnectionInfoPanel.tsx';
 export { ConnectionManagementForm } from './capabilities/connection/views/ConnectionManagementForm.tsx';
@@ -79,9 +79,8 @@ export {
   SimulatorCard,
   SimulatorPackCard,
   SurfaceWarmQueryModal,
-  WarmQueryAPIsModal,
   WorkspaceNodeRendererBase,
-} from 'jsr:@o-industrial/atomic@0.0.30/organisms';
+} from 'jsr:@o-industrial/atomic@0.0.31/organisms';
 // } from '../../open-industrial-atomic/src/organisms/.exports.ts';
 
 export * from './runtime/modals/.exports.ts';
