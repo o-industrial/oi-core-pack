@@ -1,23 +1,26 @@
 import {
   Action,
   ActionStyleTypes,
+  AziPanel,
+  CodeMirrorEditor,
+  Input,
   IntentTypes,
+  Modal,
   TabbedPanel,
   useEffect,
   useMemo,
   useRef,
   useState,
-} from '../../.deps.ts';
-import { AziPanel, CodeMirrorEditor, Input, Modal } from '../../.deps.ts';
+  WorkspaceManager,
+} from '../../../.deps.ts';
 import type {
   EaCInterfaceCodeBlock,
   EaCInterfaceDetails,
+  JSX,
   SurfaceInterfaceSettings,
-} from '../../.deps.ts';
+} from '../../../.deps.ts';
 import { marked } from 'npm:marked@15.0.1';
-import type { JSX } from '../../.deps.ts';
-import type { WorkspaceManager } from '../../.deps.ts';
-import { ensureInterfaceDetails } from './interfaceDefaults.ts';
+import { ensureInterfaceDetails } from '../interfaceDefaults.ts';
 import { SurfaceInterfaceImportsTab } from './SurfaceInterfaceImportsTab.tsx';
 
 type SurfaceInterfaceModalProps = {
@@ -296,7 +299,7 @@ export function SurfaceInterfaceModal({
           previewBaseOverride={previewBaseOverride}
           onPreviewBaseChange={setPreviewBaseOverride}
           previewNonce={previewNonce}
-          onRefreshPreview={() => setPreviewNonce((value) => value + 1)}
+          onRefreshPreview={() => setPreviewNonce((value: number) => value + 1)}
         />
       ),
     },
@@ -498,9 +501,11 @@ function InterfacePreviewTab({
     if (!effectivePreviewBase) return undefined;
 
     const previewPath = surfaceLookup
-      ? `/surfaces/${encodeURIComponent(surfaceLookup)}/interfaces/${
-        encodeURIComponent(interfaceLookup)
-      }`
+      ? `/surfaces/${
+        encodeURIComponent(
+          surfaceLookup,
+        )
+      }/interfaces/${encodeURIComponent(interfaceLookup)}`
       : `/interfaces/${encodeURIComponent(interfaceLookup)}`;
 
     try {
@@ -546,9 +551,10 @@ function InterfacePreviewTab({
           label='Preview Host'
           placeholder='https://workspace-preview.example.com'
           value={previewBaseOverride}
-          onInput={(event) => onPreviewBaseChange((event.currentTarget as HTMLInputElement).value)}
-          helperText={previewDescription}
+          onInput={(event: JSX.TargetedEvent<HTMLInputElement, Event>) =>
+            onPreviewBaseChange((event.currentTarget as HTMLInputElement).value)}
         />
+        <p class='text-xs text-neutral-400'>{previewDescription}</p>
       </div>
 
       <div class='flex items-center justify-between'>

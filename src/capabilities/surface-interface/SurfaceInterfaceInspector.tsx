@@ -4,7 +4,7 @@ import { Action, ActionStyleTypes, Input, InspectorBase } from '../../.deps.ts';
 import { InspectorCommonProps } from '../../.deps.ts';
 import type { EaCInterfaceDetails, SurfaceInterfaceSettings } from '../../.deps.ts';
 import type { SurfaceInterfaceStats } from './SurfaceInterfaceStats.tsx';
-import { SurfaceInterfaceModal } from './SurfaceInterfaceModal.tsx';
+import { SurfaceInterfaceModal } from './views/SurfaceInterfaceModal.tsx';
 import { ensureInterfaceDetails, type InterfaceCodeBlock } from './interfaceDefaults.ts';
 
 type SurfaceInterfaceInspectorProps = InspectorCommonProps<
@@ -117,7 +117,6 @@ export function SurfaceInterfaceInspector({
               maxLength={200}
               intentType={webPathInvalid ? IntentTypes.Error : undefined}
               placeholder='/path/to/interface'
-              helperText='Provide the route where this interface responds (leading slash required).'
               onInput={(event: JSX.TargetedEvent<HTMLInputElement, Event>) => {
                 userEditedRef.current = true;
                 setWebPath((event.currentTarget as HTMLInputElement).value);
@@ -126,6 +125,9 @@ export function SurfaceInterfaceInspector({
                 setWebPath((current) => normalizeWebPath(current) ?? '');
               }}
             />
+            <p class='text-xs text-slate-400'>
+              Provide the route where this interface responds (leading slash required).
+            </p>
           </section>
 
           <section class='space-y-2'>

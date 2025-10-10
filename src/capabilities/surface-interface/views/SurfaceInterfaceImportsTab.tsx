@@ -13,7 +13,7 @@ import {
   useMemo,
   useRef,
   useState,
-} from '../../.deps.ts';
+} from '../../../.deps.ts';
 
 type SurfaceInterfaceImportsTabProps = {
   imports: string[];
@@ -81,7 +81,7 @@ export function SurfaceInterfaceImportsTab({
   const propagateChange = useCallback(
     (nextEntries: ImportEntry[]) => {
       const serialized = nextEntries
-        .map((entry) => {
+        .map((entry: ImportEntry) => {
           if (!entry.editing) {
             return stringifyImportEntry(entry);
           }
@@ -97,7 +97,7 @@ export function SurfaceInterfaceImportsTab({
       }
 
       const hasErrors = nextEntries.some(
-        (entry) => validateImportEntry(entry).hasErrors,
+        (entry: ImportEntry) => validateImportEntry(entry).hasErrors,
       );
 
       onValidityChange?.(hasErrors);
@@ -110,17 +110,17 @@ export function SurfaceInterfaceImportsTab({
   }, [entries, propagateChange]);
 
   const addEntry = () => {
-    setEntries((current) => [...current, createEmptyEntry()]);
+    setEntries((current: ImportEntry[]) => [...current, createEmptyEntry()]);
   };
 
   const removeEntry = (id: string) => {
     entryBackupsRef.current.delete(id);
-    setEntries((current) => current.filter((entry) => entry.id !== id));
+    setEntries((current: ImportEntry[]) => current.filter((entry: ImportEntry) => entry.id !== id));
   };
 
   const startEdit = (id: string) => {
-    setEntries((current) =>
-      current.map((entry) => {
+    setEntries((current: ImportEntry[]) =>
+      current.map((entry: ImportEntry) => {
         if (entry.id !== id) return entry;
         if (!entry.editing) {
           entryBackupsRef.current.set(id, snapshotEntry(entry));
@@ -132,8 +132,8 @@ export function SurfaceInterfaceImportsTab({
 
   const cancelEdit = (id: string) => {
     const backup = entryBackupsRef.current.get(id);
-    setEntries((current) =>
-      current.map((entry) => {
+    setEntries((current: ImportEntry[]) =>
+      current.map((entry: ImportEntry) => {
         if (entry.id !== id) return entry;
         if (backup) {
           return { ...snapshotEntry(backup), editing: false };
@@ -145,8 +145,8 @@ export function SurfaceInterfaceImportsTab({
   };
 
   const saveEntry = (id: string) => {
-    setEntries((current) =>
-      current.map((entry) => entry.id === id ? { ...entry, editing: false } : entry)
+    setEntries((current: ImportEntry[]) =>
+      current.map((entry: ImportEntry) => entry.id === id ? { ...entry, editing: false } : entry)
     );
     entryBackupsRef.current.delete(id);
   };
@@ -156,8 +156,8 @@ export function SurfaceInterfaceImportsTab({
     key: K,
     value: ImportEntry[K],
   ) => {
-    setEntries((current) =>
-      current.map((entry) => {
+    setEntries((current: ImportEntry[]) =>
+      current.map((entry: ImportEntry) => {
         if (entry.id !== id) return entry;
         let next: ImportEntry = { ...entry, [key]: value } as ImportEntry;
 
@@ -197,8 +197,8 @@ export function SurfaceInterfaceImportsTab({
     const member = rawMember.trim();
     if (!member) return;
 
-    setEntries((current) =>
-      current.map((entry) =>
+    setEntries((current: ImportEntry[]) =>
+      current.map((entry: ImportEntry) =>
         entry.id === id
           ? {
             ...entry,
@@ -211,8 +211,8 @@ export function SurfaceInterfaceImportsTab({
   };
 
   const removeNamedMember = (id: string, member: string) => {
-    setEntries((current) =>
-      current.map((entry) =>
+    setEntries((current: ImportEntry[]) =>
+      current.map((entry: ImportEntry) =>
         entry.id === id
           ? {
             ...entry,
@@ -224,8 +224,8 @@ export function SurfaceInterfaceImportsTab({
   };
 
   const applyRecommendedKind = (id: string, kind: ImportKind) => {
-    setEntries((current) =>
-      current.map((entry) => {
+    setEntries((current: ImportEntry[]) =>
+      current.map((entry: ImportEntry) => {
         if (entry.id !== id) return entry;
         const summary: ModuleExportSummary = entry.moduleAnalysis ?? {
           named: entry.members,
@@ -238,8 +238,8 @@ export function SurfaceInterfaceImportsTab({
   };
 
   const requestSuggestions = async (id: string) => {
-    setEntries((current) =>
-      current.map((entry) =>
+    setEntries((current: ImportEntry[]) =>
+      current.map((entry: ImportEntry) =>
         entry.id === id
           ? {
             ...entry,
@@ -251,12 +251,12 @@ export function SurfaceInterfaceImportsTab({
       )
     );
 
-    const target = entries.find((entry) => entry.id === id);
+    const target = entries.find((entry: ImportEntry) => entry.id === id);
     const specifier = target?.specifier.trim() ?? '';
 
     if (!specifier) {
-      setEntries((current) =>
-        current.map((entry) =>
+      setEntries((current: ImportEntry[]) =>
+        current.map((entry: ImportEntry) =>
           entry.id === id
             ? {
               ...entry,
@@ -271,15 +271,17 @@ export function SurfaceInterfaceImportsTab({
 
     const result = await fetchModuleExports(specifier);
 
-    setEntries((current) =>
-      current.map((entry) =>
+    setEntries((current: ImportEntry[]) =>
+      current.map((entry: ImportEntry) =>
         entry.id === id ? applyModuleAnalysis(entry, result, specifier) : entry
       )
     );
   };
 
   const totalValidImports = useMemo(
-    () => entries.filter((entry) => !entry.editing && Boolean(stringifyImportEntry(entry))).length,
+    () =>
+      entries.filter((entry: ImportEntry) => !entry.editing && Boolean(stringifyImportEntry(entry)))
+        .length,
     [entries],
   );
 
@@ -306,7 +308,7 @@ export function SurfaceInterfaceImportsTab({
       <div class='flex-1 min-h-0 space-y-4 overflow-y-auto pr-1'>
         {entries.length === 0 && <EmptyImportsState onAdd={addEntry} />}
 
-        {entries.map((entry) => {
+        {entries.map((entry: ImportEntry) => {
           const validation = validateImportEntry(entry);
           const preview = buildImportPreview(entry);
           const serialized = stringifyImportEntry(entry);
@@ -510,7 +512,7 @@ export function SurfaceInterfaceImportsTab({
                   <div class='flex flex-wrap items-center gap-3 rounded border border-neutral-800 bg-neutral-950/80 px-3 py-2'>
                     <span class='text-lg font-semibold text-neutral-500'>{BRACE_LEFT}</span>
                     <div class='flex flex-1 flex-wrap items-center gap-2'>
-                      {entry.members.map((member) => (
+                      {entry.members.map((member: string) => (
                         <span
                           key={member}
                           class='inline-flex items-center gap-2 rounded bg-neutral-800 px-2 py-1 text-xs text-neutral-200'
@@ -594,8 +596,8 @@ export function SurfaceInterfaceImportsTab({
                           type='button'
                           class='text-[11px] uppercase tracking-wide text-teal-300 hover:text-teal-200'
                           onClick={() => {
-                            setEntries((current) =>
-                              current.map((item) =>
+                            setEntries((current: ImportEntry[]) =>
+                              current.map((item: ImportEntry) =>
                                 item.id === entry.id
                                   ? {
                                     ...item,
@@ -610,7 +612,7 @@ export function SurfaceInterfaceImportsTab({
                         </button>
                       </div>
                       <div class='flex flex-wrap gap-2'>
-                        {entry.suggestions.map((suggestion) => (
+                        {entry.suggestions.map((suggestion: string) => (
                           <button
                             key={suggestion}
                             type='button'
@@ -1130,9 +1132,9 @@ function placeholderPreview(entry: ImportEntry): string {
 function parseImportLines(lines: string[]): ImportEntry[] {
   if (!lines || lines.length === 0) return [];
 
-  return lines.map((line) => parseImportLine(line)).filter((entry): entry is ImportEntry =>
-    Boolean(entry)
-  );
+  return lines
+    .map((line) => parseImportLine(line))
+    .filter((entry): entry is ImportEntry => Boolean(entry));
 }
 
 function parseImportLine(line: string): ImportEntry | null {
