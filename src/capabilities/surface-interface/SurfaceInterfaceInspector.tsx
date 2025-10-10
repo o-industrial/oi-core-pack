@@ -32,6 +32,7 @@ export function SurfaceInterfaceInspector({
 
   const [name, setName] = useState(resolvedDetails.Name ?? '');
   const [description, setDescription] = useState(resolvedDetails.Description ?? '');
+  const [webPath, setWebPath] = useState(resolvedDetails.WebPath ?? '');
 
   const userEditedRef = useRef(false);
   const debounceRef = useRef<number | null>(null);
@@ -41,6 +42,9 @@ export function SurfaceInterfaceInspector({
     () => setDescription(resolvedDetails.Description ?? ''),
     [resolvedDetails.Description],
   );
+  useEffect(() => setWebPath(resolvedDetails.WebPath ?? ''), [resolvedDetails.WebPath]);
+
+  const normalizedWebPath = normalizeWebPath(webPath);
 
   useEffect(() => {
     workspaceMgr.CreateInterfaceAziIfNotExist?.(lookup);
@@ -57,6 +61,7 @@ export function SurfaceInterfaceInspector({
       onDetailsChanged({
         Name: name,
         Description: description,
+        WebPath: normalizedWebPath,
       });
       debounceRef.current = null;
     }, 250);
@@ -66,10 +71,11 @@ export function SurfaceInterfaceInspector({
         clearTimeout(debounceRef.current);
       }
     };
-  }, [name, description, onDetailsChanged]);
+  }, [name, description, normalizedWebPath, onDetailsChanged]);
 
   const nameInvalid = name.trim().length === 0;
   const descriptionInvalid = description.trim().length === 0;
+  const webPathInvalid = !normalizedWebPath;
 
   const importsCount = resolvedDetails.Imports?.length ?? 0;
   const handlerSummary = summarizeBlock(resolvedDetails.PageHandler);
@@ -100,6 +106,24 @@ export function SurfaceInterfaceInspector({
               onInput={(event: JSX.TargetedEvent<HTMLInputElement, Event>) => {
                 userEditedRef.current = true;
                 setName((event.currentTarget as HTMLInputElement).value);
+              }}
+            />
+          </section>
+
+          <section class='space-y-2'>
+            <Input
+              label='Web Path'
+              value={webPath}
+              maxLength={200}
+              intentType={webPathInvalid ? IntentTypes.Error : undefined}
+              placeholder='/path/to/interface'
+              helperText='Provide the route where this interface responds (leading slash required).'
+              onInput={(event: JSX.TargetedEvent<HTMLInputElement, Event>) => {
+                userEditedRef.current = true;
+                setWebPath((event.currentTarget as HTMLInputElement).value);
+              }}
+              onBlur={() => {
+                setWebPath((current) => normalizeWebPath(current) ?? '');
               }}
             />
           </section>
@@ -175,6 +199,12 @@ function StatTile({ label, value }: StatTileProps) {
       <p class='mt-1 text-base font-semibold text-slate-100'>{value}</p>
     </div>
   );
+}
+
+function normalizeWebPath(value: string): string | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
 }
 
 function summarizeBlock(block?: InterfaceCodeBlock): string {

@@ -19,8 +19,9 @@ export function mergeCodeBlock(
 export function createDefaultInterfaceDetails(id: string): EaCInterfaceDetails {
   return {
     Name: `Interface ${id}`,
+    WebPath: `/${id}`,
     Description: 'Auto-generated interface stub ready for collaborative authoring.',
-    Imports: ['import { h } from "preact";'],
+    Imports: [],
     PageDataType: '{\n  message: string;\n}',
     PageHandler: {
       Messages: [
@@ -45,6 +46,7 @@ export function ensureInterfaceDetails(
   return {
     ...defaults,
     ...details,
+    WebPath: details?.WebPath ?? defaults.WebPath,
     Imports: details?.Imports ?? defaults.Imports,
     PageDataType: details?.PageDataType ?? defaults.PageDataType,
     PageHandler: mergeCodeBlock(defaults.PageHandler, details?.PageHandler),

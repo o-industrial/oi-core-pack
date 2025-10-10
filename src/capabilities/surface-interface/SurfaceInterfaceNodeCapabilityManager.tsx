@@ -116,6 +116,7 @@ export class SurfaceInterfaceNodeCapabilityManager
 
     const interfaceKeys: Array<keyof EaCInterfaceDetails> = [
       'Name',
+      'WebPath',
       'Description',
       'Imports',
       'PageDataType',
@@ -397,7 +398,8 @@ export class SurfaceInterfaceNodeCapabilityManager
     }
 
     const errors: CapabilityValidationResult['errors'] = [];
-    const name = interfaceEntry.Details.Name?.trim();
+    const details = ensureInterfaceDetails(interfaceEntry.Details, node.ID);
+    const name = details.Name?.trim();
 
     if (!name) {
       errors.push({
@@ -406,7 +408,7 @@ export class SurfaceInterfaceNodeCapabilityManager
       });
     }
 
-    const pageDataType = interfaceEntry.Details.PageDataType?.trim();
+    const pageDataType = details.PageDataType?.trim();
     if (!pageDataType) {
       errors.push({
         field: 'Details.PageDataType',
@@ -414,7 +416,20 @@ export class SurfaceInterfaceNodeCapabilityManager
       });
     }
 
-    const page = interfaceEntry.Details.Page;
+    const webPath = details.WebPath?.trim();
+    if (!webPath) {
+      errors.push({
+        field: 'Details.WebPath',
+        message: 'Provide a web path so the interface can be routed.',
+      });
+    } else if (!webPath.startsWith('/')) {
+      errors.push({
+        field: 'Details.WebPath',
+        message: 'Web path must start with a leading slash (e.g., /docs/overview).',
+      });
+    }
+
+    const page = details.Page;
     const hasPageContent = page &&
       (
         page.Code?.trim()?.length ||

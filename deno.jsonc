@@ -47,20 +47,20 @@
   "unstable": ["kv"],
   "lock": false,
   "imports": {
-    // "jsr:@o-industrial/atomic@0.0.24-hmis/atoms": "../open-industrial-atomic/src/atoms/.exports.ts",
-    // "jsr:@o-industrial/atomic@0.0.24-hmis/icons": "../open-industrial-atomic/build/iconset/icons/.exports.ts",
-    // "jsr:@o-industrial/atomic@0.0.24-hmis/molecules": "../open-industrial-atomic/src/molecules/.exports.ts",
-    // "jsr:@o-industrial/atomic@0.0.24-hmis/organisms": "../open-industrial-atomic/src/organisms/.exports.ts",
-    // "jsr:@o-industrial/atomic@0.0.24-hmis/utils": "../open-industrial-atomic/src/utils/.exports.ts",
+    "jsr:@o-industrial/atomic@0.0.24-hmis/atoms": "../open-industrial-atomic/src/atoms/.exports.ts",
+    "jsr:@o-industrial/atomic@0.0.24-hmis/icons": "../open-industrial-atomic/build/iconset/icons/.exports.ts",
+    "jsr:@o-industrial/atomic@0.0.24-hmis/molecules": "../open-industrial-atomic/src/molecules/.exports.ts",
+    "jsr:@o-industrial/atomic@0.0.24-hmis/organisms": "../open-industrial-atomic/src/organisms/.exports.ts",
+    "jsr:@o-industrial/atomic@0.0.24-hmis/utils": "../open-industrial-atomic/src/utils/.exports.ts",
 
-    // "jsr:@o-industrial/common@0.0.488-hmis/api": "../open-industrial-reference-architecture/src/api/.exports.ts",
-    // "jsr:@o-industrial/common@0.0.488-hmis/eac": "../open-industrial-reference-architecture/src/eac/.exports.ts",
-    // "jsr:@o-industrial/common@0.0.488-hmis/flow": "../open-industrial-reference-architecture/src/flow/.exports.ts",
-    // "jsr:@o-industrial/common@0.0.488-hmis/fluent/packs": "../open-industrial-reference-architecture/src/fluent/packs/.exports.ts",
-    // "jsr:@o-industrial/common@0.0.488-hmis/types": "../open-industrial-reference-architecture/src/types/.exports.ts",
-    // "jsr:@o-industrial/common@0.0.488-hmis/utils/client": "../open-industrial-reference-architecture/src/utils/.exports.client.ts",
+    "jsr:@o-industrial/common@0.0.488-hmis/api": "../open-industrial-reference-architecture/src/api/.exports.ts",
+    "jsr:@o-industrial/common@0.0.488-hmis/eac": "../open-industrial-reference-architecture/src/eac/.exports.ts",
+    "jsr:@o-industrial/common@0.0.488-hmis/flow": "../open-industrial-reference-architecture/src/flow/.exports.ts",
+    "jsr:@o-industrial/common@0.0.488-hmis/fluent/packs": "../open-industrial-reference-architecture/src/fluent/packs/.exports.ts",
+    "jsr:@o-industrial/common@0.0.488-hmis/types": "../open-industrial-reference-architecture/src/types/.exports.ts",
+    "jsr:@o-industrial/common@0.0.488-hmis/utils/client": "../open-industrial-reference-architecture/src/utils/.exports.client.ts",
 
-    // "jsr:@fathym/code-editor@0.0.34-integration": "../code-editor/mod.ts"
+    "jsr:@fathym/code-editor@0.0.34-integration": "../code-editor/mod.ts"
   },
   "compilerOptions": {
     "jsx": "react-jsx",

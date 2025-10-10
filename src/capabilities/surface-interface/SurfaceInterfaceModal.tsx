@@ -1,15 +1,24 @@
-import { useEffect, useMemo, useState } from '../../.deps.ts';
-import { AziPanel, CodeMirrorEditor, Modal, TabbedPanel } from '../../.deps.ts';
+import {
+  Action,
+  ActionStyleTypes,
+  IntentTypes,
+  TabbedPanel,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from '../../.deps.ts';
+import { AziPanel, CodeMirrorEditor, Input, Modal } from '../../.deps.ts';
 import type {
   EaCInterfaceCodeBlock,
   EaCInterfaceDetails,
   SurfaceInterfaceSettings,
 } from '../../.deps.ts';
-import { Action, ActionStyleTypes, IntentTypes } from '../../.deps.ts';
 import { marked } from 'npm:marked@15.0.1';
 import type { JSX } from '../../.deps.ts';
 import type { WorkspaceManager } from '../../.deps.ts';
 import { ensureInterfaceDetails } from './interfaceDefaults.ts';
+import { SurfaceInterfaceImportsTab } from './SurfaceInterfaceImportsTab.tsx';
 
 type SurfaceInterfaceModalProps = {
   isOpen: boolean;
@@ -22,12 +31,18 @@ type SurfaceInterfaceModalProps = {
   onDetailsChange?: (next: Partial<EaCInterfaceDetails>) => void;
 };
 
-type SurfaceInterfaceTabKey = 'imports' | 'data' | 'handler' | 'page';
+type SurfaceInterfaceTabKey =
+  | 'imports'
+  | 'data'
+  | 'handler'
+  | 'page'
+  | 'preview';
 
 const TAB_IMPORTS: SurfaceInterfaceTabKey = 'imports';
 const TAB_DATA: SurfaceInterfaceTabKey = 'data';
 const TAB_HANDLER: SurfaceInterfaceTabKey = 'handler';
 const TAB_PAGE: SurfaceInterfaceTabKey = 'page';
+const TAB_PREVIEW: SurfaceInterfaceTabKey = 'preview';
 
 export function SurfaceInterfaceModal({
   isOpen,
@@ -43,11 +58,10 @@ export function SurfaceInterfaceModal({
     [details, interfaceLookup],
   );
 
-  const [activeTab, setActiveTab] = useState<SurfaceInterfaceTabKey>(TAB_PAGE);
+  const [activeTab, setActiveTab] = useState<SurfaceInterfaceTabKey>(TAB_IMPORTS);
 
-  const [importsText, setImportsText] = useState(
-    formatImports(resolvedDetails.Imports),
-  );
+  const [imports, setImports] = useState(resolvedDetails.Imports ?? []);
+  const [importsInvalid, setImportsInvalid] = useState(false);
   const [pageDataType, setPageDataType] = useState(
     resolvedDetails.PageDataType ?? '{\n  message: string;\n}',
   );
@@ -75,9 +89,20 @@ export function SurfaceInterfaceModal({
   const [pageMessageGroups] = useState(
     resolvedDetails.Page?.MessageGroups ?? [],
   );
+  const [previewBaseOverride, setPreviewBaseOverride] = useState(() => {
+    const storage = (globalThis as { localStorage?: Storage }).localStorage;
+    if (!storage) return '';
+    try {
+      const stored = storage.getItem('oi.interfacePreviewBase');
+      return stored ?? '';
+    } catch {
+      return '';
+    }
+  });
+  const [previewNonce, setPreviewNonce] = useState(0);
 
   useEffect(() => {
-    setImportsText(formatImports(resolvedDetails.Imports));
+    setImports(resolvedDetails.Imports ?? []);
     setPageDataType(resolvedDetails.PageDataType ?? '{\n  message: string;\n}');
 
     setHandlerCode(resolvedDetails.PageHandler?.Code ?? '');
@@ -89,6 +114,7 @@ export function SurfaceInterfaceModal({
     setPageCode(resolvedDetails.Page?.Code ?? '');
     setPageDescription(resolvedDetails.Page?.Description ?? '');
     setPageMessagesText(formatMessages(resolvedDetails.Page?.Messages));
+    setImportsInvalid(false);
   }, [resolvedDetails]);
 
   const interfaceAzi = workspaceMgr.InterfaceAzis?.[interfaceLookup];
@@ -96,39 +122,117 @@ export function SurfaceInterfaceModal({
 
   if (!isOpen) return null;
 
-  const extraInputs = {
-    interfaceLookup,
-    surfaceLookup,
-    enterpriseLookup,
-    imports: parseImports(importsText),
+  const resolvedSnapshot = useMemo(
+    () =>
+      JSON.stringify(
+        buildInterfaceDetailsPatch(
+          resolvedDetails.PageHandler,
+          resolvedDetails.Page,
+          resolvedDetails.Imports ?? [],
+          resolvedDetails.PageDataType ?? '',
+          resolvedDetails.PageHandler?.Code ?? '',
+          resolvedDetails.PageHandler?.Description ?? '',
+          formatMessages(resolvedDetails.PageHandler?.Messages),
+          resolvedDetails.PageHandler?.MessageGroups,
+          resolvedDetails.Page?.Code ?? '',
+          resolvedDetails.Page?.Description ?? '',
+          formatMessages(resolvedDetails.Page?.Messages),
+          resolvedDetails.Page?.MessageGroups,
+        ),
+      ),
+    [resolvedDetails],
+  );
+
+  const lastAppliedRef = useRef<string>(resolvedSnapshot);
+
+  useEffect(() => {
+    lastAppliedRef.current = resolvedSnapshot;
+  }, [resolvedSnapshot]);
+
+  const nextDetails = useMemo(() => {
+    if (importsInvalid) return null;
+
+    return buildInterfaceDetailsPatch(
+      resolvedDetails.PageHandler,
+      resolvedDetails.Page,
+      imports,
+      pageDataType,
+      handlerCode,
+      handlerDescription,
+      handlerMessagesText,
+      handlerMessageGroups,
+      pageCode,
+      pageDescription,
+      pageMessagesText,
+      pageMessageGroups,
+    );
+  }, [
+    importsInvalid,
+    resolvedDetails.PageHandler,
+    resolvedDetails.Page,
+    imports,
     pageDataType,
-    handler: {
-      code: handlerCode,
-      description: handlerDescription,
-      messages: parseMessages(handlerMessagesText),
-    },
-    page: {
-      code: pageCode,
-      description: pageDescription,
-      messages: parseMessages(pageMessagesText),
-    },
-  };
+    handlerCode,
+    handlerDescription,
+    handlerMessagesText,
+    handlerMessageGroups,
+    pageCode,
+    pageDescription,
+    pageMessagesText,
+    pageMessageGroups,
+  ]);
+
+  useEffect(() => {
+    if (!onDetailsChange || !nextDetails) return;
+    const serialized = JSON.stringify(nextDetails);
+    if (serialized === lastAppliedRef.current) return;
+    lastAppliedRef.current = serialized;
+    onDetailsChange(nextDetails);
+  }, [nextDetails, onDetailsChange]);
+
+  const extraInputs = useMemo(
+    () => ({
+      interfaceLookup,
+      surfaceLookup,
+      enterpriseLookup,
+      imports,
+      pageDataType,
+      handler: {
+        code: handlerCode,
+        description: handlerDescription,
+        messages: parseMessages(handlerMessagesText),
+      },
+      page: {
+        code: pageCode,
+        description: pageDescription,
+        messages: parseMessages(pageMessagesText),
+      },
+    }),
+    [
+      interfaceLookup,
+      surfaceLookup,
+      enterpriseLookup,
+      imports,
+      pageDataType,
+      handlerCode,
+      handlerDescription,
+      handlerMessagesText,
+      pageCode,
+      pageDescription,
+      pageMessagesText,
+    ],
+  );
 
   const tabData = [
     {
       key: TAB_IMPORTS,
       label: 'Imports',
       content: (
-        <div class='flex h-full min-h-0 flex-col gap-2'>
-          <CodeMirrorEditor
-            fileContent={importsText}
-            onContentChange={setImportsText}
-            class='flex-1 min-h-0 [&>.cm-editor]:h-full [&>.cm-editor]:min-h-0'
-          />
-          <p class='text-xs text-neutral-400'>
-            One import statement per line. Leave empty to rely on default runtime imports.
-          </p>
-        </div>
+        <SurfaceInterfaceImportsTab
+          imports={imports}
+          onChange={setImports}
+          onValidityChange={setImportsInvalid}
+        />
       ),
     },
     {
@@ -182,36 +286,21 @@ export function SurfaceInterfaceModal({
         </div>
       ),
     },
+    {
+      key: TAB_PREVIEW,
+      label: 'Preview',
+      content: (
+        <InterfacePreviewTab
+          interfaceLookup={interfaceLookup}
+          surfaceLookup={surfaceLookup}
+          previewBaseOverride={previewBaseOverride}
+          onPreviewBaseChange={setPreviewBaseOverride}
+          previewNonce={previewNonce}
+          onRefreshPreview={() => setPreviewNonce((value) => value + 1)}
+        />
+      ),
+    },
   ];
-
-  const handleSave = () => {
-    if (!onDetailsChange) {
-      onClose();
-      return;
-    }
-
-    const nextDetails: Partial<EaCInterfaceDetails> = {
-      Imports: parseImports(importsText),
-      PageDataType: pageDataType.trim().length ? pageDataType : undefined,
-      PageHandler: buildCodeBlock(
-        resolvedDetails.PageHandler,
-        handlerCode,
-        handlerDescription,
-        parseMessages(handlerMessagesText),
-        handlerMessageGroups,
-      ),
-      Page: buildCodeBlock(
-        resolvedDetails.Page,
-        pageCode,
-        pageDescription,
-        parseMessages(pageMessagesText),
-        pageMessageGroups,
-      ),
-    };
-
-    onDetailsChange(nextDetails);
-    onClose();
-  };
 
   return (
     <Modal
@@ -225,6 +314,12 @@ export function SurfaceInterfaceModal({
         style={{ height: '75vh' }}
       >
         <div class='w-2/3 flex min-h-0 flex-col gap-3'>
+          {importsInvalid && (
+            <div class='rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300'>
+              Resolve import validation issues to persist interface updates.
+            </div>
+          )}
+
           <TabbedPanel
             tabs={tabData}
             activeTab={activeTab}
@@ -233,7 +328,8 @@ export function SurfaceInterfaceModal({
                 key === TAB_IMPORTS ||
                 key === TAB_DATA ||
                 key === TAB_HANDLER ||
-                key === TAB_PAGE
+                key === TAB_PAGE ||
+                key === TAB_PREVIEW
               ) {
                 setActiveTab(key as SurfaceInterfaceTabKey);
               }
@@ -242,23 +338,6 @@ export function SurfaceInterfaceModal({
             scrollableContent
             class='flex-1 min-h-0'
           />
-
-          <div class='flex justify-end gap-2'>
-            <Action
-              styleType={ActionStyleTypes.Outline | ActionStyleTypes.Rounded}
-              intentType={IntentTypes.Secondary}
-              onClick={onClose}
-            >
-              Cancel
-            </Action>
-            <Action
-              styleType={ActionStyleTypes.Solid | ActionStyleTypes.Rounded}
-              intentType={IntentTypes.Primary}
-              onClick={handleSave}
-            >
-              Save Changes
-            </Action>
-          </div>
         </div>
 
         <div class='w-1/3 min-h-0 border-l border-gray-700 pl-4 overflow-y-auto'>
@@ -325,17 +404,6 @@ function CodeEditorPanel({
   );
 }
 
-function formatImports(imports?: string[]): string {
-  return (imports ?? []).join('\n');
-}
-
-function parseImports(text: string): string[] {
-  return text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.length);
-}
-
 function formatMessages(messages?: string[]): string {
   return (messages ?? []).join('\n');
 }
@@ -369,5 +437,208 @@ function buildCodeBlock(
     ...(trimmedDescription ? { Description: trimmedDescription } : { Description: undefined }),
     ...(hasMessages ? { Messages: messages } : { Messages: undefined }),
     ...(hasGroups ? { MessageGroups: messageGroups } : { MessageGroups: undefined }),
+  };
+}
+
+type InterfacePreviewTabProps = {
+  interfaceLookup: string;
+  surfaceLookup?: string;
+  previewBaseOverride: string;
+  onPreviewBaseChange: (value: string) => void;
+  previewNonce: number;
+  onRefreshPreview: () => void;
+};
+
+function InterfacePreviewTab({
+  interfaceLookup,
+  surfaceLookup,
+  previewBaseOverride,
+  onPreviewBaseChange,
+  previewNonce,
+  onRefreshPreview,
+}: InterfacePreviewTabProps) {
+  const globalLocation = (globalThis as { location?: Location }).location;
+  const globalLocalStorage = (globalThis as { localStorage?: Storage })
+    .localStorage;
+  const globalOpen = (globalThis as { open?: typeof open }).open;
+
+  const defaultHost = globalLocation?.origin ?? '';
+  const globalBase = (globalThis as { __OI_INTERFACE_PREVIEW_BASE__?: string })
+    .__OI_INTERFACE_PREVIEW_BASE__ ??
+    (globalThis as { __INTERFACE_PREVIEW_BASE__?: string })
+      .__INTERFACE_PREVIEW_BASE__ ??
+    '';
+
+  const effectivePreviewBase = useMemo(() => {
+    const trimmedGlobal = globalBase?.trim();
+    if (trimmedGlobal) return trimmedGlobal;
+
+    const trimmedOverride = previewBaseOverride?.trim();
+    if (trimmedOverride) return trimmedOverride;
+
+    return defaultHost;
+  }, [globalBase, previewBaseOverride, defaultHost]);
+
+  useEffect(() => {
+    if (!globalLocalStorage) return;
+
+    try {
+      const trimmedOverride = previewBaseOverride.trim();
+      if (trimmedOverride.length > 0) {
+        globalLocalStorage.setItem('oi.interfacePreviewBase', trimmedOverride);
+      } else {
+        globalLocalStorage.removeItem('oi.interfacePreviewBase');
+      }
+    } catch {
+      // best effort
+    }
+  }, [globalLocalStorage, previewBaseOverride]);
+
+  const previewUrl = useMemo(() => {
+    if (!effectivePreviewBase) return undefined;
+
+    const previewPath = surfaceLookup
+      ? `/surfaces/${encodeURIComponent(surfaceLookup)}/interfaces/${
+        encodeURIComponent(interfaceLookup)
+      }`
+      : `/interfaces/${encodeURIComponent(interfaceLookup)}`;
+
+    try {
+      const baseUrl = new URL(
+        effectivePreviewBase,
+        defaultHost || 'http://localhost',
+      );
+      const prefix = baseUrl.pathname.endsWith('/')
+        ? baseUrl.pathname.slice(0, -1)
+        : baseUrl.pathname;
+      baseUrl.pathname = `${prefix}${previewPath}`;
+      return baseUrl.toString();
+    } catch {
+      if (!globalLocation) return undefined;
+      try {
+        return new URL(previewPath, globalLocation.origin).toString();
+      } catch {
+        return undefined;
+      }
+    }
+  }, [
+    defaultHost,
+    effectivePreviewBase,
+    globalLocation,
+    interfaceLookup,
+    surfaceLookup,
+  ]);
+
+  const previewDescription = useMemo(() => {
+    if (globalBase?.trim()) {
+      return `Preview base is provided by global configuration (${globalBase.trim()}).`;
+    }
+    if (previewBaseOverride.trim()) {
+      return 'Preview base overrides the default origin so you can point at a deployed runtime.';
+    }
+    return 'Preview defaults to the current origin. Override the host if your interface runs on a different domain.';
+  }, [globalBase, previewBaseOverride]);
+
+  return (
+    <div class='flex h-full min-h-0 flex-col gap-3'>
+      <div class='space-y-2'>
+        <Input
+          label='Preview Host'
+          placeholder='https://workspace-preview.example.com'
+          value={previewBaseOverride}
+          onInput={(event) => onPreviewBaseChange((event.currentTarget as HTMLInputElement).value)}
+          helperText={previewDescription}
+        />
+      </div>
+
+      <div class='flex items-center justify-between'>
+        <div class='flex flex-col text-xs text-neutral-400'>
+          <span>Surface: {surfaceLookup ?? '(workspace default)'}</span>
+          <span>Interface: {interfaceLookup}</span>
+          {previewUrl && (
+            <span class='truncate text-neutral-500'>
+              Preview URL: {previewUrl}
+            </span>
+          )}
+        </div>
+        <div class='flex items-center gap-2'>
+          <Action
+            styleType={ActionStyleTypes.Outline | ActionStyleTypes.Rounded}
+            intentType={IntentTypes.Secondary}
+            disabled={!previewUrl}
+            onClick={() => onRefreshPreview()}
+          >
+            Refresh
+          </Action>
+          <Action
+            styleType={ActionStyleTypes.Solid | ActionStyleTypes.Rounded}
+            intentType={IntentTypes.Primary}
+            disabled={!previewUrl}
+            onClick={() => {
+              if (previewUrl && globalOpen) {
+                globalOpen(previewUrl, '_blank', 'noopener,noreferrer');
+              }
+            }}
+          >
+            Open in new tab
+          </Action>
+        </div>
+      </div>
+
+      <div class='flex-1 min-h-0 rounded border border-neutral-800 bg-neutral-950 overflow-hidden'>
+        {previewUrl
+          ? (
+            <iframe
+              key={previewNonce}
+              src={previewUrl}
+              title='Interface Preview'
+              loading='lazy'
+              class='h-full w-full border-0'
+              allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'
+              sandbox='allow-scripts allow-same-origin allow-popups allow-forms'
+            />
+          )
+          : (
+            <div class='flex h-full items-center justify-center p-6 text-center text-sm text-neutral-400'>
+              Unable to determine a preview URL. Provide a preview host or verify your runtime
+              configuration.
+            </div>
+          )}
+      </div>
+    </div>
+  );
+}
+
+function buildInterfaceDetailsPatch(
+  baseHandler: EaCInterfaceCodeBlock | undefined,
+  basePage: EaCInterfaceCodeBlock | undefined,
+  imports: string[],
+  pageDataType: string,
+  handlerCode: string,
+  handlerDescription: string,
+  handlerMessages: string,
+  handlerMessageGroups: EaCInterfaceCodeBlock['MessageGroups'] | undefined,
+  pageCode: string,
+  pageDescription: string,
+  pageMessages: string,
+  pageMessageGroups: EaCInterfaceCodeBlock['MessageGroups'] | undefined,
+): Partial<EaCInterfaceDetails> {
+  return {
+    Imports: imports.length ? imports : undefined,
+    PageDataType: pageDataType.trim().length ? pageDataType : undefined,
+    PageHandler: buildCodeBlock(
+      baseHandler,
+      handlerCode,
+      handlerDescription,
+      parseMessages(handlerMessages),
+      handlerMessageGroups,
+    ),
+    Page: buildCodeBlock(
+      basePage,
+      pageCode,
+      pageDescription,
+      parseMessages(pageMessages),
+      pageMessageGroups,
+    ),
   };
 }

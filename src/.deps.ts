@@ -28,8 +28,8 @@ export type { EverythingAsCodeLicensing } from 'jsr:@fathym/eac-licensing@0.0.58
 export {
   CodeMirrorEditor,
   type CodeMirrorEditorProps,
-} from 'jsr:@fathym/code-editor@0.0.34-integration';
-// } from '../../code-editor/mod.ts';
+// } from 'jsr:@fathym/code-editor@0.0.34-integration';
+} from '../../code-editor/mod.ts';
 
 export {
   Action,
@@ -54,7 +54,11 @@ export {
   VariablesEditor,
 } from 'jsr:@o-industrial/atomic@0.0.24-hmis/molecules';
 export { parseTimeAgoString } from 'jsr:@o-industrial/atomic@0.0.24-hmis/utils';
-export { DeleteIcon, TriggerMatchIcon } from 'jsr:@o-industrial/atomic@0.0.24-hmis/icons';
+export {
+  DeleteIcon,
+  SettingsIcon,
+  TriggerMatchIcon,
+} from 'jsr:@o-industrial/atomic@0.0.24-hmis/icons';
 
 export {
   AccountProfileModal,
@@ -75,18 +79,28 @@ export {
   WarmQueryAPIsModal,
   WorkspaceNodeRendererBase,
   WorkspaceSettingsModal,
-} from 'jsr:@o-industrial/atomic@0.0.24-hmis/organisms';
+// } from 'jsr:@o-industrial/atomic@0.0.24-hmis/organisms';
+} from '../../open-industrial-atomic/src/organisms/.exports.ts';
 
-export { type NodeEventRouter, type NodePreset } from 'jsr:@o-industrial/common@0.0.488-hmis/flow';
+export {
+  type NodeEventRouter,
+  type NodePreset,
+} from 'jsr:@o-industrial/common@0.0.488-hmis/flow';
 
 export { shaHash } from 'jsr:@o-industrial/common@0.0.488-hmis/utils/client';
 
 export { OpenIndustrialAPIClient } from 'jsr:@o-industrial/common@0.0.488-hmis/api';
 
-export { IntentTypes, RuntimeStatsSchema } from 'jsr:@o-industrial/common@0.0.488-hmis/types';
+export {
+  IntentTypes,
+  RuntimeStatsSchema,
+} from 'jsr:@o-industrial/common@0.0.488-hmis/types';
 export type { IngestOption } from 'jsr:@o-industrial/common@0.0.488-hmis/types';
 
-export { Pack, PackModuleBuilder } from 'jsr:@o-industrial/common@0.0.488-hmis/fluent/packs';
+export {
+  Pack,
+  PackModuleBuilder,
+} from 'jsr:@o-industrial/common@0.0.488-hmis/fluent/packs';
 
 export type {
   AziState,
