@@ -15,6 +15,7 @@ export { Position as ReactPosition } from 'npm:reactflow@11.11.4';
 
 export { merge, type NullableArrayOrObject } from 'jsr:@fathym/common@0.2.274';
 export { z } from 'jsr:@fathym/common@0.2.274/third-party/zod';
+export { classSet } from 'jsr:@fathym/atomic@0.0.184';
 
 export type { EverythingAsCode } from 'jsr:@fathym/eac@0.2.131';
 
@@ -25,42 +26,38 @@ export {
 
 export type { EverythingAsCodeLicensing } from 'jsr:@fathym/eac-licensing@0.0.58';
 
-export {
-  CodeMirrorEditor,
-  type CodeMirrorEditorProps,
-// } from 'jsr:@fathym/code-editor@0.0.34-integration';
-} from '../../code-editor/mod.ts';
+export { CodeMirrorEditor, type CodeMirrorEditorProps } from 'jsr:@fathym/code-editor@0.0.35';
+// } from '../../code-editor/mod.ts';
 
 export {
   Action,
   ActionStyleTypes,
-  ConnectionInfoPanel,
+  CopyInput,
   Input,
   NodeHandle,
   NodeStatTile,
-} from 'jsr:@o-industrial/atomic@0.0.24-hmis/atoms';
-export {
-  ConnectionManagementForm,
-  LinePreviewWithValue,
-  type MenuRoot,
-  Modal,
-  SurfaceConnectionManagementForm,
-  SurfaceManagementForm,
-  TabbedPanel,
-} from 'jsr:@o-industrial/atomic@0.0.24-hmis/molecules';
-export {
-  SimulatorManagementForm,
-  TemplateEditor,
-  VariablesEditor,
-} from 'jsr:@o-industrial/atomic@0.0.24-hmis/molecules';
-export { parseTimeAgoString } from 'jsr:@o-industrial/atomic@0.0.24-hmis/utils';
+  Select,
+} from 'jsr:@o-industrial/atomic@0.0.30/atoms';
+export { type MenuRoot, Modal, TabbedPanel } from 'jsr:@o-industrial/atomic@0.0.30/molecules';
 export {
   CloseIcon,
   DeleteIcon,
+  RedoIcon,
   SaveIcon,
   SettingsIcon,
   TriggerMatchIcon,
-} from 'jsr:@o-industrial/atomic@0.0.24-hmis/icons';
+  UndoIcon,
+} from 'jsr:@o-industrial/atomic@0.0.30/icons';
+
+export { ConnectionInfoPanel } from './capabilities/connection/views/ConnectionInfoPanel.tsx';
+export { ConnectionManagementForm } from './capabilities/connection/views/ConnectionManagementForm.tsx';
+export { SurfaceManagementForm } from './capabilities/surface/views/SurfaceManagementForm.tsx';
+export { SurfaceConnectionManagementForm } from './capabilities/surface-connection/views/SurfaceConnectionManagementForm.tsx';
+export { SimulatorManagementForm } from './capabilities/simulator/views/SimulatorManagementForm.tsx';
+export { TemplateEditor } from './capabilities/simulator/views/TemplateEditor.tsx';
+export { VariablesEditor } from './capabilities/simulator/views/VariablesEditor.tsx';
+export { LinePreviewWithValue } from './capabilities/shared/LinePreviewWithValue.tsx';
+export { parseTimeAgoString } from './capabilities/shared/utils/parseTimeAgoString.ts';
 
 export {
   AccountProfileModal,
@@ -81,28 +78,19 @@ export {
   WarmQueryAPIsModal,
   WorkspaceNodeRendererBase,
   WorkspaceSettingsModal,
-// } from 'jsr:@o-industrial/atomic@0.0.24-hmis/organisms';
-} from '../../open-industrial-atomic/src/organisms/.exports.ts';
+} from 'jsr:@o-industrial/atomic@0.0.30/organisms';
+// } from '../../open-industrial-atomic/src/organisms/.exports.ts';
 
-export {
-  type NodeEventRouter,
-  type NodePreset,
-} from 'jsr:@o-industrial/common@0.0.488-hmis/flow';
+export { type NodeEventRouter, type NodePreset } from 'jsr:@o-industrial/common@0.0.493/flow';
 
-export { shaHash } from 'jsr:@o-industrial/common@0.0.488-hmis/utils/client';
+export { shaHash } from 'jsr:@o-industrial/common@0.0.493/utils/client';
 
-export { OpenIndustrialAPIClient } from 'jsr:@o-industrial/common@0.0.488-hmis/api';
+export { OpenIndustrialAPIClient } from 'jsr:@o-industrial/common@0.0.493/api';
 
-export {
-  IntentTypes,
-  RuntimeStatsSchema,
-} from 'jsr:@o-industrial/common@0.0.488-hmis/types';
-export type { IngestOption } from 'jsr:@o-industrial/common@0.0.488-hmis/types';
+export { IntentTypes, RuntimeStatsSchema } from 'jsr:@o-industrial/common@0.0.493/types';
+export type { IngestOption } from 'jsr:@o-industrial/common@0.0.493/types';
 
-export {
-  Pack,
-  PackModuleBuilder,
-} from 'jsr:@o-industrial/common@0.0.488-hmis/fluent/packs';
+export { Pack, PackModuleBuilder } from 'jsr:@o-industrial/common@0.0.493/fluent/packs';
 
 export type {
   AziState,
@@ -115,12 +103,12 @@ export type {
   FlowGraphNode,
   FlowNodeData,
   InspectorCommonProps,
-} from 'jsr:@o-industrial/common@0.0.488-hmis/flow';
+} from 'jsr:@o-industrial/common@0.0.493/flow';
 export {
   EaCNodeCapabilityManager,
   SurfaceEventRouter,
   WorkspaceManager,
-} from 'jsr:@o-industrial/common@0.0.488-hmis/flow';
+} from 'jsr:@o-industrial/common@0.0.493/flow';
 
 export type {
   EaCAgentDetails,
@@ -141,10 +129,11 @@ export type {
   EaCSurfaceAsCode,
   EaCSurfaceDetails,
   EverythingAsCodeOIWorkspace,
+  MultiProtocolIngestOption,
   Position,
   SurfaceAgentSettings,
   SurfaceDataConnectionSettings,
   SurfaceInterfaceSettings,
   SurfaceSchemaSettings,
   SurfaceWarmQuerySettings,
-} from 'jsr:@o-industrial/common@0.0.488-hmis/eac';
+} from 'jsr:@o-industrial/common@0.0.493/eac';

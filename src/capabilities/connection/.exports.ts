@@ -1,3 +1,4 @@
+export * from './views/.exports.ts';
 export * from './ConnectionInspector.tsx';
 export * from './ConnectionNodeRenderer.tsx';
 export * from './DataConnectionConfig.ts';

@@ -1,3 +1,4 @@
+export * from './views/.exports.ts';
 export * from './SimulatorInspector.tsx';
 export * from './SimulatorNodeCapabilityManager.ts';
 export * from './SimulatorNodeData.tsx';
