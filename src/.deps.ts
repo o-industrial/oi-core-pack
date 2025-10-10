@@ -55,7 +55,9 @@ export {
 } from 'jsr:@o-industrial/atomic@0.0.24-hmis/molecules';
 export { parseTimeAgoString } from 'jsr:@o-industrial/atomic@0.0.24-hmis/utils';
 export {
+  CloseIcon,
   DeleteIcon,
+  SaveIcon,
   SettingsIcon,
   TriggerMatchIcon,
 } from 'jsr:@o-industrial/atomic@0.0.24-hmis/icons';

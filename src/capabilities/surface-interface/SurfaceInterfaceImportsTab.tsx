@@ -1,9 +1,11 @@
 import {
   Action,
   ActionStyleTypes,
+  CloseIcon,
   DeleteIcon,
   Input,
   IntentTypes,
+  SaveIcon,
   SettingsIcon,
   type JSX,
   useCallback,
@@ -61,6 +63,7 @@ type ModuleFetchResult = {
 const BRACE_LEFT = '{';
 const BRACE_RIGHT = '}';
 
+
 export function SurfaceInterfaceImportsTab({
   imports,
   onChange,
@@ -88,6 +91,351 @@ export function SurfaceInterfaceImportsTab({
 
           const backup = entryBackupsRef.current.get(entry.id);
           return backup ? stringifyImportEntry(backup) : null;
+        })
+        .filter((value): value is string => Boolean(value));
+
+      if (!areStringArraysEqual(serialized, importsRef.current)) {
+        importsRef.current = serialized;
+        onChange(serialized);
+      }
+
+      const hasErrors = nextEntries.some(
+        (entry) => validateImportEntry(entry).hasErrors,
+      );
+
+      onValidityChange?.(hasErrors);
+    },
+    [onChange, onValidityChange],
+  );
+
+  useEffect(() => {
+    propagateChange(entries);
+  }, [entries, propagateChange]);
+
+  const addEntry = () => {
+    setEntries((current) => [...current, createEmptyEntry()]);
+  };
+
+  const removeEntry = (id: string) => {
+    entryBackupsRef.current.delete(id);
+    setEntries((current) => current.filter((entry) => entry.id !== id));
+  };
+
+  const startEdit = (id: string) => {
+    setEntries((current) =>
+      current.map((entry) => {
+        if (entry.id !== id) return entry;
+        if (!entry.editing) {
+          entryBackupsRef.current.set(id, snapshotEntry(entry));
+        }
+        return { ...entry, editing: true };
+      })
+    );
+  };
+
+  const cancelEdit = (id: string) => {
+    const backup = entryBackupsRef.current.get(id);
+    setEntries((current) =>
+      current.map((entry) => {
+        if (entry.id !== id) return entry;
+        if (backup) {
+          return { ...snapshotEntry(backup), editing: false };
+        }
+        return { ...entry, editing: false };
+      })
+    );
+    entryBackupsRef.current.delete(id);
+  };
+
+  const saveEntry = (id: string) => {
+    setEntries((current) =>
+      current.map((entry) =>
+        entry.id === id ? { ...entry, editing: false } : entry,
+      )
+    );
+    entryBackupsRef.current.delete(id);
+  };
+
+  const updateEntry = <K extends keyof ImportEntry>(
+    id: string,
+    key: K,
+    value: ImportEntry[K],
+  ) => {
+    setEntries((current) =>
+      current.map((entry) => {
+        if (entry.id !== id) return entry;
+        let next: ImportEntry = { ...entry, [key]: value } as ImportEntry;
+
+        if (key === 'importKind') {
+          const kind = value as ImportKind;
+          next = {
+            ...next,
+            ...resetEntryForKind(kind),
+            importKind: kind,
+            recommendedKind: null,
+            moduleAnalysis: undefined,
+            suggestions: [],
+          };
+        }
+
+        if (key === 'specifier') {
+          next = {
+            ...next,
+            status: 'idle',
+            statusMessage: undefined,
+            recommendedKind: null,
+            moduleAnalysis: undefined,
+            suggestions: [],
+          };
+        }
+
+        if (key === 'memberDraft') {
+          next.memberDraft = (value as string) ?? '';
+        }
+
+        return next;
+      })
+    );
+  };
+
+  const addNamedMember = (id: string, rawMember: string) => {
+    const member = rawMember.trim();
+    if (!member) return;
+
+    setEntries((current) =>
+      current.map((entry) =>
+        entry.id === id
+          ? {
+            ...entry,
+            members: dedupeMembers([...entry.members, member]),
+            memberDraft: '',
+          }
+          : entry,
+      )
+    );
+  };
+
+  const removeNamedMember = (id: string, member: string) => {
+    setEntries((current) =>
+      current.map((entry) =>
+        entry.id === id
+          ? {
+            ...entry,
+            members: entry.members.filter((value) => value !== member),
+          }
+          : entry,
+      )
+    );
+  };
+
+  const applyRecommendedKind = (id: string, kind: ImportKind) => {
+    setEntries((current) =>
+      current.map((entry) => {
+        if (entry.id !== id) return entry;
+        const summary: ModuleExportSummary = entry.moduleAnalysis ?? {
+          named: entry.members,
+          hasDefault:
+            entry.importKind === 'default' || entry.importKind === 'default-and-named' || Boolean(entry.defaultAlias.trim()),
+        };
+        return applyImportKindToEntry(entry, kind, summary, entry.specifier);
+      })
+    );
+  };
+
+  const requestSuggestions = async (id: string) => {
+    setEntries((current) =>
+      current.map((entry) =>
+        entry.id === id
+          ? {
+            ...entry,
+            status: 'loading',
+            statusMessage: 'Analyzing module exports...',
+            suggestions: [],
+          }
+          : entry,
+      )
+    );
+
+    const target = entries.find((entry) => entry.id === id);
+    const specifier = target?.specifier.trim() ?? '';
+
+    if (!specifier) {
+      setEntries((current) =>
+        current.map((entry) =>
+          entry.id === id
+            ? {
+              ...entry,
+              status: 'error',
+              statusMessage: 'Provide a module specifier before requesting suggestions.',
+            }
+            : entry,
+        )
+      );
+      return;
+    }
+
+    const result = await fetchModuleExports(specifier);
+
+    setEntries((current) =>
+      current.map((entry) =>
+        entry.id === id ? applyModuleAnalysis(entry, result, specifier) : entry,
+      )
+    );
+  };
+
+  const totalValidImports = useMemo(
+    () =>
+      entries.filter((entry) =>
+        !entry.editing && Boolean(stringifyImportEntry(entry))
+      ).length,
+    [entries],
+  );
+
+  return (
+    <div class='flex h-full min-h-0 flex-col gap-4'>
+      <section class='rounded border border-neutral-800 bg-neutral-950/70 p-4 text-sm text-neutral-200'>
+        <h2 class='text-base font-semibold text-neutral-100'>
+          Third-party imports
+        </h2>
+        <p class='mt-1 text-xs text-neutral-400'>
+          Runtime essentials (like framework primitives) are provided automatically. Add any additional modules your interface relies on.
+        </p>
+        <p class='mt-2 text-xs text-neutral-400'>
+          Compose statements like <code>import Default from 'specifier';</code>, <code>import Default, {'{' } members {'}'} from 'specifier';</code>, or switch to a namespace import when you need <code>*</code>.
+        </p>
+        <p class='mt-2 text-xs text-neutral-500'>
+          <span class='font-semibold text-neutral-300'>{totalValidImports}</span>{' '}
+          import{totalValidImports === 1 ? '' : 's'} ready for save.
+        </p>
+      </section>
+      <div class='flex-1 min-h-0 space-y-4 overflow-y-auto pr-1'>
+        {entries.length === 0 && <EmptyImportsState onAdd={addEntry} />}
+
+        {entries.map((entry) => {
+          const validation = validateImportEntry(entry);
+          const preview = buildImportPreview(entry);
+          const serialized = stringifyImportEntry(entry);
+          const displayStatement = serialized ?? preview;
+          const isDraft = !serialized;
+          const listStatusMessage = resolveStatusMessage(entry, 'list', validation);
+
+          if (!entry.editing) {
+            return (
+              <article
+                key={entry.id}
+                class='rounded border border-neutral-800 bg-neutral-950/60 p-4 text-sm text-neutral-100'
+              >
+                <div class='flex flex-wrap items-start justify-between gap-3'>
+                  <code
+                    class={`flex-1 min-w-0 overflow-x-auto whitespace-pre rounded border border-neutral-800 bg-neutral-950/80 px-3 py-2 text-xs ${isDraft ? 'text-neutral-500 italic' : 'text-neutral-200'}`}
+                    title={displayStatement}
+                  >
+                    {displayStatement}
+                  </code>
+                  <div class='flex flex-wrap items-center gap-2'>
+                    <Action
+                      type='button'
+                      title='Edit import'
+                      aria-label='Edit import'
+                      styleType={ActionStyleTypes.Icon | ActionStyleTypes.Outline}
+                      intentType={IntentTypes.Secondary}
+                      onClick={() => startEdit(entry.id)}
+                    >
+                      <SettingsIcon class='h-4 w-4' />
+                    </Action>
+                    <Action
+                      type='button'
+                      title='Remove import'
+                      aria-label='Remove import'
+                      styleType={ActionStyleTypes.Icon | ActionStyleTypes.Outline}
+                      intentType={IntentTypes.Error}
+                      onClick={() => removeEntry(entry.id)}
+                    >
+                      <DeleteIcon class='h-4 w-4' />
+                    </Action>
+                  </div>
+                </div>
+                {entry.status === 'success' && listStatusMessage && (
+                  <p class='mt-2 text-[11px] text-teal-300'>{listStatusMessage}</p>
+                )}
+                {entry.status === 'error' && entry.statusMessage && (
+                  <p class='mt-2 text-[11px] text-red-400'>{entry.statusMessage}</p>
+                )}
+              </article>
+            );
+          }
+
+          const recommendationKind = entry.recommendedKind ?? null;
+          const showRecommendation = Boolean(
+            recommendationKind && recommendationKind !== entry.importKind,
+          );
+          const recommendationMessage = recommendationKind
+            ? buildRecommendationReason(recommendationKind, entry.moduleAnalysis)
+            : '';
+          const editingStatusMessage = resolveStatusMessage(entry, 'edit', validation);
+
+          return (
+            <article
+              key={entry.id}
+              class='rounded border border-neutral-800 bg-neutral-950/60 p-4 text-sm text-neutral-100'
+            >
+              <header class='flex flex-wrap items-start justify-between gap-3'>
+                <div class='flex min-w-0 flex-1 flex-col gap-2'>
+                  <code
+                    class={`overflow-x-auto whitespace-pre rounded border border-neutral-800 bg-neutral-950/80 px-3 py-2 text-xs ${isDraft ? 'text-neutral-500 italic' : 'text-neutral-200'}`}
+                    title={preview}
+                  >
+                    {preview}
+                  </code>
+                  <p class='text-[11px] text-neutral-400'>
+                    {isDraft
+                      ? 'Draft import - complete the fields below.'
+                      : 'Update the import definition below.'}
+                  </p>
+                </div>
+                <div class='flex flex-wrap items-center gap-2'>
+                  <Action
+                    type='button'
+                    title='Cancel edits'
+                    aria-label='Cancel edits'
+                    styleType={ActionStyleTypes.Icon | ActionStyleTypes.Outline}
+                    intentType={IntentTypes.Secondary}
+                    onClick={() => cancelEdit(entry.id)}
+                  >
+                    <CloseIcon class='h-4 w-4' />
+                  </Action>
+                  <Action
+                    type='button'
+                    title='Remove import'
+                    aria-label='Remove import'
+                    styleType={ActionStyleTypes.Icon | ActionStyleTypes.Outline}
+                    intentType={IntentTypes.Error}
+                    onClick={() => removeEntry(entry.id)}
+                  >
+                    <DeleteIcon class='h-4 w-4' />
+                  </Action>
+                  <Action
+                    type='button'
+                    title='Save import'
+                    aria-label='Save import'
+                    styleType={ActionStyleTypes.Icon | ActionStyleTypes.Solid}
+                    intentType={IntentTypes.Primary}
+                    disabled={validation.hasErrors}
+                    onClick={() => saveEntry(entry.id)}
+                  >
+                    <SaveIcon class='h-4 w-4' />
+                  </Action>
+                </div>
+              </header>
+
+              <div class='mt-4 grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_160px]'>
+                <Input
+                  label='Module specifier'
+                  placeholder='https://esm.sh/lodash-es?target=deno'
+                  value={entry.specifier}
+                  onInput={(event: JSX.TargetedEvent<HTMLInputElement, Event>) =>
+                    updateEntry(entry.id, 'specifier', event.currentTarget.value)
+                  }
                   intentType={
                     validation.hasErrors && entry.specifier.trim().length === 0
                       ? IntentTypes.Error
@@ -213,22 +561,22 @@ export function SurfaceInterfaceImportsTab({
                     >
                       Validate &amp; suggest exports
                     </Action>
-                    {entry.status !== 'idle' && (
-                      <p
-                        class={`text-xs ${
-                          entry.status === 'error'
-                            ? 'text-red-400'
-                            : entry.status === 'loading'
-                            ? 'text-neutral-400'
-                            : 'text-teal-300'
-                        }`}
-                      >
-                        {entry.statusMessage}
-                      </p>
-                    )}
-                  </div>
+                  {entry.status !== 'idle' && editingStatusMessage && (
+                    <p
+                      class={`text-xs ${
+                        entry.status === 'error'
+                          ? 'text-red-400'
+                          : entry.status === 'loading'
+                          ? 'text-neutral-400'
+                          : 'text-teal-300'
+                      }`}
+                    >
+                      {editingStatusMessage}
+                    </p>
+                  )}
+              </div>
 
-                  {showRecommendation && recommendationKind && (
+              {showRecommendation && recommendationKind && (
                     <div class='mt-2 rounded border border-teal-500/40 bg-teal-500/10 px-3 py-2 text-xs text-teal-200'>
                       <p>{recommendationMessage}</p>
                       <div class='mt-2 flex flex-wrap gap-2'>
@@ -316,7 +664,6 @@ export function SurfaceInterfaceImportsTab({
     </div>
   );
 }
-
 function EmptyImportsState({ onAdd }: { onAdd: () => void }): JSX.Element {
   return (
     <div class='rounded border border-dashed border-neutral-800 bg-neutral-950/40 p-6 text-center text-sm text-neutral-300'>
@@ -606,6 +953,30 @@ function applyImportKindToEntry(
   return next;
 }
 
+function resolveStatusMessage(
+  entry: ImportEntry,
+  mode: 'list' | 'edit',
+  validation?: ImportValidation,
+): string | undefined {
+  if (mode === 'list') {
+    if (entry.status === 'error' || entry.status === 'loading') {
+      return entry.statusMessage;
+    }
+    if (validation?.hasErrors) {
+      return validation.messages?.[0];
+    }
+    return undefined;
+  }
+
+  if (mode === 'edit') {
+    if (validation?.hasErrors) {
+      return validation.messages?.[0];
+    }
+    return entry.statusMessage;
+  }
+
+  return entry.statusMessage;
+}
 function applyModuleAnalysis(
   entry: ImportEntry,
   result: ModuleFetchResult,
@@ -1010,6 +1381,10 @@ function extractModuleExports(source: string): ModuleExportSummary {
     hasDefault,
   };
 }
+
+
+
+
 
 
 
