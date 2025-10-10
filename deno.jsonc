@@ -4,14 +4,15 @@
   "exports": {
     ".": "./src/.pack.ts",
     "./connections": "./src/capabilities/connection/.exports.ts",
+    "./runtime": "./src/runtime/.exports.ts",
+    "./runtime/workspace-app-menu": "./src/runtime/workspaceAppMenu.tsx",
     "./simulators": "./src/capabilities/simulator/.exports.ts",
     "./surfaces": "./src/capabilities/surface/.exports.ts",
     "./surfaces/agents": "./src/capabilities/surface-agent/.exports.ts",
     "./surfaces/connections": "./src/capabilities/surface-connection/.exports.ts",
     "./surfaces/interfaces": "./src/capabilities/surface-interface/.exports.ts",
     "./surfaces/schemas": "./src/capabilities/surface-schema/.exports.ts",
-    "./surfaces/warm-queries": "./src/capabilities/surface-warmquery/.exports.ts",
-    "./runtime/workspace-app-menu": "./src/runtime/workspaceAppMenu.tsx"
+    "./surfaces/warm-queries": "./src/capabilities/surface-warmquery/.exports.ts"
   },
   "license": "MIT",
   "tasks": {
@@ -47,24 +48,21 @@
   "unstable": ["kv"],
   "lock": false,
   "imports": {
-    // "jsr:@o-industrial/atomic@0.0.21/atoms": "../open-industrial-atomic/src/atoms/.exports.ts",
-    // "jsr:@o-industrial/atomic@0.0.21/icons": "../open-industrial-atomic/build/iconset/icons/.exports.ts",
-    // "jsr:@o-industrial/atomic@0.0.21/molecules": "../open-industrial-atomic/src/molecules/.exports.ts",
-    // "jsr:@o-industrial/atomic@0.0.21/organisms": "../open-industrial-atomic/src/organisms/.exports.ts",
-    // "jsr:@o-industrial/atomic@0.0.21/utils": "../open-industrial-atomic/src/utils/.exports.ts",
-
-    // "jsr:@o-industrial/common@0.0.487/api": "../open-industrial-reference-architecture/src/api/.exports.ts",
-    // "jsr:@o-industrial/common@0.0.487/eac": "../open-industrial-reference-architecture/src/eac/.exports.ts",
-    // "jsr:@o-industrial/common@0.0.487/flow": "../open-industrial-reference-architecture/src/flow/.exports.ts",
-    // "jsr:@o-industrial/common@0.0.487/fluent/packs": "../open-industrial-reference-architecture/src/fluent/packs/.exports.ts",
-    // "jsr:@o-industrial/common@0.0.487/types": "../open-industrial-reference-architecture/src/types/.exports.ts",
-    // "jsr:@o-industrial/common@0.0.487/utils/client": "../open-industrial-reference-architecture/src/utils/.exports.client.ts",
-
-    // "jsr:@fathym/code-editor@0.0.30-integration": "../code-editor/mod.ts"
+    // "jsr:@o-industrial/atomic@0.0.31/atoms": "../open-industrial-atomic/src/atoms/.exports.ts",
+    // "jsr:@o-industrial/atomic@0.0.31/icons": "../open-industrial-atomic/build/iconset/icons/.exports.ts",
+    // "jsr:@o-industrial/atomic@0.0.31/molecules": "../open-industrial-atomic/src/molecules/.exports.ts",
+    // "jsr:@o-industrial/atomic@0.0.31/organisms": "../open-industrial-atomic/src/organisms/.exports.ts",
+    // "jsr:@o-industrial/atomic@0.0.31/utils": "../open-industrial-atomic/src/utils/.exports.ts",
+    // "jsr:@o-industrial/common@0.0.493/api": "../open-industrial-reference-architecture/src/api/.exports.ts",
+    // "jsr:@o-industrial/common@0.0.493/eac": "../open-industrial-reference-architecture/src/eac/.exports.ts",
+    // "jsr:@o-industrial/common@0.0.493/flow": "../open-industrial-reference-architecture/src/flow/.exports.ts",
+    // "jsr:@o-industrial/common@0.0.493/fluent/packs": "../open-industrial-reference-architecture/src/fluent/packs/.exports.ts",
+    // "jsr:@o-industrial/common@0.0.493/types": "../open-industrial-reference-architecture/src/types/.exports.ts",
+    // "jsr:@o-industrial/common@0.0.493/utils/client": "../open-industrial-reference-architecture/src/utils/.exports.client.ts",
+    // "jsr:@fathym/code-editor@0.0.35": "../code-editor/mod.ts"
   },
   "compilerOptions": {
     "jsx": "react-jsx",
     "jsxImportSource": "npm:preact@10.20.1"
   }
 }
-

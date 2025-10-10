@@ -1,3 +1,4 @@
+export * from './views/.exports.ts';
 export * from './SurfaceInspector.tsx';
 export * from './SurfaceNodeCapabilityManager.ts';
 export * from './SurfaceNodeData.ts';

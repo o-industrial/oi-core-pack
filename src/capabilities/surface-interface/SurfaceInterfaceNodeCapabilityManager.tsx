@@ -1,11 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
 import { NodePreset, Position } from '../../.deps.ts';
-import {
-  EaCInterfaceAsCode,
-  EaCInterfaceDetails,
-  InterfaceSpec,
-  SurfaceInterfaceSettings,
-} from '../../.deps.ts';
+import { EaCInterfaceAsCode, EaCInterfaceDetails, SurfaceInterfaceSettings } from '../../.deps.ts';
 import { EverythingAsCodeOIWorkspace } from '../../.deps.ts';
 import {
   CapabilityValidationResult,
@@ -20,85 +15,9 @@ import { ComponentType, FunctionComponent, memo, NullableArrayOrObject } from '.
 import SurfaceInterfaceNodeRenderer from './SurfaceInterfaceNodeRenderer.tsx';
 import { SurfaceInterfaceInspector } from './SurfaceInterfaceInspector.tsx';
 import { SurfaceInterfaceNodeDetails } from './SurfaceInterfaceNodeData.ts';
+import { createDefaultInterfaceDetails, ensureInterfaceDetails } from './interfaceDefaults.ts';
 
 const INTERFACE_PRESET_THEME = 'oi-default';
-
-function ensureInterfaceSpecValue(
-  spec: InterfaceSpec | undefined,
-  fallbackId: string,
-): InterfaceSpec {
-  if (!spec) {
-    return createDefaultInterfaceSpec(fallbackId);
-  }
-
-  const meta = spec.Meta ?? { Name: 'Untitled Interface', Version: 1 };
-
-  return {
-    ...spec,
-    Meta: {
-      ...meta,
-      Name: meta.Name ?? 'Untitled Interface',
-      Version: meta.Version ?? 1,
-      Theme: meta.Theme ?? 'default',
-    },
-    Data: spec.Data ?? { Providers: [], Bindings: {} },
-    Layout: spec.Layout ?? [],
-    Actions: spec.Actions ?? [],
-  };
-}
-
-function createDefaultInterfaceSpec(id: string): InterfaceSpec {
-  return {
-    Meta: {
-      Name: `New Interface ${id}`,
-      Version: 1,
-      Theme: INTERFACE_PRESET_THEME,
-    },
-    Imports: {
-      Components: ['Container', 'Text'],
-    },
-    Data: {
-      Providers: [],
-      Bindings: {},
-    },
-    Layout: [
-      {
-        ID: 'root',
-        Type: 'Container',
-        IsContainer: true,
-        Props: {
-          className:
-            'flex min-h-[320px] flex-col gap-4 bg-slate-950/80 p-6 rounded-xl border border-slate-800',
-        },
-        Children: [
-          {
-            ID: 'headline',
-            Type: 'Text',
-            Props: {
-              value: 'Interface title',
-              className: 'text-2xl font-semibold text-slate-100',
-            },
-          },
-          {
-            ID: 'subtitle',
-            Type: 'Text',
-            Props: {
-              value: 'Describe the purpose of this HMI page',
-              className: 'text-sm text-slate-400',
-            },
-          },
-        ],
-      },
-    ],
-    Actions: [],
-    Theme: {
-      Colors: {
-        primary: '#22d3ee',
-        surface: '#0f172a',
-      },
-    },
-  };
-}
 
 export class SurfaceInterfaceNodeCapabilityManager
   extends EaCNodeCapabilityManager<SurfaceInterfaceNodeDetails> {
@@ -116,35 +35,19 @@ export class SurfaceInterfaceNodeCapabilityManager
     const interfaceEntry = eac.Interfaces?.[node.ID];
     if (!interfaceEntry) return null;
 
-    const { surfaceLookup, settings } = this.resolveSurfaceSettings(
-      node.ID,
-      context,
-    );
+    const { surfaceLookup, settings } = this.resolveSurfaceSettings(node.ID, context);
 
-    const interfaceDetails = interfaceEntry.Details ?? {
-      Name: node.ID,
-      Version: 1,
-      Spec: createDefaultInterfaceSpec(node.ID),
-    };
-
-    const safeSpec = ensureInterfaceSpecValue(interfaceDetails.Spec, node.ID);
-
-    const mergedMetadata = {
-      ...(interfaceEntry.Metadata ?? {}),
-      ...(settings?.Metadata ?? {}),
-    };
+    const interfaceDetails = ensureInterfaceDetails(interfaceEntry.Details, node.ID);
 
     const mergedDetails: SurfaceInterfaceNodeDetails = {
       ...interfaceDetails,
       ...(settings ?? {}),
-      Spec: safeSpec,
       SurfaceLookup: surfaceLookup,
     };
 
-    return {
-      Details: mergedDetails,
-      ...(Object.keys(mergedMetadata).length > 0 ? { Metadata: mergedMetadata } : {}),
-    };
+    const metadata = settings?.Metadata;
+
+    return metadata ? { Details: mergedDetails, Metadata: metadata } : { Details: mergedDetails };
   }
 
   // protected override buildPresetPatch(
@@ -154,37 +57,29 @@ export class SurfaceInterfaceNodeCapabilityManager
   // ): Partial<EverythingAsCodeOIWorkspace> {
   //   const surfaceLookup = this.ensureSurfaceLookup(context);
 
-  //   const initialSpec = createDefaultInterfaceSpec(id);
+    const interfaceDetails = createDefaultInterfaceDetails(id);
 
-  //   const interfaceDetails: EaCInterfaceDetails = {
-  //     Name: `${id}`,
-  //     Description: 'Auto-generated interface stub',
-  //     Version: 1,
-  //     Spec: ensureInterfaceSpecValue(initialSpec, id),
-  //   };
-
-  //   return {
-  //     Interfaces: {
-  //       [id]: {
-  //         Details: interfaceDetails,
-  //         Metadata: { Enabled: true },
-  //       } as EaCInterfaceAsCode,
-  //     },
-  //     Surfaces: {
-  //       [surfaceLookup]: {
-  //         Interfaces: {
-  //           [id]: {
-  //             Metadata: {
-  //               Position: position,
-  //               Enabled: true,
-  //             },
-  //             Theme: INTERFACE_PRESET_THEME,
-  //           } satisfies SurfaceInterfaceSettings,
-  //         },
-  //       },
-  //     },
-  //   };
-  // }
+    return {
+      Interfaces: {
+        [id]: {
+          Details: interfaceDetails,
+        } as EaCInterfaceAsCode,
+      },
+      Surfaces: {
+        [surfaceLookup]: {
+          Interfaces: {
+            [id]: {
+              Metadata: {
+                Position: position,
+                Enabled: true,
+              },
+              Theme: INTERFACE_PRESET_THEME,
+            } satisfies SurfaceInterfaceSettings,
+          },
+        },
+      },
+    };
+  }
 
   protected override buildDeletePatch(
     node: FlowGraphNode,
@@ -221,15 +116,12 @@ export class SurfaceInterfaceNodeCapabilityManager
 
     const interfaceKeys: Array<keyof EaCInterfaceDetails> = [
       'Name',
-      'Description',
       'WebPath',
-      'ComponentTag',
-      'EmbedOptions',
-      'Spec',
-      'Assets',
-      'DraftState',
-      'Thumbnails',
-      'Version',
+      'Description',
+      'Imports',
+      'PageDataType',
+      'PageHandler',
+      'Page',
     ];
 
     const surfaceKeys: Array<keyof SurfaceInterfaceSettings> = [
@@ -463,17 +355,14 @@ export class SurfaceInterfaceNodeCapabilityManager
       return null;
     }
 
-    const metadata = {
-      ...(interfaceEntry.Metadata ?? {}),
-      ...(settings?.Metadata ?? {}),
-    };
+    const metadata = settings?.Metadata;
 
     return {
       ID: id,
       Type: this.Type,
       Label: interfaceEntry.Details?.Name ?? id,
-      Metadata: metadata,
-      Details: interfaceEntry.Details,
+      ...(metadata ? { Metadata: metadata } : {}),
+      Details: ensureInterfaceDetails(interfaceEntry.Details, id),
     };
   }
 
@@ -509,7 +398,8 @@ export class SurfaceInterfaceNodeCapabilityManager
     }
 
     const errors: CapabilityValidationResult['errors'] = [];
-    const name = interfaceEntry.Details.Name?.trim();
+    const details = ensureInterfaceDetails(interfaceEntry.Details, node.ID);
+    const name = details.Name?.trim();
 
     if (!name) {
       errors.push({
@@ -518,10 +408,39 @@ export class SurfaceInterfaceNodeCapabilityManager
       });
     }
 
-    if (!interfaceEntry.Details.Spec?.Layout?.length) {
+    const pageDataType = details.PageDataType?.trim();
+    if (!pageDataType) {
       errors.push({
-        field: 'Details.Spec.Layout',
-        message: 'Interface layout must contain at least one node.',
+        field: 'Details.PageDataType',
+        message: 'Define the page data contract for AI-assisted authoring.',
+      });
+    }
+
+    const webPath = details.WebPath?.trim();
+    if (!webPath) {
+      errors.push({
+        field: 'Details.WebPath',
+        message: 'Provide a web path so the interface can be routed.',
+      });
+    } else if (!webPath.startsWith('/')) {
+      errors.push({
+        field: 'Details.WebPath',
+        message: 'Web path must start with a leading slash (e.g., /docs/overview).',
+      });
+    }
+
+    const page = details.Page;
+    const hasPageContent = page &&
+      (
+        page.Code?.trim()?.length ||
+        (page.Messages && page.Messages.length > 0) ||
+        (page.MessageGroups && page.MessageGroups.length > 0)
+      );
+
+    if (!hasPageContent) {
+      errors.push({
+        field: 'Details.Page',
+        message: 'Provide page code or guidance so the interface can be generated.',
       });
     }
 

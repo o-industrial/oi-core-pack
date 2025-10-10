@@ -15,8 +15,9 @@ export { Position as ReactPosition } from 'npm:reactflow@11.11.4';
 
 export { merge, type NullableArrayOrObject } from 'jsr:@fathym/common@0.2.274';
 export { z } from 'jsr:@fathym/common@0.2.274/third-party/zod';
+export { classSet, IS_BROWSER } from 'jsr:@fathym/atomic@0.0.184';
 
-export type { EverythingAsCode } from 'jsr:@fathym/eac@0.2.131';
+export type { EaCEnterpriseDetails, EverythingAsCode } from 'jsr:@fathym/eac@0.2.131';
 
 export {
   type EaCWarmQueryDetails,
@@ -25,67 +26,79 @@ export {
 
 export type { EverythingAsCodeLicensing } from 'jsr:@fathym/eac-licensing@0.0.58';
 
-export {
-  CodeMirrorEditor,
-  type CodeMirrorEditorProps,
-} from 'jsr:@fathym/code-editor@0.0.30-integration';
+export { CodeMirrorEditor, type CodeMirrorEditorProps } from 'jsr:@fathym/code-editor@0.0.35';
+// } from '../../code-editor/mod.ts';
 
 export {
   Action,
   ActionStyleTypes,
-  ConnectionInfoPanel,
+  Badge,
+  CopyInput,
   Input,
   NodeHandle,
   NodeStatTile,
-} from 'jsr:@o-industrial/atomic@0.0.21/atoms';
+  Select,
+  ToggleCheckbox,
+} from 'jsr:@o-industrial/atomic@0.0.31/atoms';
 export {
-  ConnectionManagementForm,
-  LinePreviewWithValue,
+  CloudConnectAzureForm,
+  type CloudConnectAzureFormProps,
+  EaCCreateSubscriptionForm,
+  EaCManageCloudForm,
+  EaCSelectSubscriptionForm,
+  LicenseCard,
   type MenuRoot,
   Modal,
-  SurfaceConnectionManagementForm,
-  SurfaceManagementForm,
   TabbedPanel,
-} from 'jsr:@o-industrial/atomic@0.0.21/molecules';
+} from 'jsr:@o-industrial/atomic@0.0.31/molecules';
 export {
-  SimulatorManagementForm,
-  TemplateEditor,
-  VariablesEditor,
-} from 'jsr:@o-industrial/atomic@0.0.21/molecules';
-export { parseTimeAgoString } from 'jsr:@o-industrial/atomic@0.0.21/utils';
+  CloseIcon,
+  DeleteIcon,
+  LoadingIcon,
+  RedoIcon,
+  SaveIcon,
+  SearchIcon,
+  SettingsIcon,
+  TriggerMatchIcon,
+  UndoIcon,
+} from 'jsr:@o-industrial/atomic@0.0.31/icons';
+
+export { ConnectionInfoPanel } from './capabilities/connection/views/ConnectionInfoPanel.tsx';
+export { ConnectionManagementForm } from './capabilities/connection/views/ConnectionManagementForm.tsx';
+export { SurfaceManagementForm } from './capabilities/surface/views/SurfaceManagementForm.tsx';
+export { SurfaceConnectionManagementForm } from './capabilities/surface-connection/views/SurfaceConnectionManagementForm.tsx';
+export { SimulatorManagementForm } from './capabilities/simulator/views/SimulatorManagementForm.tsx';
+export { TemplateEditor } from './capabilities/simulator/views/TemplateEditor.tsx';
+export { VariablesEditor } from './capabilities/simulator/views/VariablesEditor.tsx';
+export { LinePreviewWithValue } from './capabilities/shared/LinePreviewWithValue.tsx';
+export { parseTimeAgoString } from './capabilities/shared/utils/parseTimeAgoString.ts';
+
 export {
   AziPanel,
   InspectorBase,
-  WorkspaceNodeRendererBase,
-} from 'jsr:@o-industrial/atomic@0.0.21/organisms';
-export { DeleteIcon, TriggerMatchIcon } from 'jsr:@o-industrial/atomic@0.0.21/icons';
-
-export {
-  AccountProfileModal,
-  APIKeysModal,
-  BillingDetailsModal,
-  CloudConnectionsModal,
-  CurrentLicenseModal,
-  DataAPISuiteModal,
-  ManageWorkspacesModal,
-  PrivateCALZModal,
-  SimulatorLibraryModal,
+  SimulatorCard,
+  SimulatorPackCard,
   SurfaceWarmQueryModal,
-  TeamManagementModal,
-  WarmQueryAPIsModal,
-  WorkspaceSettingsModal,
-} from '../../open-industrial-atomic/src/organisms/.exports.ts';
+  WorkspaceNodeRendererBase,
+} from 'jsr:@o-industrial/atomic@0.0.31/organisms';
+// } from '../../open-industrial-atomic/src/organisms/.exports.ts';
 
-export { type NodeEventRouter, type NodePreset } from 'jsr:@o-industrial/common@0.0.487/flow';
+export * from './runtime/modals/.exports.ts';
 
-export { shaHash } from 'jsr:@o-industrial/common@0.0.487/utils/client';
+export { type NodeEventRouter, type NodePreset } from 'jsr:@o-industrial/common@0.0.493/flow';
 
-export { OpenIndustrialAPIClient } from 'jsr:@o-industrial/common@0.0.487/api';
+export { shaHash } from 'jsr:@o-industrial/common@0.0.493/utils/client';
 
-export { IntentTypes, RuntimeStatsSchema } from 'jsr:@o-industrial/common@0.0.487/types';
-export type { IngestOption } from 'jsr:@o-industrial/common@0.0.487/types';
+export { OpenIndustrialAPIClient } from 'jsr:@o-industrial/common@0.0.493/api';
 
-export { Pack, PackModuleBuilder } from 'jsr:@o-industrial/common@0.0.487/fluent/packs';
+export { IntentTypes, RuntimeStatsSchema } from 'jsr:@o-industrial/common@0.0.493/types';
+export type {
+  AccountProfile,
+  IngestOption,
+  TeamMembership,
+} from 'jsr:@o-industrial/common@0.0.493/types';
+
+export { Pack, PackModuleBuilder } from 'jsr:@o-industrial/common@0.0.493/fluent/packs';
 
 export type {
   AziState,
@@ -98,12 +111,14 @@ export type {
   FlowGraphNode,
   FlowNodeData,
   InspectorCommonProps,
-} from 'jsr:@o-industrial/common@0.0.487/flow';
+  SimulatorDefinition,
+  SimulatorPackDefinition,
+} from 'jsr:@o-industrial/common@0.0.493/flow';
 export {
   EaCNodeCapabilityManager,
   SurfaceEventRouter,
   WorkspaceManager,
-} from 'jsr:@o-industrial/common@0.0.487/flow';
+} from 'jsr:@o-industrial/common@0.0.493/flow';
 
 export type {
   EaCAgentDetails,
@@ -114,6 +129,7 @@ export type {
   EaCDataConnectionDetails,
   EaCFlowNodeMetadata,
   EaCInterfaceAsCode,
+  EaCInterfaceCodeBlock,
   EaCInterfaceDetails,
   EaCRootSchemaDetails,
   EaCSchemaAsCode,
@@ -123,11 +139,11 @@ export type {
   EaCSurfaceAsCode,
   EaCSurfaceDetails,
   EverythingAsCodeOIWorkspace,
-  InterfaceSpec,
+  MultiProtocolIngestOption,
   Position,
   SurfaceAgentSettings,
   SurfaceDataConnectionSettings,
   SurfaceInterfaceSettings,
   SurfaceSchemaSettings,
   SurfaceWarmQuerySettings,
-} from 'jsr:@o-industrial/common@0.0.487/eac';
+} from 'jsr:@o-industrial/common@0.0.493/eac';
