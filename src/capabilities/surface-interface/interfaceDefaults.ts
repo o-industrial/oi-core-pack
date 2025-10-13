@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-explicit-any
 import {
   EaCInterfaceCodeBlock,
   EaCInterfaceDetails,
@@ -74,8 +75,8 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 function sanitizeSchema(value: unknown): JSONSchema7 | undefined {
   if (value === undefined) return undefined;
-  if (typeof value === 'boolean') return value;
-  if (isPlainObject(value)) return deepClone(value) as JSONSchema7;
+  if (typeof value === 'boolean') return undefined;
+  if (isPlainObject(value)) return deepClone(value as any) as JSONSchema7;
   return undefined;
 }
 
