@@ -55,7 +55,7 @@ export type { EaCEnterpriseDetails, EverythingAsCode } from 'jsr:@fathym/eac@0.2
 export {
   type EaCWarmQueryDetails,
   type EverythingAsCodeClouds,
-} from 'jsr:@fathym/eac-azure@0.0.115';
+} from 'jsr:@fathym/eac-azure@0.0.118';
 
 export type { EverythingAsCodeLicensing } from 'jsr:@fathym/eac-licensing@0.0.58';
 
