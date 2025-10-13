@@ -50,41 +50,236 @@ function deepClone<T>(value: T): T {
   return value === undefined ? value : JSON.parse(JSON.stringify(value));
 }
 
+type PageDataAction = EaCInterfacePageDataAction;
+type PageDataActionInvocation = NonNullable<PageDataAction['Invocation']>;
+type PageDataActionInvocationType = NonNullable<PageDataActionInvocation['Type']>;
+type PageDataHydration = NonNullable<EaCInterfaceGeneratedDataSlice['Hydration']>;
+
+const VALID_INVOCATION_TYPES = new Set<PageDataActionInvocationType>([
+  'warmQuery',
+  'dataConnection',
+  'interface',
+  'mcpTool',
+  'mcpResource',
+  'custom',
+] as PageDataActionInvocationType[]);
+
+type SanitizeOptions = {
+  ensureDefaultSlice?: boolean;
+};
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function sanitizeSchema(value: unknown): JSONSchema7 | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value === 'boolean') return value;
+  if (isPlainObject(value)) return deepClone(value) as JSONSchema7;
+  return undefined;
+}
+
+function sanitizeHydration(value: unknown): PageDataHydration | undefined {
+  if (!isPlainObject(value)) return undefined;
+
+  const source = value as Partial<PageDataHydration>;
+  const result: PageDataHydration = {};
+
+  if (typeof source.Server === 'boolean') result.Server = source.Server;
+  if (typeof source.Client === 'boolean') result.Client = source.Client;
+  if (
+    typeof source.ClientRefreshMs === 'number' &&
+    Number.isFinite(source.ClientRefreshMs)
+  ) {
+    result.ClientRefreshMs = source.ClientRefreshMs;
+  }
+
+  return Object.keys(result).length ? result : undefined;
+}
+
+function sanitizeInvocation(
+  value: unknown,
+): PageDataActionInvocation | undefined {
+  if (!isPlainObject(value)) return undefined;
+
+  const source = value as Record<string, unknown>;
+  const result: Partial<PageDataActionInvocation> = {};
+
+  if (
+    typeof source.Type === 'string' &&
+    VALID_INVOCATION_TYPES.has(source.Type as PageDataActionInvocationType)
+  ) {
+    result.Type = source.Type as PageDataActionInvocationType;
+  }
+
+  if (typeof source.Lookup === 'string' && source.Lookup.trim().length > 0) {
+    result.Lookup = source.Lookup;
+  }
+
+  if (source.Mode === 'server' || source.Mode === 'client') {
+    result.Mode = source.Mode as NonNullable<PageDataActionInvocation['Mode']>;
+  }
+
+  return Object.keys(result).length ? result as PageDataActionInvocation : undefined;
+}
+
+function sanitizeAction(entry: unknown): PageDataAction | undefined {
+  if (!isPlainObject(entry)) return undefined;
+
+  const source = entry as Record<string, unknown>;
+  if (typeof source.Key !== 'string' || source.Key.trim().length === 0) {
+    return undefined;
+  }
+
+  const result: PageDataAction = {
+    Key: source.Key,
+  };
+
+  if (typeof source.Label === 'string' && source.Label.trim().length > 0) {
+    result.Label = source.Label;
+  }
+
+  if (
+    typeof source.Description === 'string' &&
+    source.Description.trim().length > 0
+  ) {
+    result.Description = source.Description;
+  }
+
+  const inputSchema = sanitizeSchema(source.Input);
+  if (inputSchema !== undefined) {
+    result.Input = inputSchema;
+  }
+
+  const outputSchema = sanitizeSchema(source.Output);
+  if (outputSchema !== undefined) {
+    result.Output = outputSchema;
+  }
+
+  const invocation = sanitizeInvocation(source.Invocation);
+  if (invocation) {
+    result.Invocation = invocation;
+  }
+
+  return result;
+}
+
+function sanitizeActions(value: unknown): PageDataAction[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const normalized = value
+    .map((entry) => sanitizeAction(entry))
+    .filter((entry): entry is PageDataAction => entry !== undefined);
+  return normalized.length ? normalized : undefined;
+}
+
+function sanitizeGeneratedSlice(
+  value: unknown,
+): EaCInterfaceGeneratedDataSlice {
+  if (!isPlainObject(value)) {
+    return sanitizeGeneratedSlice(DEFAULT_PAGE_DATA_SLICE);
+  }
+
+  const source = value as Record<string, unknown>;
+  const schema =
+    sanitizeSchema(source.Schema) ??
+    sanitizeSchema(DEFAULT_PAGE_DATA_SLICE.Schema)!;
+
+  const result: EaCInterfaceGeneratedDataSlice = {
+    Schema: schema,
+  };
+
+  if (typeof source.Label === 'string' && source.Label.length > 0) {
+    result.Label = source.Label;
+  }
+
+  if (
+    typeof source.Description === 'string' &&
+    source.Description.length > 0
+  ) {
+    result.Description = source.Description;
+  }
+
+  if (
+    typeof source.SourceCapability === 'string' &&
+    source.SourceCapability.length > 0
+  ) {
+    result.SourceCapability = source.SourceCapability;
+  }
+
+  const hydration = sanitizeHydration(source.Hydration);
+  if (hydration) {
+    result.Hydration = hydration;
+  }
+
+  const actions = sanitizeActions(source.Actions);
+  if (actions) {
+    result.Actions = actions;
+  }
+
+  if (typeof source.Enabled === 'boolean') {
+    result.Enabled = source.Enabled;
+  } else if (
+    source.Enabled === undefined &&
+    typeof DEFAULT_PAGE_DATA_SLICE.Enabled === 'boolean'
+  ) {
+    result.Enabled = DEFAULT_PAGE_DATA_SLICE.Enabled;
+  }
+
+  return result;
+}
+
+function buildGeneratedSlices(
+  value: unknown,
+): Record<string, EaCInterfaceGeneratedDataSlice> {
+  if (!isPlainObject(value)) return {};
+
+  const result: Record<string, EaCInterfaceGeneratedDataSlice> = {};
+  for (const [key, slice] of Object.entries(value)) {
+    result[key] = sanitizeGeneratedSlice(slice);
+  }
+
+  return result;
+}
+
+function sanitizePageDataType(
+  value: EaCInterfacePageDataType | undefined,
+  options: SanitizeOptions = {},
+): EaCInterfacePageDataType | undefined {
+  const source = isPlainObject(value) ? value : undefined;
+  const generated = buildGeneratedSlices(source?.Generated);
+  const custom = sanitizeSchema(source?.Custom);
+
+  if (options.ensureDefaultSlice && !generated[DEFAULT_PAGE_DATA_SLICE_KEY]) {
+    generated[DEFAULT_PAGE_DATA_SLICE_KEY] = sanitizeGeneratedSlice(
+      DEFAULT_PAGE_DATA_SLICE,
+    );
+  }
+
+  if (!source && !options.ensureDefaultSlice && !custom) {
+    return Object.keys(generated).length
+      ? { Generated: generated, Custom: custom }
+      : undefined;
+  }
+
+  return {
+    Generated: generated,
+    Custom: custom,
+  };
+}
+
 export function clonePageDataType(
   value: EaCInterfacePageDataType | undefined,
 ): EaCInterfacePageDataType | undefined {
-  if (!value) return undefined;
-  return deepClone(value) as EaCInterfacePageDataType;
+  return sanitizePageDataType(value);
 }
 
 export function ensurePageDataType(
   value: EaCInterfacePageDataType | undefined,
 ): EaCInterfacePageDataType {
-  const next =
-    (value ? deepClone(value) : deepClone(DEFAULT_PAGE_DATA_TYPE)) as EaCInterfacePageDataType;
-
-  if (!next.Generated) next.Generated = {};
-  if (!next.Generated[DEFAULT_PAGE_DATA_SLICE_KEY]) {
-    next.Generated[DEFAULT_PAGE_DATA_SLICE_KEY] = deepClone(DEFAULT_PAGE_DATA_SLICE);
-  }
-
-  // Ensure schemas are cloned to prevent shared references.
-  for (const [key, slice] of Object.entries(next.Generated)) {
-    next.Generated[key] = {
-      ...slice,
-      Schema: deepClone(slice.Schema) as JSONSchema7,
-      Hydration: slice.Hydration ? { ...slice.Hydration } : undefined,
-      Actions: slice.Actions
-        ? slice.Actions.map((action) => deepClone(action) as EaCInterfacePageDataAction)
-        : undefined,
-    };
-  }
-
-  if (next.Custom) {
-    next.Custom = deepClone(next.Custom) as JSONSchema7;
-  }
-
-  return next;
+  return sanitizePageDataType(value, { ensureDefaultSlice: true }) ??
+    sanitizePageDataType(DEFAULT_PAGE_DATA_TYPE, {
+      ensureDefaultSlice: true,
+    })!;
 }
 
 export function createDefaultPageDataType(): EaCInterfacePageDataType {
