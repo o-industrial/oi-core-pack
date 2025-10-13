@@ -1,3 +1,4 @@
+import type { FunctionalComponent } from 'npm:preact@10.20.1';
 export type { ComponentType, FunctionComponent, JSX } from 'npm:preact@10.20.1';
 
 export type {
@@ -46,7 +47,8 @@ export { Position as ReactPosition } from 'npm:reactflow@11.11.4';
 
 export { merge, type NullableArrayOrObject } from 'jsr:@fathym/common@0.2.274';
 export { z } from 'jsr:@fathym/common@0.2.274/third-party/zod';
-export { classSet, IS_BROWSER } from 'jsr:@fathym/atomic@0.0.184';
+import { classSet, IS_BROWSER } from 'jsr:@fathym/atomic@0.0.184';
+export { classSet, IS_BROWSER };
 
 export type { EaCEnterpriseDetails, EverythingAsCode } from 'jsr:@fathym/eac@0.2.131';
 
@@ -57,8 +59,21 @@ export {
 
 export type { EverythingAsCodeLicensing } from 'jsr:@fathym/eac-licensing@0.0.58';
 
-export { CodeMirrorEditor, type CodeMirrorEditorProps } from 'jsr:@fathym/code-editor@0.0.35';
-// } from '../../code-editor/mod.ts';
+import type { CodeMirrorEditorProps as FathymCodeMirrorEditorProps } from 'jsr:@fathym/code-editor@0.0.35';
+
+const FallbackCodeMirrorEditor: FunctionalComponent<FathymCodeMirrorEditorProps> = () => null;
+
+let CodeMirrorEditor: FunctionalComponent<FathymCodeMirrorEditorProps> = FallbackCodeMirrorEditor;
+
+if (IS_BROWSER) {
+  const mod = await import('jsr:@fathym/code-editor@0.0.35');
+  CodeMirrorEditor = mod.CodeMirrorEditor as FunctionalComponent<FathymCodeMirrorEditorProps>;
+}
+
+type ExtractCodeMirrorProps = FathymCodeMirrorEditorProps;
+
+export { CodeMirrorEditor };
+export type { ExtractCodeMirrorProps as CodeMirrorEditorProps };
 
 export {
   Action,
