@@ -180,8 +180,7 @@ function sanitizeGeneratedSlice(
   }
 
   const source = value as Record<string, unknown>;
-  const schema =
-    sanitizeSchema(source.Schema) ??
+  const schema = sanitizeSchema(source.Schema) ??
     sanitizeSchema(DEFAULT_PAGE_DATA_SLICE.Schema)!;
 
   const result: EaCInterfaceGeneratedDataSlice = {

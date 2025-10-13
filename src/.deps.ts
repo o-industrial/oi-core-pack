@@ -15,6 +15,7 @@ export type {
   EaCSimulatorDetails,
   EaCSurfaceAsCode,
   EaCSurfaceDetails,
+  EverythingAsCodeOIWorkspace,
   MultiProtocolIngestOption,
   Position,
   SurfaceAgentSettings,
@@ -22,7 +23,7 @@ export type {
   SurfaceInterfaceSettings,
   SurfaceSchemaSettings,
   SurfaceWarmQuerySettings,
-} from 'jsr:@o-industrial/common@0.0.493/eac';
+} from 'jsr:@o-industrial/common@0.0.495/eac';
 export { memo } from 'npm:preact@10.20.1/compat';
 export {
   type Dispatch,
@@ -63,7 +64,7 @@ export {
   NodeStatTile,
   Select,
   ToggleCheckbox,
-} from 'jsr:@o-industrial/atomic@0.0.31/atoms';
+} from 'jsr:@o-industrial/atomic@0.0.38/atoms';
 export {
   CloudConnectAzureForm,
   type CloudConnectAzureFormProps,
@@ -71,14 +72,15 @@ export {
   EaCManageCloudForm,
   EaCSelectSubscriptionForm,
   LicenseCard,
+  MarketingHighlightCard,
   type MenuRoot,
   Modal,
   TabbedPanel,
-} from 'jsr:@o-industrial/atomic@0.0.31/molecules';
+} from 'jsr:@o-industrial/atomic@0.0.38/molecules';
 export {
   EaCCreateSubscriptionController,
   type EaCCreateSubscriptionControllerProps,
-} from '../../open-industrial-atomic/src/organisms/eac/CreateSubscriptionController.tsx';
+} from 'jsr:@o-industrial/atomic@0.0.38/organisms';
 export {
   CloseIcon,
   DeleteIcon,
@@ -89,7 +91,7 @@ export {
   SettingsIcon,
   TriggerMatchIcon,
   UndoIcon,
-} from 'jsr:@o-industrial/atomic@0.0.31/icons';
+} from 'jsr:@o-industrial/atomic@0.0.38/icons';
 
 export { ConnectionInfoPanel } from './capabilities/connection/views/ConnectionInfoPanel.tsx';
 export { ConnectionManagementForm } from './capabilities/connection/views/ConnectionManagementForm.tsx';
@@ -108,26 +110,26 @@ export {
   SimulatorPackCard,
   SurfaceWarmQueryModal,
   WorkspaceNodeRendererBase,
-} from 'jsr:@o-industrial/atomic@0.0.31/organisms';
+} from 'jsr:@o-industrial/atomic@0.0.38/organisms';
 // } from '../../open-industrial-atomic/src/organisms/.exports.ts';
 
 export * from './runtime/modals/.exports.ts';
 
-export { type NodeEventRouter, type NodePreset } from 'jsr:@o-industrial/common@0.0.493/flow';
+export { type NodeEventRouter, type NodePreset } from 'jsr:@o-industrial/common@0.0.495/flow';
 
-export { interfacePageDataToSchema } from 'jsr:@o-industrial/common@0.0.493/utils';
-export { shaHash } from 'jsr:@o-industrial/common@0.0.493/utils/client';
+export { interfacePageDataToSchema } from 'jsr:@o-industrial/common@0.0.495/utils';
+export { shaHash } from 'jsr:@o-industrial/common@0.0.495/utils/client';
 
-export { OpenIndustrialAPIClient } from 'jsr:@o-industrial/common@0.0.493/api';
+export { OpenIndustrialAPIClient } from 'jsr:@o-industrial/common@0.0.495/api';
 
-export { IntentTypes, RuntimeStatsSchema } from 'jsr:@o-industrial/common@0.0.493/types';
+export { IntentTypes, RuntimeStatsSchema } from 'jsr:@o-industrial/common@0.0.495/types';
 export type {
   AccountProfile,
   IngestOption,
   TeamMembership,
-} from 'jsr:@o-industrial/common@0.0.493/types';
+} from 'jsr:@o-industrial/common@0.0.495/types';
 
-export { Pack, PackModuleBuilder } from 'jsr:@o-industrial/common@0.0.493/fluent/packs';
+export { Pack, PackModuleBuilder } from 'jsr:@o-industrial/common@0.0.495/fluent/packs';
 
 export type {
   AziState,
@@ -142,11 +144,11 @@ export type {
   InspectorCommonProps,
   SimulatorDefinition,
   SimulatorPackDefinition,
-} from 'jsr:@o-industrial/common@0.0.493/flow';
+} from 'jsr:@o-industrial/common@0.0.495/flow';
 export {
   EaCNodeCapabilityManager,
   SurfaceEventRouter,
   WorkspaceManager,
-} from 'jsr:@o-industrial/common@0.0.493/flow';
+} from 'jsr:@o-industrial/common@0.0.495/flow';
 
 export type { JSONSchema7 } from 'npm:jsonschema7@0.8.0';
