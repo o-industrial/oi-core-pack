@@ -2,7 +2,10 @@ import {
   Action,
   ActionStyleTypes,
   EaCInterfaceCodeBlock,
+  EaCInterfaceGeneratedDataSlice,
   IntentTypes,
+  interfacePageDataToSchema,
+  JSONSchema7,
   NodeHandle,
   NodeProps,
   ReactPosition,
@@ -16,10 +19,12 @@ export default function SurfaceInterfaceNodeRenderer({
   const importCount = data.details?.Imports?.length ?? 0;
   const handlerSummary = summarizeCodeBlock(data.details?.PageHandler);
   const pageSummary = summarizeCodeBlock(data.details?.Page);
-  const dataShapePreview = (data.details?.PageDataType ?? 'Record<string, unknown>')
-    .split('\n')
-    .map((line) => line.trim())
-    .find((line) => line.length) ?? 'Record<string, unknown>';
+  const combinedSchema = interfacePageDataToSchema(data.details?.PageDataType);
+  const dataShapePreview = summarizeSchema(combinedSchema);
+  const generatedSlices: EaCInterfaceGeneratedDataSlice[] = data.details?.PageDataType?.Generated
+    ? Object.values(data.details.PageDataType.Generated)
+    : [];
+  const activeSliceCount = generatedSlices.filter((slice) => slice.Enabled !== false).length;
 
   return (
     <WorkspaceNodeRendererBase
@@ -50,9 +55,10 @@ export default function SurfaceInterfaceNodeRenderer({
           <p class='mt-1 font-mono text-teal-200'>{dataShapePreview}</p>
         </div>
 
-        <div class='grid grid-cols-3 gap-2'>
+        <div class='grid grid-cols-4 gap-2'>
           <MetricTile label='Imports' value={importCount.toString()} />
           <MetricTile label='Handler' value={handlerSummary} />
+          <MetricTile label='Data Slices' value={activeSliceCount.toString()} />
           <MetricTile label='Page' value={pageSummary} />
         </div>
 
@@ -97,4 +103,34 @@ function summarizeCodeBlock(block?: EaCInterfaceCodeBlock): string {
 
   const totalGuidance = messageCount + groupCount;
   return totalGuidance > 0 ? `${totalGuidance} cues` : 'Pending';
+}
+
+function summarizeSchema(schema?: JSONSchema7): string {
+  if (!schema) return 'Schema pending';
+
+  const schemaObj = schema as {
+    title?: unknown;
+    type?: unknown;
+    properties?: Record<string, JSONSchema7>;
+  };
+
+  const title = typeof schemaObj.title === 'string' && schemaObj.title.trim().length > 0
+    ? schemaObj.title.trim()
+    : undefined;
+  if (title) return title;
+
+  const type = schemaObj.type;
+  const properties = schemaObj.properties;
+  if (type === 'object' && properties && typeof properties === 'object') {
+    const keys = Object.keys(properties);
+    if (keys.length > 0) {
+      const preview = keys.slice(0, 3).join(', ');
+      return `{ ${preview}${keys.length > 3 ? ', ...' : ''} }`;
+    }
+    return 'object';
+  }
+
+  if (typeof type === 'string') return type;
+
+  return 'JSON Schema';
 }

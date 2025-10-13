@@ -2,7 +2,7 @@ import {
   Action,
   ActionStyleTypes,
   CloudConnectAzureForm,
-  EaCCreateSubscriptionForm,
+  EaCCreateSubscriptionController,
   EaCManageCloudForm,
   EaCSelectSubscriptionForm,
   IntentTypes,
@@ -669,7 +669,7 @@ export function CloudConnectionsModal({
                                   key: 'create',
                                   label: 'Create Subscription',
                                   content: (
-                                    <EaCCreateSubscriptionForm
+                                    <EaCCreateSubscriptionController
                                       data-eac-bypass-base
                                       entLookup={entLookup}
                                       cloudLookup=''

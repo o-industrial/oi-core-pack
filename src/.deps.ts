@@ -1,4 +1,29 @@
 export type { ComponentType, FunctionComponent, JSX } from 'npm:preact@10.20.1';
+export { interfacePageDataToSchema } from '../../open-industrial-reference-architecture/src/utils/jsonSchemaToType.ts';
+
+export type {
+  EaCAgentDetails,
+  EaCAzureDockerSimulatorDetails,
+  EaCAzureIoTHubDataConnectionDetails,
+  EaCCompositeSchemaDetails,
+  EaCDataConnectionAsCode,
+  EaCDataConnectionDetails,
+  EaCFlowNodeMetadata,
+  EaCRootSchemaDetails,
+  EaCSchemaAsCode,
+  EaCSchemaDetails,
+  EaCSimulatorAsCode,
+  EaCSimulatorDetails,
+  EaCSurfaceAsCode,
+  EaCSurfaceDetails,
+  MultiProtocolIngestOption,
+  Position,
+  SurfaceAgentSettings,
+  SurfaceDataConnectionSettings,
+  SurfaceInterfaceSettings,
+  SurfaceSchemaSettings,
+  SurfaceWarmQuerySettings,
+} from 'jsr:@o-industrial/common@0.0.493/eac';
 export { memo } from 'npm:preact@10.20.1/compat';
 export {
   type Dispatch,
@@ -51,6 +76,10 @@ export {
   Modal,
   TabbedPanel,
 } from 'jsr:@o-industrial/atomic@0.0.31/molecules';
+export {
+  EaCCreateSubscriptionController,
+  type EaCCreateSubscriptionControllerProps,
+} from '../../open-industrial-atomic/src/organisms/eac/CreateSubscriptionController.tsx';
 export {
   CloseIcon,
   DeleteIcon,
@@ -120,30 +149,4 @@ export {
   WorkspaceManager,
 } from 'jsr:@o-industrial/common@0.0.493/flow';
 
-export type {
-  EaCAgentDetails,
-  EaCAzureDockerSimulatorDetails,
-  EaCAzureIoTHubDataConnectionDetails,
-  EaCCompositeSchemaDetails,
-  EaCDataConnectionAsCode,
-  EaCDataConnectionDetails,
-  EaCFlowNodeMetadata,
-  EaCInterfaceAsCode,
-  EaCInterfaceCodeBlock,
-  EaCInterfaceDetails,
-  EaCRootSchemaDetails,
-  EaCSchemaAsCode,
-  EaCSchemaDetails,
-  EaCSimulatorAsCode,
-  EaCSimulatorDetails,
-  EaCSurfaceAsCode,
-  EaCSurfaceDetails,
-  EverythingAsCodeOIWorkspace,
-  MultiProtocolIngestOption,
-  Position,
-  SurfaceAgentSettings,
-  SurfaceDataConnectionSettings,
-  SurfaceInterfaceSettings,
-  SurfaceSchemaSettings,
-  SurfaceWarmQuerySettings,
-} from 'jsr:@o-industrial/common@0.0.493/eac';
+export type { JSONSchema7 } from 'npm:jsonschema7@0.8.0';

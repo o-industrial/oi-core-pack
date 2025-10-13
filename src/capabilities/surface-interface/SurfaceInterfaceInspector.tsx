@@ -122,7 +122,7 @@ export function SurfaceInterfaceInspector({
                 setWebPath((event.currentTarget as HTMLInputElement).value);
               }}
               onBlur={() => {
-                setWebPath((current) => normalizeWebPath(current) ?? '');
+                setWebPath((current: string) => normalizeWebPath(current) ?? '');
               }}
             />
             <p class='text-xs text-slate-400'>
