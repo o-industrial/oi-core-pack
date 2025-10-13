@@ -1,5 +1,4 @@
 export type { ComponentType, FunctionComponent, JSX } from 'npm:preact@10.20.1';
-export { interfacePageDataToSchema } from '../../open-industrial-reference-architecture/src/utils/jsonSchemaToType.ts';
 
 export type {
   EaCAgentDetails,
@@ -116,6 +115,7 @@ export * from './runtime/modals/.exports.ts';
 
 export { type NodeEventRouter, type NodePreset } from 'jsr:@o-industrial/common@0.0.493/flow';
 
+export { interfacePageDataToSchema } from 'jsr:@o-industrial/common@0.0.493/utils';
 export { shaHash } from 'jsr:@o-industrial/common@0.0.493/utils/client';
 
 export { OpenIndustrialAPIClient } from 'jsr:@o-industrial/common@0.0.493/api';

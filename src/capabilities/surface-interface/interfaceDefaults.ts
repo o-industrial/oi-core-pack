@@ -255,16 +255,24 @@ function sanitizePageDataType(
     );
   }
 
-  if (!source && !options.ensureDefaultSlice && !custom) {
-    return Object.keys(generated).length
-      ? { Generated: generated, Custom: custom }
-      : undefined;
+  if (
+    !source &&
+    !options.ensureDefaultSlice &&
+    custom === undefined &&
+    Object.keys(generated).length === 0
+  ) {
+    return undefined;
   }
 
-  return {
+  const result: EaCInterfacePageDataType = {
     Generated: generated,
-    Custom: custom,
   };
+
+  if (custom !== undefined) {
+    result.Custom = custom;
+  }
+
+  return result;
 }
 
 export function clonePageDataType(
