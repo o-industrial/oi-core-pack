@@ -22,7 +22,7 @@
     "check": "deno fmt --check && deno lint && deno check **/*.ts && deno check **/*.tsx",
     "deploy": "npx rimraf cov && deno task build && ftm git",
     "publish:check": "deno publish --dry-run --allow-dirty",
-    "test": "npx rimraf cov && deno test -A ./tests/tests.ts --coverage=cov",
+    "test": "npx rimraf cov && deno test -A --unstable-detect-cjs --coverage=cov --coverage-raw-data-only ./tests/tests.ts",
     "version": "deno run -A jsr:@fathym/common@0.2.267/build/version"
   },
   "exclude": ["**/_eac-runtime/*", "!src/**/.exports.ts", "!mod.ts"],
