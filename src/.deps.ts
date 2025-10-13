@@ -72,6 +72,7 @@ export { TemplateEditor } from './capabilities/simulator/views/TemplateEditor.ts
 export { VariablesEditor } from './capabilities/simulator/views/VariablesEditor.tsx';
 export { LinePreviewWithValue } from './capabilities/shared/LinePreviewWithValue.tsx';
 export { parseTimeAgoString } from './capabilities/shared/utils/parseTimeAgoString.ts';
+export { LineSparkSVG } from './capabilities/shared/charts/LineSparkSVG.tsx'
 
 export {
   AziPanel,
