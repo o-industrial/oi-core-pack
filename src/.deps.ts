@@ -133,8 +133,8 @@ export {
   SimulatorCard,
   SimulatorPackCard,
   WorkspaceNodeRendererBase,
-} from 'jsr:@o-industrial/atomic@0.0.40/organisms';
-// } from '../../open-industrial-atomic/src/organisms/.exports.ts';
+} from 'jsr:@o-industrial/atomic@0.0.46-azi-cleanup/organisms';
+ //} from '../../open-industrial-atomic/src/organisms/.exports.ts';
 
 export * from './runtime/modals/.exports.ts';
 
@@ -144,7 +144,7 @@ export { interfacePageDataToSchema, shaHash } from 'jsr:@o-industrial/common@0.0
 
 export { OpenIndustrialAPIClient } from 'jsr:@o-industrial/common@0.0.499/api';
 
-export { IntentTypes, RuntimeStatsSchema } from 'jsr:@o-industrial/common@0.0.499/types';
+export { IntentTypes, RuntimeStatsSchema, type AzureDataExplorerOutput } from 'jsr:@o-industrial/common@0.0.499/types';
 export type {
   AccountProfile,
   IngestOption,
