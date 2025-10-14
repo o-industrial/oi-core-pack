@@ -17,8 +17,8 @@ export type ManageWorkspacesModalProps = {
 export function ManageWorkspacesModal(
   { workspaceMgr, onClose }: ManageWorkspacesModalProps,
 ): JSX.Element {
-  const { currentWorkspace, workspaces, switchToWorkspace, createWorkspace } = workspaceMgr
-    .UseWorkspaceSettings();
+  const { currentWorkspace, workspaces, switchToWorkspace, createWorkspace, listWorkspaces } =
+    workspaceMgr.UseWorkspaceSettings();
 
   const [filter, setFilter] = useState('');
   const [showCreate, setShowCreate] = useState(false);
@@ -59,14 +59,41 @@ export function ManageWorkspacesModal(
               >
                 Archive
               </Action>
-              <Action
-                styleType={ActionStyleTypes.Link}
-                intentType={IntentTypes.Error}
-                onClick={() =>
-                  alert('Delete not implemented')}
-              >
-                Delete
-              </Action>
+              {ws.Lookup !== currentWorkspace.Lookup && (
+                <Action
+                  styleType={ActionStyleTypes.Link}
+                  intentType={IntentTypes.Error}
+                  onClick={async () => {
+                    const name = ws.Details.Name ?? ws.Lookup;
+                    const ok = confirm(
+                      `Are you sure you want to delete workspace "${name}"? This action cannot be undone.`,
+                    );
+                    if (!ok) return;
+
+                    try {
+                      const res = await fetch('/workspace/api/workspaces/delete', {
+                        method: 'POST',
+                        headers: { 'content-type': 'application/json' },
+                        body: JSON.stringify({ WorkspaceLookup: ws.Lookup }),
+                      });
+
+                      if (!res.ok) {
+                        const msg = await res.text();
+                        alert(`Failed to delete workspace: ${msg || res.status}`);
+                        return;
+                      }
+
+                      // Refresh list
+                      listWorkspaces();
+                    } catch (err) {
+                      console.error('Delete workspace failed', err);
+                      alert('Failed to delete workspace.');
+                    }
+                  }}
+                >
+                  Delete
+                </Action>
+              )}
               {ws.Lookup !== currentWorkspace.Lookup && (
                 <Action
                   styleType={ActionStyleTypes.Link}
@@ -170,6 +197,7 @@ export function ManageWorkspacesModal(
             >
               + Create New Workspace
             </Action>
+            <Action onClick={onClose}>Close</Action>
           </div>
         </div>
       </Modal>

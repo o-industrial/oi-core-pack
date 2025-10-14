@@ -185,7 +185,7 @@ export function getWorkspaceRuntimeMenus(
         {
           type: 'item',
           id: 'workspace.viewAll',
-          label: 'View All�',
+          label: 'View All...',
           iconSrc: icons.stack,
           payload: { target: 'workspace-index' },
         },
