@@ -435,7 +435,7 @@ export const SurfaceWarmQueryModal: FunctionalComponent<
         <div class='w-1/3 min-h-0 border-l border-gray-700 pl-4'>
           <AziPanel
             workspaceMgr={workspace}
-            panelLabel='WARM QUERYS WITH AZI'
+            title='WARM QUERYS WITH AZI'
             onStartSend={onAziStartSend}
             onFinishSend={onAziFinishSend}
             onStateChange={onAziStateChange}
