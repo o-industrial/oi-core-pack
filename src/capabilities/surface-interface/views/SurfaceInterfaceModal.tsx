@@ -16,12 +16,23 @@ import {
 import type {
   EaCInterfaceCodeBlock,
   EaCInterfaceDetails,
+  EaCInterfaceGeneratedDataSlice,
+  EaCInterfacePageDataType,
+  EverythingAsCodeOIWorkspace,
+  JSONSchema7,
   JSX,
   SurfaceInterfaceSettings,
 } from '../../../.deps.ts';
 import { marked } from 'npm:marked@15.0.1';
-import { ensureInterfaceDetails } from '../interfaceDefaults.ts';
+import {
+  clonePageDataType,
+  ensureInterfaceDetails,
+  ensurePageDataType,
+} from '../interfaceDefaults.ts';
+import { SurfaceInterfacePageDataTab } from './SurfaceInterfacePageDataTab.tsx';
 import { SurfaceInterfaceImportsTab } from './SurfaceInterfaceImportsTab.tsx';
+import { reconcileInterfacePageData } from '../pageDataHelpers.ts';
+import { interfacePageDataToSchema } from '../../../.deps.ts';
 
 type SurfaceInterfaceModalProps = {
   isOpen: boolean;
@@ -53,6 +64,7 @@ export function SurfaceInterfaceModal({
   interfaceLookup,
   surfaceLookup,
   details,
+  settings,
   workspaceMgr,
   onDetailsChange,
 }: SurfaceInterfaceModalProps): JSX.Element | null {
@@ -65,9 +77,22 @@ export function SurfaceInterfaceModal({
 
   const [imports, setImports] = useState(resolvedDetails.Imports ?? []);
   const [importsInvalid, setImportsInvalid] = useState(false);
-  const [pageDataType, setPageDataType] = useState(
-    resolvedDetails.PageDataType ?? '{\n  message: string;\n}',
+  const [pageDataType, setPageDataType] = useState<EaCInterfacePageDataType>(() => {
+    const workspace = workspaceMgr.EaC.GetEaC?.() as
+      | EverythingAsCodeOIWorkspace
+      | undefined;
+    return reconcileInterfacePageData(
+      ensurePageDataType(resolvedDetails.PageDataType),
+      settings,
+      workspace,
+      surfaceLookup,
+      interfaceLookup,
+    );
+  });
+  const [customSchemaText, setCustomSchemaText] = useState(() =>
+    formatCustomSchema(pageDataType.Custom)
   );
+  const [customSchemaError, setCustomSchemaError] = useState<string | undefined>(undefined);
 
   const [handlerCode, setHandlerCode] = useState(
     resolvedDetails.PageHandler?.Code ?? '',
@@ -106,7 +131,20 @@ export function SurfaceInterfaceModal({
 
   useEffect(() => {
     setImports(resolvedDetails.Imports ?? []);
-    setPageDataType(resolvedDetails.PageDataType ?? '{\n  message: string;\n}');
+
+    const workspace = workspaceMgr.EaC.GetEaC?.() as
+      | EverythingAsCodeOIWorkspace
+      | undefined;
+    const reconciled = reconcileInterfacePageData(
+      ensurePageDataType(resolvedDetails.PageDataType),
+      settings,
+      workspace,
+      surfaceLookup,
+      interfaceLookup,
+    );
+    setPageDataType(reconciled);
+    setCustomSchemaText(formatCustomSchema(reconciled.Custom));
+    setCustomSchemaError(undefined);
 
     setHandlerCode(resolvedDetails.PageHandler?.Code ?? '');
     setHandlerDescription(resolvedDetails.PageHandler?.Description ?? '');
@@ -118,7 +156,20 @@ export function SurfaceInterfaceModal({
     setPageDescription(resolvedDetails.Page?.Description ?? '');
     setPageMessagesText(formatMessages(resolvedDetails.Page?.Messages));
     setImportsInvalid(false);
-  }, [resolvedDetails]);
+  }, [resolvedDetails, settings, workspaceMgr, surfaceLookup, interfaceLookup]);
+
+  const generatedSlices = pageDataType.Generated;
+  const generatedSliceEntries = useMemo(
+    () =>
+      Object.entries(generatedSlices) as Array<
+        [string, EaCInterfaceGeneratedDataSlice]
+      >,
+    [generatedSlices],
+  );
+  const enabledGeneratedCount = useMemo(
+    () => generatedSliceEntries.filter(([, slice]) => slice.Enabled !== false).length,
+    [generatedSliceEntries],
+  );
 
   const interfaceAzi = workspaceMgr.InterfaceAzis?.[interfaceLookup];
   const enterpriseLookup = workspaceMgr.EaC.GetEaC().EnterpriseLookup ?? 'workspace';
@@ -132,7 +183,7 @@ export function SurfaceInterfaceModal({
           resolvedDetails.PageHandler,
           resolvedDetails.Page,
           resolvedDetails.Imports ?? [],
-          resolvedDetails.PageDataType ?? '',
+          ensurePageDataType(resolvedDetails.PageDataType),
           resolvedDetails.PageHandler?.Code ?? '',
           resolvedDetails.PageHandler?.Description ?? '',
           formatMessages(resolvedDetails.PageHandler?.Messages),
@@ -153,7 +204,7 @@ export function SurfaceInterfaceModal({
   }, [resolvedSnapshot]);
 
   const nextDetails = useMemo(() => {
-    if (importsInvalid) return null;
+    if (importsInvalid || customSchemaError) return null;
 
     return buildInterfaceDetailsPatch(
       resolvedDetails.PageHandler,
@@ -171,6 +222,7 @@ export function SurfaceInterfaceModal({
     );
   }, [
     importsInvalid,
+    customSchemaError,
     resolvedDetails.PageHandler,
     resolvedDetails.Page,
     imports,
@@ -193,13 +245,70 @@ export function SurfaceInterfaceModal({
     onDetailsChange(nextDetails);
   }, [nextDetails, onDetailsChange]);
 
+  const handleGeneratedSliceToggle = (key: string, enabled: boolean) => {
+    setPageDataType((current) => {
+      const slice = current.Generated[key];
+      if (!slice) return current;
+      return {
+        ...current,
+        Generated: {
+          ...current.Generated,
+          [key]: {
+            ...slice,
+            Enabled: enabled,
+          },
+        },
+      };
+    });
+  };
+
+  const handleCustomSchemaTextChange = (nextText: string) => {
+    setCustomSchemaText(nextText);
+    const { schema, error } = parseCustomSchema(nextText);
+    if (error) {
+      setCustomSchemaError(error);
+      return;
+    }
+
+    setCustomSchemaError(undefined);
+    setPageDataType((current) => ({
+      ...current,
+      Custom: schema,
+    }));
+  };
+
   const extraInputs = useMemo(
     () => ({
       interfaceLookup,
       surfaceLookup,
       enterpriseLookup,
       imports,
-      pageDataType,
+      pageData: {
+        summary: {
+          enabledSlices: enabledGeneratedCount,
+          totalSlices: generatedSliceEntries.length,
+        },
+        schema: interfacePageDataToSchema(pageDataType),
+        generated: generatedSliceEntries.map(([key, slice]) => ({
+          key,
+          label: slice.Label,
+          enabled: slice.Enabled !== false,
+          source: slice.SourceCapability,
+          hydration: slice.Hydration,
+          actionCount: slice.Actions?.length ?? 0,
+          actions: slice.Actions?.map((action) => ({
+            key: action.Key,
+            label: action.Label,
+            mode: action.Invocation?.Mode,
+            type: action.Invocation?.Type,
+          })),
+        })),
+        customSchemaPreview: customSchemaText
+          ? customSchemaText.length > 240
+            ? `${customSchemaText.slice(0, 240)}...`
+            : customSchemaText
+          : undefined,
+      },
       handler: {
         code: handlerCode,
         description: handlerDescription,
@@ -217,6 +326,9 @@ export function SurfaceInterfaceModal({
       enterpriseLookup,
       imports,
       pageDataType,
+      customSchemaText,
+      generatedSliceEntries,
+      enabledGeneratedCount,
       handlerCode,
       handlerDescription,
       handlerMessagesText,
@@ -242,17 +354,13 @@ export function SurfaceInterfaceModal({
       key: TAB_DATA,
       label: 'Page Data',
       content: (
-        <div class='flex h-full min-h-0 flex-col gap-2'>
-          <CodeMirrorEditor
-            fileContent={pageDataType}
-            onContentChange={setPageDataType}
-            class='flex-1 min-h-0 [&>.cm-editor]:h-full [&>.cm-editor]:min-h-0'
-          />
-          <p class='text-xs text-neutral-400'>
-            Provide the structure returned from `loadPageData`. This snippet becomes the
-            interface&apos;s TypeScript contract.
-          </p>
-        </div>
+        <SurfaceInterfacePageDataTab
+          generatedSlices={generatedSliceEntries}
+          customSchemaText={customSchemaText}
+          customSchemaError={customSchemaError}
+          onToggleSlice={handleGeneratedSliceToggle}
+          onCustomSchemaTextChange={handleCustomSchemaTextChange}
+        />
       ),
     },
     {
@@ -619,7 +727,7 @@ function buildInterfaceDetailsPatch(
   baseHandler: EaCInterfaceCodeBlock | undefined,
   basePage: EaCInterfaceCodeBlock | undefined,
   imports: string[],
-  pageDataType: string,
+  pageDataType: EaCInterfacePageDataType,
   handlerCode: string,
   handlerDescription: string,
   handlerMessages: string,
@@ -631,7 +739,7 @@ function buildInterfaceDetailsPatch(
 ): Partial<EaCInterfaceDetails> {
   return {
     Imports: imports.length ? imports : undefined,
-    PageDataType: pageDataType.trim().length ? pageDataType : undefined,
+    PageDataType: clonePageDataType(pageDataType),
     PageHandler: buildCodeBlock(
       baseHandler,
       handlerCode,
@@ -647,4 +755,37 @@ function buildInterfaceDetailsPatch(
       pageMessageGroups,
     ),
   };
+}
+
+function formatCustomSchema(schema: JSONSchema7 | undefined): string {
+  if (!schema) return '';
+  try {
+    return JSON.stringify(schema, null, 2);
+  } catch {
+    return '';
+  }
+}
+
+function parseCustomSchema(
+  schemaText: string,
+): { schema?: JSONSchema7; error?: string } {
+  const trimmed = schemaText.trim();
+  if (!trimmed) {
+    return { schema: undefined };
+  }
+
+  try {
+    const parsed = JSON.parse(schemaText);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return {
+        error: 'Page data schema must be a JSON object.',
+      };
+    }
+
+    return { schema: parsed as JSONSchema7 };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : 'Invalid JSON schema.',
+    };
+  }
 }

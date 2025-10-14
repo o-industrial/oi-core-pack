@@ -1,4 +1,4 @@
-import { JSX, Modal, useState, WorkspaceManager } from '../../../.deps.ts';
+import { JSX, MarketingHighlightCard, Modal, useState, WorkspaceManager } from '../../../.deps.ts';
 
 export type DataAPISuiteModalProps = {
   workspaceMgr: WorkspaceManager;
@@ -136,22 +136,14 @@ export function DataAPISuiteModal({
 
         <section class='grid gap-6 md:grid-cols-2'>
           {highlights.map((item) => (
-            <div class='group relative overflow-hidden rounded-3xl border border-slate-700/50 bg-neutral-900/70 p-6 shadow-xl transition-transform duration-300 hover:-translate-y-1 hover:border-slate-500/60'>
-              <div
-                class={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${item.accent} opacity-80`}
-              />
-              <div class='relative flex items-start gap-4'>
-                <div
-                  class={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${item.accent} text-slate-900 shadow-lg`}
-                >
-                  {item.icon}
-                </div>
-                <div class='space-y-2'>
-                  <h4 class='text-lg font-semibold text-white'>{item.title}</h4>
-                  <p class='text-sm leading-relaxed text-slate-300'>{item.description}</p>
-                </div>
-              </div>
-            </div>
+            <MarketingHighlightCard
+              key={item.title}
+              variant='onyx'
+              accentGradient={item.accent}
+              title={item.title}
+              description={item.description}
+              icon={item.icon}
+            />
           ))}
         </section>
 

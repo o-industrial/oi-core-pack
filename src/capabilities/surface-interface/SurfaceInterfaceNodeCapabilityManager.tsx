@@ -1,6 +1,11 @@
 // deno-lint-ignore-file no-explicit-any
-//import { NodePreset, Position } from '../../.deps.ts';
-import { EaCInterfaceAsCode, EaCInterfaceDetails, SurfaceInterfaceSettings } from '../../.deps.ts';
+import { NodePreset, Position } from '../../.deps.ts';
+import {
+  EaCInterfaceAsCode,
+  EaCInterfaceDetails,
+  EaCInterfaceGeneratedDataSlice,
+  SurfaceInterfaceSettings,
+} from '../../.deps.ts';
 import { EverythingAsCodeOIWorkspace } from '../../.deps.ts';
 import {
   CapabilityValidationResult,
@@ -38,7 +43,10 @@ export class SurfaceInterfaceNodeCapabilityManager
 
     const { surfaceLookup, settings } = this.resolveSurfaceSettings(node.ID, context);
 
-    const interfaceDetails = ensureInterfaceDetails(interfaceEntry.Details, node.ID);
+    const interfaceDetails = ensureInterfaceDetails(
+      interfaceEntry.Details as EaCInterfaceDetails | undefined,
+      node.ID,
+    );
 
     const mergedDetails: SurfaceInterfaceNodeDetails = {
       ...interfaceDetails,
@@ -152,7 +160,7 @@ export class SurfaceInterfaceNodeCapabilityManager
 
     const interfaceUpdate: Partial<EaCInterfaceAsCode> = {};
     if (Object.keys(interfacePatch).length > 0) {
-      interfaceUpdate.Details = interfacePatch as EaCInterfaceDetails;
+      interfaceUpdate.Details = interfacePatch as unknown as EaCInterfaceDetails | undefined;
     }
 
     if (Object.keys(interfaceUpdate).length > 0) {
@@ -363,7 +371,10 @@ export class SurfaceInterfaceNodeCapabilityManager
       Type: this.Type,
       Label: interfaceEntry.Details?.Name ?? id,
       ...(metadata ? { Metadata: metadata } : {}),
-      Details: ensureInterfaceDetails(interfaceEntry.Details, id),
+      Details: ensureInterfaceDetails(
+        interfaceEntry.Details as EaCInterfaceDetails | undefined,
+        id,
+      ),
     };
   }
 
@@ -399,7 +410,10 @@ export class SurfaceInterfaceNodeCapabilityManager
     }
 
     const errors: CapabilityValidationResult['errors'] = [];
-    const details = ensureInterfaceDetails(interfaceEntry.Details, node.ID);
+    const details = ensureInterfaceDetails(
+      interfaceEntry.Details as EaCInterfaceDetails | undefined,
+      node.ID,
+    );
     const name = details.Name?.trim();
 
     if (!name) {
@@ -409,11 +423,18 @@ export class SurfaceInterfaceNodeCapabilityManager
       });
     }
 
-    const pageDataType = details.PageDataType?.trim();
-    if (!pageDataType) {
+    const pageDataSchema = details.PageDataType;
+    const generatedSlices: EaCInterfaceGeneratedDataSlice[] = pageDataSchema?.Generated
+      ? Object.values(pageDataSchema.Generated)
+      : [];
+    const hasEnabledSlice = generatedSlices.some((slice) => slice.Enabled !== false);
+    const hasCustomSchema = !!pageDataSchema?.Custom;
+
+    if (!pageDataSchema || (!hasEnabledSlice && !hasCustomSchema)) {
       errors.push({
         field: 'Details.PageDataType',
-        message: 'Define the page data contract for AI-assisted authoring.',
+        message:
+          'Define the page data schema slices or provide a custom schema for AI-assisted authoring.',
       });
     }
 
