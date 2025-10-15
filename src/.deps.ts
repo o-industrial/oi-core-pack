@@ -87,7 +87,7 @@ export {
   NodeStatTile,
   Select,
   ToggleCheckbox,
-} from 'jsr:@o-industrial/atomic@0.0.40/atoms';
+} from 'jsr:@o-industrial/atomic@0.0.52/atoms';
 export {
   CloudConnectAzureForm,
   type CloudConnectAzureFormProps,
@@ -99,11 +99,11 @@ export {
   type MenuRoot,
   Modal,
   TabbedPanel,
-} from 'jsr:@o-industrial/atomic@0.0.40/molecules';
+} from 'jsr:@o-industrial/atomic@0.0.52/molecules';
 export {
   EaCCreateSubscriptionController,
   type EaCCreateSubscriptionControllerProps,
-} from 'jsr:@o-industrial/atomic@0.0.40/organisms';
+} from 'jsr:@o-industrial/atomic@0.0.52/organisms';
 export {
   CloseIcon,
   DeleteIcon,
@@ -114,7 +114,7 @@ export {
   SettingsIcon,
   TriggerMatchIcon,
   UndoIcon,
-} from 'jsr:@o-industrial/atomic@0.0.40/icons';
+} from 'jsr:@o-industrial/atomic@0.0.52/icons';
 
 export { ConnectionInfoPanel } from './capabilities/connection/views/ConnectionInfoPanel.tsx';
 export { ConnectionManagementForm } from './capabilities/connection/views/ConnectionManagementForm.tsx';
@@ -125,16 +125,16 @@ export { TemplateEditor } from './capabilities/simulator/views/TemplateEditor.ts
 export { VariablesEditor } from './capabilities/simulator/views/VariablesEditor.tsx';
 export { LinePreviewWithValue } from './capabilities/shared/LinePreviewWithValue.tsx';
 export { parseTimeAgoString } from './capabilities/shared/utils/parseTimeAgoString.ts';
+export { LineSparkSVG } from './capabilities/shared/charts/LineSparkSVG.tsx';
 
 export {
   AziPanel,
   InspectorBase,
   SimulatorCard,
   SimulatorPackCard,
-  SurfaceWarmQueryModal,
   WorkspaceNodeRendererBase,
-} from 'jsr:@o-industrial/atomic@0.0.40/organisms';
-// } from '../../open-industrial-atomic/src/organisms/.exports.ts';
+} from 'jsr:@o-industrial/atomic@0.0.52/organisms';
+//} from '../../open-industrial-atomic/src/organisms/.exports.ts';
 
 export * from './runtime/modals/.exports.ts';
 
@@ -144,7 +144,11 @@ export { interfacePageDataToSchema, shaHash } from 'jsr:@o-industrial/common@0.0
 
 export { OpenIndustrialAPIClient } from 'jsr:@o-industrial/common@0.0.499/api';
 
-export { IntentTypes, RuntimeStatsSchema } from 'jsr:@o-industrial/common@0.0.499/types';
+export {
+  type AzureDataExplorerOutput,
+  IntentTypes,
+  RuntimeStatsSchema,
+} from 'jsr:@o-industrial/common@0.0.499/types';
 export type {
   AccountProfile,
   IngestOption,

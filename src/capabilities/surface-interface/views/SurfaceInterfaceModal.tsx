@@ -459,6 +459,7 @@ export function SurfaceInterfaceModal({
                 aziMgr={interfaceAzi}
                 renderMessage={(message) => marked.parse(message) as string}
                 extraInputs={extraInputs}
+                headerRightInset={0}
               />
             )
             : (
