@@ -87,7 +87,7 @@ export {
   NodeStatTile,
   Select,
   ToggleCheckbox,
-} from 'jsr:@o-industrial/atomic@0.0.52/atoms';
+} from 'jsr:@o-industrial/atomic@0.0.57-hmis/atoms';
 export {
   CloudConnectAzureForm,
   type CloudConnectAzureFormProps,
@@ -99,11 +99,11 @@ export {
   type MenuRoot,
   Modal,
   TabbedPanel,
-} from 'jsr:@o-industrial/atomic@0.0.52/molecules';
+} from 'jsr:@o-industrial/atomic@0.0.57-hmis/molecules';
 export {
   EaCCreateSubscriptionController,
   type EaCCreateSubscriptionControllerProps,
-} from 'jsr:@o-industrial/atomic@0.0.52/organisms';
+} from 'jsr:@o-industrial/atomic@0.0.57-hmis/organisms';
 export {
   CloseIcon,
   DeleteIcon,
@@ -114,7 +114,7 @@ export {
   SettingsIcon,
   TriggerMatchIcon,
   UndoIcon,
-} from 'jsr:@o-industrial/atomic@0.0.52/icons';
+} from 'jsr:@o-industrial/atomic@0.0.57-hmis/icons';
 
 export { ConnectionInfoPanel } from './capabilities/connection/views/ConnectionInfoPanel.tsx';
 export { ConnectionManagementForm } from './capabilities/connection/views/ConnectionManagementForm.tsx';
@@ -133,8 +133,8 @@ export {
   SimulatorCard,
   SimulatorPackCard,
   WorkspaceNodeRendererBase,
-} from 'jsr:@o-industrial/atomic@0.0.52/organisms';
-//} from '../../open-industrial-atomic/src/organisms/.exports.ts';
+} from 'jsr:@o-industrial/atomic@0.0.57-hmis/organisms';
+// } from '../../open-industrial-atomic/src/organisms/.exports.ts';
 
 export * from './runtime/modals/.exports.ts';
 
