@@ -125,13 +125,13 @@ export { TemplateEditor } from './capabilities/simulator/views/TemplateEditor.ts
 export { VariablesEditor } from './capabilities/simulator/views/VariablesEditor.tsx';
 export { LinePreviewWithValue } from './capabilities/shared/LinePreviewWithValue.tsx';
 export { parseTimeAgoString } from './capabilities/shared/utils/parseTimeAgoString.ts';
+export { LineSparkSVG } from './capabilities/shared/charts/LineSparkSVG.tsx'
 
 export {
   AziPanel,
   InspectorBase,
   SimulatorCard,
   SimulatorPackCard,
-  SurfaceWarmQueryModal,
   WorkspaceNodeRendererBase,
 } from 'jsr:@o-industrial/atomic@0.0.57-hmis/organisms';
 // } from '../../open-industrial-atomic/src/organisms/.exports.ts';
@@ -144,7 +144,7 @@ export { interfacePageDataToSchema, shaHash } from 'jsr:@o-industrial/common@0.0
 
 export { OpenIndustrialAPIClient } from 'jsr:@o-industrial/common@0.0.499/api';
 
-export { IntentTypes, RuntimeStatsSchema } from 'jsr:@o-industrial/common@0.0.499/types';
+export { IntentTypes, RuntimeStatsSchema, type AzureDataExplorerOutput } from 'jsr:@o-industrial/common@0.0.499/types';
 export type {
   AccountProfile,
   IngestOption,
