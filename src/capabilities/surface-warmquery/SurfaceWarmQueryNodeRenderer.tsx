@@ -3,14 +3,9 @@ import { NodeProps } from '../../.deps.ts';
 import { WorkspaceNodeRendererBase } from '../../.deps.ts';
 import { NodeHandle } from '../../.deps.ts';
 import { IntentTypes } from '../../.deps.ts';
-import {
-  Action,
-  ActionStyleTypes,
-  DeleteIcon,
-  LinePreviewWithValue,
-  NodeStatTile,
-  parseTimeAgoString,
-} from '../../.deps.ts';
+import { Action, ActionStyleTypes, DeleteIcon, NodeStatTile } from '../../.deps.ts';
+import { LinePreviewWithValue } from '../shared/LinePreviewWithValue.tsx';
+import { parseTimeAgoString } from '../shared/utils/parseTimeAgoString.ts';
 import { SurfaceWarmQueryNodeData } from './SurfaceWarmQueryNodeData.tsx';
 
 export default function SurfaceWarmQueryNodeRenderer({

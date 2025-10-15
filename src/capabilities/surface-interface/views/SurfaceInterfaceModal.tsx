@@ -1,3 +1,5 @@
+import { marked } from 'npm:marked@15.0.1';
+
 import {
   Action,
   ActionStyleTypes,
@@ -5,6 +7,7 @@ import {
   CodeMirrorEditor,
   Input,
   IntentTypes,
+  interfacePageDataToSchema,
   Modal,
   TabbedPanel,
   useEffect,
@@ -23,16 +26,14 @@ import type {
   JSX,
   SurfaceInterfaceSettings,
 } from '../../../.deps.ts';
-import { marked } from 'npm:marked@15.0.1';
 import {
   clonePageDataType,
   ensureInterfaceDetails,
   ensurePageDataType,
 } from '../interfaceDefaults.ts';
-import { SurfaceInterfacePageDataTab } from './SurfaceInterfacePageDataTab.tsx';
-import { SurfaceInterfaceImportsTab } from './SurfaceInterfaceImportsTab.tsx';
 import { reconcileInterfacePageData } from '../pageDataHelpers.ts';
-import { interfacePageDataToSchema } from '../../../.deps.ts';
+import { SurfaceInterfaceImportsTab } from './SurfaceInterfaceImportsTab.tsx';
+import { SurfaceInterfacePageDataTab } from './SurfaceInterfacePageDataTab.tsx';
 
 type SurfaceInterfaceModalProps = {
   isOpen: boolean;

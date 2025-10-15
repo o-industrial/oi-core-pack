@@ -1,9 +1,10 @@
 import { ReactPosition } from '../../.deps.ts';
-import { Action, ActionStyleTypes, DeleteIcon, LinePreviewWithValue } from '../../.deps.ts';
+import { Action, ActionStyleTypes, DeleteIcon } from '../../.deps.ts';
 import { NodeHandle } from '../../.deps.ts';
 import { WorkspaceNodeRendererBase } from '../../.deps.ts';
 import { IntentTypes } from '../../.deps.ts';
 import { NodeProps } from '../../.deps.ts';
+import { LinePreviewWithValue } from '../shared/LinePreviewWithValue.tsx';
 import { SurfaceSchemaNodeData } from './SurfaceSchemaNodeData.tsx';
 
 export default function SurfaceSchemaNodeRenderer({

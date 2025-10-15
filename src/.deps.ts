@@ -59,24 +59,6 @@ export {
 
 export type { EverythingAsCodeLicensing } from 'jsr:@fathym/eac-licensing@0.0.58';
 
-import type { CodeMirrorEditorProps as FathymCodeMirrorEditorProps } from 'jsr:@fathym/code-editor@0.0.35';
-
-const FallbackCodeMirrorEditor: FunctionalComponent<
-  FathymCodeMirrorEditorProps
-> = () => null;
-
-let CodeMirrorEditor: FunctionalComponent<FathymCodeMirrorEditorProps> = FallbackCodeMirrorEditor;
-
-if (IS_BROWSER) {
-  const mod = await import('jsr:@fathym/code-editor@0.0.35');
-  CodeMirrorEditor = mod.CodeMirrorEditor as FunctionalComponent<FathymCodeMirrorEditorProps>;
-}
-
-type ExtractCodeMirrorProps = FathymCodeMirrorEditorProps;
-
-export { CodeMirrorEditor };
-export type { ExtractCodeMirrorProps as CodeMirrorEditorProps };
-
 export {
   Action,
   ActionStyleTypes,
@@ -87,7 +69,9 @@ export {
   NodeStatTile,
   Select,
   ToggleCheckbox,
-} from 'jsr:@o-industrial/atomic@0.0.57-hmis/atoms';
+  // } from 'jsr:@o-industrial/atomic@0.0.57-hmis/atoms';
+} from '../../open-industrial-atomic/src/atoms/.exports.ts';
+
 export {
   CloudConnectAzureForm,
   type CloudConnectAzureFormProps,
@@ -99,11 +83,9 @@ export {
   type MenuRoot,
   Modal,
   TabbedPanel,
-} from 'jsr:@o-industrial/atomic@0.0.57-hmis/molecules';
-export {
-  EaCCreateSubscriptionController,
-  type EaCCreateSubscriptionControllerProps,
-} from 'jsr:@o-industrial/atomic@0.0.57-hmis/organisms';
+  // } from 'jsr:@o-industrial/atomic@0.0.57-hmis/molecules';
+} from '../../open-industrial-atomic/src/molecules/.exports.ts';
+
 export {
   CloseIcon,
   DeleteIcon,
@@ -116,27 +98,16 @@ export {
   UndoIcon,
 } from 'jsr:@o-industrial/atomic@0.0.57-hmis/icons';
 
-export { ConnectionInfoPanel } from './capabilities/connection/views/ConnectionInfoPanel.tsx';
-export { ConnectionManagementForm } from './capabilities/connection/views/ConnectionManagementForm.tsx';
-export { SurfaceManagementForm } from './capabilities/surface/views/SurfaceManagementForm.tsx';
-export { SurfaceConnectionManagementForm } from './capabilities/surface-connection/views/SurfaceConnectionManagementForm.tsx';
-export { SimulatorManagementForm } from './capabilities/simulator/views/SimulatorManagementForm.tsx';
-export { TemplateEditor } from './capabilities/simulator/views/TemplateEditor.tsx';
-export { VariablesEditor } from './capabilities/simulator/views/VariablesEditor.tsx';
-export { LinePreviewWithValue } from './capabilities/shared/LinePreviewWithValue.tsx';
-export { parseTimeAgoString } from './capabilities/shared/utils/parseTimeAgoString.ts';
-export { LineSparkSVG } from './capabilities/shared/charts/LineSparkSVG.tsx';
-
 export {
   AziPanel,
+  EaCCreateSubscriptionController,
+  type EaCCreateSubscriptionControllerProps,
   InspectorBase,
   SimulatorCard,
   SimulatorPackCard,
   WorkspaceNodeRendererBase,
-} from 'jsr:@o-industrial/atomic@0.0.57-hmis/organisms';
-// } from '../../open-industrial-atomic/src/organisms/.exports.ts';
-
-export * from './runtime/modals/.exports.ts';
+  // } from 'jsr:@o-industrial/atomic@0.0.57-hmis/organisms';
+} from '../../open-industrial-atomic/src/organisms/.exports.ts';
 
 export { type NodeEventRouter, type NodePreset } from 'jsr:@o-industrial/common@0.0.499/flow';
 
@@ -178,3 +149,21 @@ export {
 } from 'jsr:@o-industrial/common@0.0.499/flow';
 
 export type { JSONSchema7 } from 'npm:jsonschema7@0.8.0';
+
+import type { CodeMirrorEditorProps as FathymCodeMirrorEditorProps } from 'jsr:@fathym/code-editor@0.0.35';
+
+const FallbackCodeMirrorEditor: FunctionalComponent<
+  FathymCodeMirrorEditorProps
+> = () => null;
+
+let CodeMirrorEditor: FunctionalComponent<FathymCodeMirrorEditorProps> = FallbackCodeMirrorEditor;
+
+if (IS_BROWSER) {
+  const mod = await import('jsr:@fathym/code-editor@0.0.35');
+  CodeMirrorEditor = mod.CodeMirrorEditor as FunctionalComponent<FathymCodeMirrorEditorProps>;
+}
+
+type ExtractCodeMirrorProps = FathymCodeMirrorEditorProps;
+
+export { CodeMirrorEditor };
+export type { ExtractCodeMirrorProps as CodeMirrorEditorProps };

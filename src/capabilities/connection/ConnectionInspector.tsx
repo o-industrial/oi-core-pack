@@ -1,14 +1,10 @@
-import {
-  ConnectionInfoPanel,
-  ConnectionManagementForm,
-  InspectorBase,
-  JSX,
-  TabbedPanel,
-} from '../../.deps.ts';
+import { InspectorBase, JSX, TabbedPanel } from '../../.deps.ts';
 import { EaCAzureIoTHubDataConnectionDetails } from '../../.deps.ts';
 import { InspectorCommonProps } from '../../.deps.ts';
 import { DataConnectionConfig } from './DataConnectionConfig.ts';
 import { DataConnectionStats } from './DataConnectionStats.ts';
+import { ConnectionInfoPanel } from './views/ConnectionInfoPanel.tsx';
+import { ConnectionManagementForm } from './views/ConnectionManagementForm.tsx';
 
 type ConnectionInspectorProps = InspectorCommonProps<
   EaCAzureIoTHubDataConnectionDetails,

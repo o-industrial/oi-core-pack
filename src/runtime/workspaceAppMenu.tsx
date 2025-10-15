@@ -1,25 +1,25 @@
 import {
-  AccountProfileModal,
-  APIKeysModal,
-  BillingDetailsModal,
-  CloudConnectionsModal,
-  CurrentLicenseModal,
-  DataAPISuiteModal,
   type EverythingAsCode,
   type EverythingAsCodeClouds,
   type EverythingAsCodeLicensing,
   JSX,
-  ManageIoTModal,
-  ManageWorkspacesModal,
   type MenuRoot,
-  OEMIntegrationsModal,
-  PrivateCALZModal,
-  SimulatorLibraryModal,
-  TeamManagementModal,
-  WarmQueryAPIsModal,
   WorkspaceManager,
-  WorkspaceSettingsModal,
 } from '../.deps.ts';
+import APIKeysModal from './modals/apis/APIKeysModal.tsx';
+import DataAPISuiteModal from './modals/apis/DataAPISuiteModal.tsx';
+import WarmQueryAPIsModal from './modals/apis/WarmQueryAPIsModal.tsx';
+import BillingDetailsModal from './modals/billing/BillingDetailsModal.tsx';
+import CurrentLicenseModal from './modals/billing/CurrentLicenseModal.tsx';
+import CloudConnectionsModal from './modals/environment/CloudConnectionsModal.tsx';
+import ManageIoTModal from './modals/environment/ManageIoTModal.tsx';
+import OEMIntegrationsModal from './modals/environment/OEMIntegrationsModal.tsx';
+import PrivateCALZModal from './modals/environment/PrivateCALZModal.tsx';
+import { AccountProfileModal } from './modals/workspace/AccountProfileModal.tsx';
+import { ManageWorkspacesModal } from './modals/workspace/ManageWorkspacesModal.tsx';
+import { SimulatorLibraryModal } from './modals/workspace/SimulatorLibraryModal.tsx';
+import { TeamManagementModal } from './modals/workspace/TeamManagementModal.tsx';
+import { WorkspaceSettingsModal } from './modals/workspace/WorkspaceSettingsModal.tsx';
 
 export type WorkspaceAppMenuHandles = {
   handleMenu: (item: { id: string }) => void;

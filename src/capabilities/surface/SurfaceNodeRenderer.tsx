@@ -1,15 +1,11 @@
 import { NodeProps, useMemo } from '../../.deps.ts';
 import { ReactPosition } from '../../.deps.ts';
-import {
-  Action,
-  ActionStyleTypes,
-  LinePreviewWithValue,
-  NodeStatTile,
-  parseTimeAgoString,
-} from '../../.deps.ts';
+import { Action, ActionStyleTypes, NodeStatTile } from '../../.deps.ts';
 import { NodeHandle } from '../../.deps.ts';
 import { WorkspaceNodeRendererBase } from '../../.deps.ts';
 import { IntentTypes } from '../../.deps.ts';
+import { LinePreviewWithValue } from '../shared/LinePreviewWithValue.tsx';
+import { parseTimeAgoString } from '../shared/utils/parseTimeAgoString.ts';
 import { SurfaceNodeData } from './SurfaceNodeData.ts';
 
 export default function SurfaceNodeRenderer({

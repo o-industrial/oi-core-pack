@@ -4,7 +4,6 @@ import {
   DeleteIcon,
   IntentTypes,
   JSX,
-  LinePreviewWithValue,
   memo,
   NodeHandle,
   NodeProps,
@@ -12,6 +11,7 @@ import {
   TriggerMatchIcon,
   WorkspaceNodeRendererBase,
 } from '../../.deps.ts';
+import { LinePreviewWithValue } from '../shared/LinePreviewWithValue.tsx';
 import { DataConnectionNodeData } from './DataConnectionNodeData.tsx';
 
 export const MemoizedConnectionRenderer: ({

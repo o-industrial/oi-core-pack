@@ -1,7 +1,8 @@
-import { InspectorBase, JSX, SurfaceManagementForm, TabbedPanel } from '../../.deps.ts';
+import { InspectorBase, JSX, TabbedPanel } from '../../.deps.ts';
 import { EaCSurfaceDetails } from '../../.deps.ts';
 import { InspectorCommonProps } from '../../.deps.ts';
 import { SurfaceStats } from './SurfaceStats.ts';
+import { SurfaceManagementForm } from './views/SurfaceManagementForm.tsx';
 
 type SurfaceInspectorProps = InspectorCommonProps<
   EaCSurfaceDetails,

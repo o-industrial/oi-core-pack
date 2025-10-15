@@ -1,9 +1,13 @@
-import { InspectorBase, JSX, TabbedPanel } from '../../.deps.ts';
-import { EaCAzureDockerSimulatorDetails } from '../../.deps.ts';
-import { InspectorCommonProps } from '../../.deps.ts';
-import { SimulatorManagementForm } from '../../.deps.ts';
-import { VariablesEditor } from '../../.deps.ts';
-import { TemplateEditor } from '../../.deps.ts';
+import {
+  EaCAzureDockerSimulatorDetails,
+  InspectorBase,
+  InspectorCommonProps,
+  JSX,
+  TabbedPanel,
+} from '../../.deps.ts';
+import { SimulatorManagementForm } from './views/SimulatorManagementForm.tsx';
+import { TemplateEditor } from './views/TemplateEditor.tsx';
+import { VariablesEditor } from './views/VariablesEditor.tsx';
 
 type SimulatorStats = {
   impulseRates?: number[];

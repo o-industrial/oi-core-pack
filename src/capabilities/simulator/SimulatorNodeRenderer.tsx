@@ -1,15 +1,16 @@
-import { ReactPosition } from '../../.deps.ts';
 import {
   Action,
   ActionStyleTypes,
-  LinePreviewWithValue,
+  IntentTypes,
+  NodeHandle,
+  NodeProps,
   NodeStatTile,
-  parseTimeAgoString,
+  ReactPosition,
+  useMemo,
+  WorkspaceNodeRendererBase,
 } from '../../.deps.ts';
-import { NodeHandle } from '../../.deps.ts';
-import { WorkspaceNodeRendererBase } from '../../.deps.ts';
-import { IntentTypes } from '../../.deps.ts';
-import { NodeProps, useMemo } from '../../.deps.ts';
+import { LinePreviewWithValue } from '../shared/LinePreviewWithValue.tsx';
+import { parseTimeAgoString } from '../shared/utils/parseTimeAgoString.ts';
 import { SimulatorNodeData } from './SimulatorNodeData.tsx';
 
 export default function SimulatorNodeRenderer({

@@ -1,10 +1,12 @@
-import { NodeProps } from '../../.deps.ts';
-import { ReactPosition } from '../../.deps.ts';
-import { LinePreviewWithValue } from '../../.deps.ts';
-import { NodeHandle } from '../../.deps.ts';
-import { IntentTypes } from '../../.deps.ts';
+import {
+  IntentTypes,
+  NodeHandle,
+  NodeProps,
+  ReactPosition,
+  WorkspaceNodeRendererBase,
+} from '../../.deps.ts';
+import { LinePreviewWithValue } from '../shared/LinePreviewWithValue.tsx';
 import { SurfaceConnectionNodeData } from './SurfaceConnectionNodeData.tsx';
-import { WorkspaceNodeRendererBase } from '../../.deps.ts';
 
 export default function SurfaceConnectionNodeRenderer({
   data,
