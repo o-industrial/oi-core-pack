@@ -9,12 +9,12 @@ import {
   InspectorCommonProps,
   JSX,
   shaHash,
-  SurfaceWarmQueryModal,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from '../../.deps.ts';
+import { SurfaceWarmQueryModal } from '../../runtime/modals/workspace/SurfaceWarmQueryModal.tsx';
 import { SurfaceWarmQueryStats } from './SurfaceWarmQueryStats.tsx';
 
 type SurfaceWarmQueryInspectorProps = InspectorCommonProps<
