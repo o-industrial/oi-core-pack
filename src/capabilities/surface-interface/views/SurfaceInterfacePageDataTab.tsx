@@ -19,22 +19,24 @@ import type {
 
 type SurfaceInterfacePageDataTabProps = {
   generatedSlices: Array<[string, EaCInterfaceGeneratedDataSlice]>;
-  onToggleSlice: (key: string, enabled: boolean) => void;
   onAccessModeChange: (key: string, mode: EaCInterfacePageDataAccessMode) => void;
   onDataConnectionChange: (
     key: string,
     features: EaCInterfaceDataConnectionFeatures | undefined,
   ) => void;
+  onActionModeChange: (
+    sliceKey: string,
+    actionKey: string,
+    mode: EaCInterfacePageDataActionInvocationMode,
+  ) => void;
 };
 
 export function SurfaceInterfacePageDataTab({
   generatedSlices,
-  onToggleSlice,
   onAccessModeChange,
   onDataConnectionChange,
+  onActionModeChange,
 }: SurfaceInterfacePageDataTabProps): JSX.Element {
-  const enabledCount = generatedSlices.filter(([, slice]) => slice.Enabled !== false).length;
-
   return (
     <div class='flex h-full min-h-0 flex-col gap-4'>
       <section class='flex flex-1 min-h-0 flex-col gap-3'>
@@ -42,12 +44,12 @@ export function SurfaceInterfacePageDataTab({
           <div>
             <h3 class='text-sm font-semibold text-neutral-100'>Generated Data Contracts</h3>
             <p class='text-xs text-neutral-400'>
-              Review the slices supplied by connected capabilities. Enable the slices you want and
-              control where the data is available (handler, client, or both).
+              Review the slices supplied by connected capabilities and tune how each one is exposed
+              to your handler or client consumers.
             </p>
           </div>
           <Badge intentType={IntentTypes.Secondary} class='text-[11px] uppercase tracking-wide'>
-            {enabledCount} enabled
+            {generatedSlices.length} connected
           </Badge>
         </header>
 
@@ -64,10 +66,9 @@ export function SurfaceInterfacePageDataTab({
                 <GeneratedSliceCard
                   key={key}
                   sliceKey={key}
-                  slice={slice}
-                  onToggle={onToggleSlice}
-                  onAccessModeChange={onAccessModeChange}
+                  slice={slice}                  onAccessModeChange={onAccessModeChange}
                   onDataConnectionChange={onDataConnectionChange}
+                  onActionModeChange={onActionModeChange}
                 />
               ))
             )}
@@ -80,26 +81,32 @@ export function SurfaceInterfacePageDataTab({
 type GeneratedSliceCardProps = {
   sliceKey: string;
   slice: EaCInterfaceGeneratedDataSlice;
-  onToggle: (key: string, enabled: boolean) => void;
   onAccessModeChange: (key: string, mode: EaCInterfacePageDataAccessMode) => void;
   onDataConnectionChange: (
     key: string,
     features: EaCInterfaceDataConnectionFeatures | undefined,
+  ) => void;
+  onActionModeChange: (
+    sliceKey: string,
+    actionKey: string,
+    mode: EaCInterfacePageDataActionInvocationMode,
   ) => void;
 };
 
 function GeneratedSliceCard({
   sliceKey,
   slice,
-  onToggle,
   onAccessModeChange,
   onDataConnectionChange,
+  onActionModeChange,
 }: GeneratedSliceCardProps): JSX.Element {
-  const enabled = slice.Enabled !== false;
   const hydrationSummary = describeHydration(slice.Hydration);
   const schemaSummary = summarizeSchema(slice.Schema);
   const accessMode = slice.AccessMode ?? 'both';
+  const sliceAllowsHandler = accessMode !== 'client';
+  const sliceAllowsClient = accessMode !== 'server';
   const isDataConnection = (slice.SourceCapability ?? '').startsWith('dataConnection:');
+  const capabilityLabel = slice.SourceCapability;
 
   const handleAccessModeSelect = (mode: EaCInterfacePageDataAccessMode) => {
     onAccessModeChange(sliceKey, mode);
@@ -114,30 +121,25 @@ function GeneratedSliceCard({
   };
 
   return (
-    <div
-      class={`rounded-lg border bg-neutral-950 px-3 py-3 transition-colors ${
-        enabled ? 'border-teal-500/40' : 'border-neutral-800'
-      }`}
-    >
-      <div class='flex items-start justify-between gap-3'>
-        <div class='space-y-1'>
-          <p class='text-sm font-semibold text-neutral-50'>
+    <div class='rounded-lg border border-neutral-800 bg-neutral-950 px-4 py-4 text-sm text-neutral-100'>
+      <div class='space-y-2'>
+        <div class='flex flex-wrap items-center gap-2'>
+          <p class='text-base font-semibold text-neutral-100'>
             {slice.Label ?? sliceKey}
           </p>
-          {slice.Description && <p class='text-xs text-neutral-400'>{slice.Description}</p>}
-          <div class='flex flex-wrap gap-2 text-[11px] uppercase tracking-wide text-neutral-500'>
-            {slice.SourceCapability && <span>{slice.SourceCapability}</span>}
-            {hydrationSummary && <span>{hydrationSummary}</span>}
-          </div>
-          {schemaSummary && <p class='text-[11px] text-neutral-500'>Fields: {schemaSummary}</p>}
+          {capabilityLabel && (
+            <span class='rounded border border-teal-500/30 bg-teal-500/10 px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wide text-teal-200'>
+              {capabilityLabel}
+            </span>
+          )}
         </div>
-        <ToggleCheckbox
-          checked={enabled}
-          onToggle={(checked) => onToggle(sliceKey, checked)}
-          title={enabled ? 'Disable slice' : 'Enable slice'}
-          checkedIntentType={IntentTypes.Secondary}
-          uncheckedIntentType={IntentTypes.Error}
-        />
+        {slice.Description && (
+          <p class='text-xs text-neutral-400'>{slice.Description}</p>
+        )}
+        <div class='flex flex-wrap gap-2 text-[11px] uppercase tracking-wide text-neutral-500'>
+          {hydrationSummary && <span>{hydrationSummary}</span>}
+          {schemaSummary && <span>Fields: {schemaSummary}</span>}
+        </div>
       </div>
 
       <div class='mt-3 space-y-3 text-xs text-neutral-200'>
@@ -164,8 +166,7 @@ function GeneratedSliceCard({
             ))}
           </div>
           <p class='mt-1 text-[11px] text-neutral-500'>
-            Determines where this slice is hydrated. Use handler-only for sensitive server data,
-            client-only for UI helpers, or both for shared state.
+            Choose where this slice hydrates data for your interface.
           </p>
         </div>
 
@@ -177,38 +178,121 @@ function GeneratedSliceCard({
         )}
 
         {slice.Actions && slice.Actions.length > 0 && (
-          <div class='space-y-2'>
+          <div class='space-y-2 text-xs text-neutral-200'>
             <p class='font-semibold text-neutral-200'>Actions</p>
-            <ul class='space-y-1'>
-              {slice.Actions.map((action: EaCInterfacePageDataAction) => (
-                <li
-                  key={action.Key}
-                  class='flex items-start justify-between gap-2 rounded border border-neutral-900 bg-neutral-950/70 px-2 py-1 text-neutral-300'
-                >
-                  <div class='flex-1'>
-                    <p class='font-medium text-neutral-100'>
-                      {action.Label ?? action.Key}
-                    </p>
-                    {action.Description && (
-                      <p class='text-[11px] text-neutral-500'>{action.Description}</p>
-                    )}
-                  </div>
-                  <div class='flex flex-col items-end gap-1 text-[10px] uppercase tracking-wide'>
-                    {action.Invocation?.Type && (
-                      <Badge intentType={IntentTypes.Info} class='text-[10px] uppercase tracking-wide'>
-                        {action.Invocation.Type}
-                        {action.Invocation.Lookup ? ` · ${action.Invocation.Lookup}` : ''}
-                      </Badge>
-                    )}
-                    {action.Invocation?.Mode && (
-                      <span class='text-neutral-500'>{action.Invocation.Mode} call</span>
-                    )}
-                  </div>
-                </li>
-              ))}
+            <ul class='space-y-2'>
+              {slice.Actions.map((action: EaCInterfacePageDataAction) => {
+                const invocationMode = action.Invocation?.Mode ?? 'both';
+
+                const supportsHandler = invocationMode !== 'client';
+                const supportsClient = invocationMode !== 'server';
+
+                const handlerSelectable = supportsHandler && sliceAllowsHandler;
+                const clientSelectable = supportsClient && sliceAllowsClient;
+
+                const handlerSelected = invocationMode === 'server' || invocationMode === 'both';
+                const clientSelected = invocationMode === 'client' || invocationMode === 'both';
+
+                const handlerActive = handlerSelectable && handlerSelected;
+                const clientActive = clientSelectable && clientSelected;
+
+                const chipClass = (active: boolean, disabled: boolean) =>
+                  `rounded border px-2 py-1 text-xs transition ${
+                    disabled
+                      ? 'border-neutral-800 bg-neutral-900 text-neutral-500 opacity-60 cursor-not-allowed'
+                      : active
+                      ? 'border-emerald-400 bg-emerald-500/10 text-emerald-200'
+                      : 'border-neutral-700 bg-neutral-900 text-neutral-300 hover:border-neutral-500'
+                  }`;
+
+                const toggleSurface = (surface: 'server' | 'client') => {
+                  const isHandler = surface === 'server';
+                  const selectable = isHandler ? handlerSelectable : clientSelectable;
+                  if (!selectable) return;
+
+                  if (accessMode === 'server') {
+                    if (isHandler) onActionModeChange(sliceKey, action.Key, 'server');
+                    return;
+                  }
+
+                  if (accessMode === 'client') {
+                    if (!isHandler) onActionModeChange(sliceKey, action.Key, 'client');
+                    return;
+                  }
+
+                  let nextHandler = handlerSelected;
+                  let nextClient = clientSelected;
+
+                  if (isHandler) {
+                    nextHandler = !nextHandler;
+                  } else {
+                    nextClient = !nextClient;
+                  }
+
+                  if (!nextHandler && !nextClient) {
+                    return;
+                  }
+
+                  let nextMode: EaCInterfacePageDataActionInvocationMode;
+                  if (nextHandler && nextClient) nextMode = 'both';
+                  else if (nextHandler) nextMode = 'server';
+                  else nextMode = 'client';
+
+                  onActionModeChange(sliceKey, action.Key, nextMode);
+                };
+
+                const actionUnavailable = !handlerSelectable && !clientSelectable;
+
+                return (
+                  <li
+                    key={action.Key}
+                    class='rounded border border-neutral-900 bg-neutral-950/70 px-3 py-2 text-neutral-200'
+                  >
+                    <div class='flex flex-col gap-2'>
+                      <div class='flex flex-wrap items-center gap-2'>
+                        <span class='font-medium text-neutral-100'>
+                          {action.Label ?? action.Key}
+                        </span>
+                        {action.Invocation?.Type && (
+                          <span class='rounded border border-blue-500/30 bg-blue-500/10 px-2 py-[1px] text-[10px] uppercase tracking-wide text-blue-200'>
+                            {action.Invocation.Type}
+                          </span>
+                        )}
+                      </div>
+                      {action.Description && (
+                        <p class='text-[11px] text-neutral-500'>{action.Description}</p>
+                      )}
+                      <div class='flex flex-wrap gap-2'>
+                        <button
+                          type='button'
+                          class={chipClass(handlerActive, !handlerSelectable)}
+                          disabled={!handlerSelectable}
+                          onClick={() => toggleSurface('server')}
+                        >
+                          Handler
+                        </button>
+                        <button
+                          type='button'
+                          class={chipClass(clientActive, !clientSelectable)}
+                          disabled={!clientSelectable}
+                          onClick={() => toggleSurface('client')}
+                        >
+                          Client
+                        </button>
+                      </div>
+                      {actionUnavailable && (
+                        <p class='text-[11px] text-amber-400'>
+                          This action is unavailable with the current availability settings.
+                        </p>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           </div>
-        )}
+        )
+}
       </div>
     </div>
   );

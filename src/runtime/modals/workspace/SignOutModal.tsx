@@ -16,6 +16,14 @@ export type SignOutModalProps = {
 
 export function SignOutModal({ workspaceMgr, onClose }: SignOutModalProps): JSX.Element {
   const [ready, setReady] = useState(false);
+  const [videoSrc] = useState(() => {
+    const videoOptions = [
+      'https://www.youtube.com/embed/rOXaPE6gklI?si=ZPGuZtTWiKyuuoew&controls=0&autoplay=1&mute=0&playsinline=1&start=3',
+      'https://www.youtube.com/embed/2mkm_mNiJME?controls=0&autoplay=1&mute=0&playsinline=1&start=71',
+    ];
+
+    return videoOptions[Math.floor(Math.random() * videoOptions.length)];
+  });
   const { signOut } = workspaceMgr.UseAccountProfile();
 
   return (
@@ -25,7 +33,7 @@ export function SignOutModal({ workspaceMgr, onClose }: SignOutModalProps): JSX.
           <iframe
             class='w-full h-full rounded'
             style={{ width: '100%', height: '100%', minHeight: '350px' }}
-            src='https://www.youtube.com/embed/rOXaPE6gklI?si=ZPGuZtTWiKyuuoew&controls=0&autoplay=1&mute=0&playsinline=1&start=3'
+            src={videoSrc}
             title='YouTube video player'
             frameBorder={0}
             allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share'

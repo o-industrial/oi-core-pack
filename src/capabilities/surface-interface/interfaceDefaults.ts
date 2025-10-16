@@ -309,7 +309,11 @@ function sanitizeInvocation(
     result.Lookup = source.Lookup;
   }
 
-  if (source.Mode === 'server' || source.Mode === 'client') {
+  if (
+    source.Mode === 'server' ||
+    source.Mode === 'client' ||
+    source.Mode === 'both'
+  ) {
     result.Mode = source.Mode as NonNullable<PageDataActionInvocation['Mode']>;
   }
 

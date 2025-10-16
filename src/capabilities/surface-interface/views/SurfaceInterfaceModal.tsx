@@ -22,6 +22,7 @@ import type {
   EaCInterfaceDataConnectionFeatures,
   EaCInterfaceDetails,
   EaCInterfaceGeneratedDataSlice,
+  EaCInterfacePageDataActionInvocationMode,
   EaCInterfacePageDataAccessMode,
   EaCInterfacePageDataType,
   EverythingAsCodeOIWorkspace,
@@ -162,10 +163,6 @@ export function SurfaceInterfaceModal({
       >,
     [generatedSlices],
   );
-  const enabledGeneratedCount = useMemo(
-    () => generatedSliceEntries.filter(([, slice]) => slice.Enabled !== false).length,
-    [generatedSliceEntries],
-  );
 
   const interfaceAzi = workspaceMgr.InterfaceAzis?.[interfaceLookup];
   const enterpriseLookup = workspaceMgr.EaC.GetEaC().EnterpriseLookup ?? 'workspace';
@@ -263,18 +260,36 @@ export function SurfaceInterfaceModal({
     [],
   );
 
-  const handleGeneratedSliceToggle = (key: string, enabled: boolean) => {
-    updateGeneratedSlice(key, (slice) => ({
-      ...slice,
-      Enabled: enabled,
-    }));
-  };
-
   const handleAccessModeChange = (key: string, mode: EaCInterfacePageDataAccessMode) => {
-    updateGeneratedSlice(key, (slice) => ({
-      ...slice,
-      AccessMode: mode,
-    }));
+    updateGeneratedSlice(key, (slice) => {
+      const nextSlice: EaCInterfaceGeneratedDataSlice = {
+        ...slice,
+        AccessMode: mode,
+      };
+
+      if (slice.Actions && slice.Actions.length > 0) {
+        nextSlice.Actions = slice.Actions.map((action) => {
+          const currentMode = action.Invocation?.Mode ?? 'both';
+          let nextMode = currentMode;
+
+          if (mode === 'server' && currentMode === 'both') {
+            nextMode = 'server';
+          } else if (mode === 'client' && currentMode === 'both') {
+            nextMode = 'client';
+          }
+
+          return {
+            ...action,
+            Invocation: {
+              ...(action.Invocation ?? {}),
+              ...(nextMode ? { Mode: nextMode } : {}),
+            },
+          };
+        });
+      }
+
+      return nextSlice;
+    });
   };
 
   const handleDataConnectionFeaturesChange = (
@@ -287,6 +302,35 @@ export function SurfaceInterfaceModal({
     }));
   };
 
+  const handleActionModeChange = (
+    sliceKey: string,
+    actionKey: string,
+    mode: EaCInterfacePageDataActionInvocationMode,
+  ) => {
+    updateGeneratedSlice(sliceKey, (slice) => {
+      if (!slice.Actions || slice.Actions.length === 0) return slice;
+
+      const nextActions = slice.Actions.map((action) => {
+        if (action.Key !== actionKey) return action;
+
+        const nextInvocation = {
+          ...(action.Invocation ?? {}),
+          Mode: mode,
+        };
+
+        return {
+          ...action,
+          Invocation: nextInvocation,
+        };
+      });
+
+      return {
+        ...slice,
+        Actions: nextActions,
+      };
+    });
+  };
+
   const extraInputs = useMemo(
     () => ({
       interfaceLookup,
@@ -295,14 +339,12 @@ export function SurfaceInterfaceModal({
       imports,
       pageData: {
         summary: {
-          enabledSlices: enabledGeneratedCount,
           totalSlices: generatedSliceEntries.length,
         },
         schema: interfacePageDataToSchema(pageDataType),
         generated: generatedSliceEntries.map(([key, slice]) => ({
           key,
           label: slice.Label,
-          enabled: slice.Enabled !== false,
           source: slice.SourceCapability,
           hydration: slice.Hydration,
           accessMode: slice.AccessMode,
@@ -334,7 +376,6 @@ export function SurfaceInterfaceModal({
       imports,
       pageDataType,
       generatedSliceEntries,
-      enabledGeneratedCount,
       handlerCode,
       handlerDescription,
       handlerMessagesText,
@@ -362,9 +403,9 @@ export function SurfaceInterfaceModal({
       content: (
         <SurfaceInterfacePageDataTab
           generatedSlices={generatedSliceEntries}
-          onToggleSlice={handleGeneratedSliceToggle}
           onAccessModeChange={handleAccessModeChange}
           onDataConnectionChange={handleDataConnectionFeaturesChange}
+          onActionModeChange={handleActionModeChange}
         />
       ),
     },
