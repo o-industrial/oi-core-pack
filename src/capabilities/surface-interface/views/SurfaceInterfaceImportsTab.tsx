@@ -60,9 +60,6 @@ type ModuleFetchResult = {
   error?: string;
 };
 
-const BRACE_LEFT = '{';
-const BRACE_RIGHT = '}';
-
 export function SurfaceInterfaceImportsTab({
   imports,
   onChange,
@@ -70,7 +67,9 @@ export function SurfaceInterfaceImportsTab({
 }: SurfaceInterfaceImportsTabProps): JSX.Element {
   const importsRef = useRef<string[]>(imports);
   const entryBackupsRef = useRef<Map<string, ImportEntry>>(new Map());
-  const [entries, setEntries] = useState<ImportEntry[]>(() => parseImportLines(imports));
+  const [entries, setEntries] = useState<ImportEntry[]>(() =>
+    parseImportLines(imports)
+  );
 
   useEffect(() => {
     if (areStringArraysEqual(importsRef.current, imports)) return;
@@ -97,12 +96,12 @@ export function SurfaceInterfaceImportsTab({
       }
 
       const hasErrors = nextEntries.some(
-        (entry: ImportEntry) => validateImportEntry(entry).hasErrors,
+        (entry: ImportEntry) => validateImportEntry(entry).hasErrors
       );
 
       onValidityChange?.(hasErrors);
     },
-    [onChange, onValidityChange],
+    [onChange, onValidityChange]
   );
 
   useEffect(() => {
@@ -115,7 +114,9 @@ export function SurfaceInterfaceImportsTab({
 
   const removeEntry = (id: string) => {
     entryBackupsRef.current.delete(id);
-    setEntries((current: ImportEntry[]) => current.filter((entry: ImportEntry) => entry.id !== id));
+    setEntries((current: ImportEntry[]) =>
+      current.filter((entry: ImportEntry) => entry.id !== id)
+    );
   };
 
   const startEdit = (id: string) => {
@@ -146,7 +147,9 @@ export function SurfaceInterfaceImportsTab({
 
   const saveEntry = (id: string) => {
     setEntries((current: ImportEntry[]) =>
-      current.map((entry: ImportEntry) => entry.id === id ? { ...entry, editing: false } : entry)
+      current.map((entry: ImportEntry) =>
+        entry.id === id ? { ...entry, editing: false } : entry
+      )
     );
     entryBackupsRef.current.delete(id);
   };
@@ -154,7 +157,7 @@ export function SurfaceInterfaceImportsTab({
   const updateEntry = <K extends keyof ImportEntry>(
     id: string,
     key: K,
-    value: ImportEntry[K],
+    value: ImportEntry[K]
   ) => {
     setEntries((current: ImportEntry[]) =>
       current.map((entry: ImportEntry) => {
@@ -201,10 +204,10 @@ export function SurfaceInterfaceImportsTab({
       current.map((entry: ImportEntry) =>
         entry.id === id
           ? {
-            ...entry,
-            members: dedupeMembers([...entry.members, member]),
-            memberDraft: '',
-          }
+              ...entry,
+              members: dedupeMembers([...entry.members, member]),
+              memberDraft: '',
+            }
           : entry
       )
     );
@@ -215,9 +218,9 @@ export function SurfaceInterfaceImportsTab({
       current.map((entry: ImportEntry) =>
         entry.id === id
           ? {
-            ...entry,
-            members: entry.members.filter((value) => value !== member),
-          }
+              ...entry,
+              members: entry.members.filter((value) => value !== member),
+            }
           : entry
       )
     );
@@ -229,7 +232,9 @@ export function SurfaceInterfaceImportsTab({
         if (entry.id !== id) return entry;
         const summary: ModuleExportSummary = entry.moduleAnalysis ?? {
           named: entry.members,
-          hasDefault: entry.importKind === 'default' || entry.importKind === 'default-and-named' ||
+          hasDefault:
+            entry.importKind === 'default' ||
+            entry.importKind === 'default-and-named' ||
             Boolean(entry.defaultAlias.trim()),
         };
         return applyImportKindToEntry(entry, kind, summary, entry.specifier);
@@ -242,11 +247,11 @@ export function SurfaceInterfaceImportsTab({
       current.map((entry: ImportEntry) =>
         entry.id === id
           ? {
-            ...entry,
-            status: 'loading',
-            statusMessage: 'Analyzing module exports...',
-            suggestions: [],
-          }
+              ...entry,
+              status: 'loading',
+              statusMessage: 'Analyzing module exports...',
+              suggestions: [],
+            }
           : entry
       )
     );
@@ -259,10 +264,11 @@ export function SurfaceInterfaceImportsTab({
         current.map((entry: ImportEntry) =>
           entry.id === id
             ? {
-              ...entry,
-              status: 'error',
-              statusMessage: 'Provide a module specifier before requesting suggestions.',
-            }
+                ...entry,
+                status: 'error',
+                statusMessage:
+                  'Provide a module specifier before requesting suggestions.',
+              }
             : entry
         )
       );
@@ -280,32 +286,37 @@ export function SurfaceInterfaceImportsTab({
 
   const totalValidImports = useMemo(
     () =>
-      entries.filter((entry: ImportEntry) => !entry.editing && Boolean(stringifyImportEntry(entry)))
-        .length,
-    [entries],
+      entries.filter((entry: ImportEntry) =>
+        Boolean(stringifyImportEntry(entry))
+      ).length,
+    [entries]
   );
 
   return (
-    <div class='flex h-full min-h-0 flex-col gap-4'>
-      <section class='rounded border border-neutral-800 bg-neutral-950/70 p-4 text-sm text-neutral-200'>
-        <h2 class='text-base font-semibold text-neutral-100'>
+    <div class="flex h-full min-h-0 flex-col gap-4">
+      <section class="rounded border border-neutral-800 bg-neutral-950/70 p-4 text-sm text-neutral-200">
+        <h2 class="text-base font-semibold text-neutral-100">
           Third-party imports
         </h2>
-        <p class='mt-1 text-xs text-neutral-400'>
-          Runtime essentials (like framework primitives) are provided automatically. Add any
-          additional modules your interface relies on.
+        <p class="mt-1 text-xs text-neutral-400">
+          Runtime essentials (like framework primitives) are provided
+          automatically. Add any additional modules your interface relies on.
         </p>
-        <p class='mt-2 text-xs text-neutral-400'>
+        <p class="mt-2 text-xs text-neutral-400">
           Compose statements like <code>import Default from 'specifier';</code>,{' '}
-          <code>import Default, {'{'} members {'}'} from 'specifier';</code>, or switch to a
-          namespace import when you need <code>*</code>.
+          <code>
+            import Default, {'{'} members {'}'} from 'specifier';
+          </code>
+          , or switch to a namespace import when you need <code>*</code>.
         </p>
-        <p class='mt-2 text-xs text-neutral-500'>
-          <span class='font-semibold text-neutral-300'>{totalValidImports}</span>{' '}
+        <p class="mt-2 text-xs text-neutral-500">
+          <span class="font-semibold text-neutral-300">
+            {totalValidImports}
+          </span>{' '}
           import{totalValidImports === 1 ? '' : 's'} ready for save.
         </p>
       </section>
-      <div class='flex-1 min-h-0 space-y-4 overflow-y-auto pr-1'>
+      <div class="flex-1 min-h-0 space-y-4 overflow-y-auto pr-1">
         {entries.length === 0 && <EmptyImportsState onAdd={addEntry} />}
 
         {entries.map((entry: ImportEntry) => {
@@ -314,15 +325,19 @@ export function SurfaceInterfaceImportsTab({
           const serialized = stringifyImportEntry(entry);
           const displayStatement = serialized ?? preview;
           const isDraft = !serialized;
-          const listStatusMessage = resolveStatusMessage(entry, 'list', validation);
+          const listStatusMessage = resolveStatusMessage(
+            entry,
+            'list',
+            validation
+          );
 
           if (!entry.editing) {
             return (
               <article
                 key={entry.id}
-                class='rounded border border-neutral-800 bg-neutral-950/60 p-4 text-sm text-neutral-100'
+                class="rounded border border-neutral-800 bg-neutral-950/60 p-4 text-sm text-neutral-100"
               >
-                <div class='flex flex-wrap items-start justify-between gap-3'>
+                <div class="flex flex-wrap items-start justify-between gap-3">
                   <code
                     class={`flex-1 min-w-0 overflow-x-auto whitespace-pre rounded border border-neutral-800 bg-neutral-950/80 px-3 py-2 text-xs ${
                       isDraft ? 'text-neutral-500 italic' : 'text-neutral-200'
@@ -331,34 +346,42 @@ export function SurfaceInterfaceImportsTab({
                   >
                     {displayStatement}
                   </code>
-                  <div class='flex flex-wrap items-center gap-2'>
+                  <div class="flex flex-wrap items-center gap-2">
                     <Action
-                      type='button'
-                      title='Edit import'
-                      aria-label='Edit import'
-                      styleType={ActionStyleTypes.Icon | ActionStyleTypes.Outline}
+                      type="button"
+                      title="Edit import"
+                      aria-label="Edit import"
+                      styleType={
+                        ActionStyleTypes.Icon | ActionStyleTypes.Outline
+                      }
                       intentType={IntentTypes.Secondary}
                       onClick={() => startEdit(entry.id)}
                     >
-                      <SettingsIcon class='h-4 w-4' />
+                      <SettingsIcon class="h-4 w-4" />
                     </Action>
                     <Action
-                      type='button'
-                      title='Remove import'
-                      aria-label='Remove import'
-                      styleType={ActionStyleTypes.Icon | ActionStyleTypes.Outline}
+                      type="button"
+                      title="Remove import"
+                      aria-label="Remove import"
+                      styleType={
+                        ActionStyleTypes.Icon | ActionStyleTypes.Outline
+                      }
                       intentType={IntentTypes.Error}
                       onClick={() => removeEntry(entry.id)}
                     >
-                      <DeleteIcon class='h-4 w-4' />
+                      <DeleteIcon class="h-4 w-4" />
                     </Action>
                   </div>
                 </div>
                 {entry.status === 'success' && listStatusMessage && (
-                  <p class='mt-2 text-[11px] text-teal-300'>{listStatusMessage}</p>
+                  <p class="mt-2 text-[11px] text-teal-300">
+                    {listStatusMessage}
+                  </p>
                 )}
                 {entry.status === 'error' && entry.statusMessage && (
-                  <p class='mt-2 text-[11px] text-red-400'>{entry.statusMessage}</p>
+                  <p class="mt-2 text-[11px] text-red-400">
+                    {entry.statusMessage}
+                  </p>
                 )}
               </article>
             );
@@ -366,190 +389,149 @@ export function SurfaceInterfaceImportsTab({
 
           const recommendationKind = entry.recommendedKind ?? null;
           const showRecommendation = Boolean(
-            recommendationKind && recommendationKind !== entry.importKind,
+            recommendationKind && recommendationKind !== entry.importKind
           );
           const recommendationMessage = recommendationKind
-            ? buildRecommendationReason(recommendationKind, entry.moduleAnalysis)
+            ? buildRecommendationReason(
+                recommendationKind,
+                entry.moduleAnalysis
+              )
             : '';
-          const editingStatusMessage = resolveStatusMessage(entry, 'edit', validation);
+          const editingStatusMessage = resolveStatusMessage(
+            entry,
+            'edit',
+            validation
+          );
 
           return (
             <article
               key={entry.id}
-              class='rounded border border-neutral-800 bg-neutral-950/60 p-4 text-sm text-neutral-100'
+              class="rounded border border-neutral-800 bg-neutral-950/60 p-5 text-sm text-neutral-100"
             >
-              <header class='flex flex-wrap items-start justify-between gap-3'>
-                <div class='flex min-w-0 flex-1 flex-col gap-2'>
+              <header class="flex flex-wrap items-start justify-between gap-4">
+                <div class="flex min-w-0 flex-1 flex-col gap-2">
                   <code
-                    class={`overflow-x-auto whitespace-pre rounded border border-neutral-800 bg-neutral-950/80 px-3 py-2 text-xs ${
+                    class={`overflow-x-auto whitespace-pre rounded border border-neutral-800 bg-neutral-950 px-3 py-2 text-xs ${
                       isDraft ? 'text-neutral-500 italic' : 'text-neutral-200'
                     }`}
                     title={preview}
                   >
                     {preview}
                   </code>
-                  <p class='text-[11px] text-neutral-400'>
+                  <p class="text-[11px] text-neutral-400">
                     {isDraft
-                      ? 'Draft import - complete the fields below.'
-                      : 'Update the import definition below.'}
+                      ? 'Fill in the fields below. The statement updates as you go.'
+                      : 'Tweaks here update instantly—remember to save when you are happy with it.'}
                   </p>
                 </div>
-                <div class='flex flex-wrap items-center gap-2'>
+                <div class="flex flex-wrap items-center gap-2">
                   <Action
-                    type='button'
-                    title='Cancel edits'
-                    aria-label='Cancel edits'
-                    styleType={ActionStyleTypes.Icon | ActionStyleTypes.Outline}
+                    type="button"
+                    title="Cancel edits"
+                    aria-label="Cancel edits"
+                    styleType={ActionStyleTypes.Outline | ActionStyleTypes.Icon}
                     intentType={IntentTypes.Secondary}
+                    class="flex items-center gap-2"
                     onClick={() => cancelEdit(entry.id)}
                   >
-                    <CloseIcon class='h-4 w-4' />
+                    <CloseIcon class="h-4 w-4" />
                   </Action>
                   <Action
-                    type='button'
-                    title='Remove import'
-                    aria-label='Remove import'
-                    styleType={ActionStyleTypes.Icon | ActionStyleTypes.Outline}
+                    type="button"
+                    title="Remove import"
+                    aria-label="Remove import"
+                    styleType={ActionStyleTypes.Outline | ActionStyleTypes.Icon}
                     intentType={IntentTypes.Error}
+                    class="flex items-center gap-2"
                     onClick={() => removeEntry(entry.id)}
                   >
-                    <DeleteIcon class='h-4 w-4' />
+                    <DeleteIcon class="h-4 w-4" />
                   </Action>
                   <Action
-                    type='button'
-                    title='Save import'
-                    aria-label='Save import'
-                    styleType={ActionStyleTypes.Icon | ActionStyleTypes.Solid}
+                    type="button"
+                    title="Save import"
+                    aria-label="Save import"
+                    styleType={ActionStyleTypes.Solid | ActionStyleTypes.Icon}
                     intentType={IntentTypes.Primary}
+                    class="flex items-center gap-2"
                     disabled={validation.hasErrors}
                     onClick={() => saveEntry(entry.id)}
                   >
-                    <SaveIcon class='h-4 w-4' />
+                    <SaveIcon class="h-4 w-4" />
                   </Action>
                 </div>
               </header>
 
-              <div class='mt-4 grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_160px]'>
-                <Input
-                  label='Module specifier'
-                  placeholder='https://esm.sh/lodash-es?target=deno'
-                  value={entry.specifier}
-                  onInput={(event: JSX.TargetedEvent<HTMLInputElement, Event>) =>
-                    updateEntry(entry.id, 'specifier', event.currentTarget.value)}
-                  intentType={validation.hasErrors && entry.specifier.trim().length === 0
-                    ? IntentTypes.Error
-                    : undefined}
-                />
-
-                <label class='flex flex-col text-xs text-neutral-300'>
-                  <span class='mb-2 font-semibold uppercase tracking-wide text-neutral-500'>
-                    Import kind
-                  </span>
-                  <select
-                    class='h-9 rounded border border-neutral-700 bg-neutral-900 px-3 text-sm text-neutral-100 outline-none focus:border-teal-400'
-                    value={entry.importKind}
-                    onInput={(event: JSX.TargetedEvent<HTMLSelectElement, Event>) =>
-                      updateEntry(entry.id, 'importKind', event.currentTarget.value as ImportKind)}
-                  >
-                    <option value='named'>Named members {'{...}'}</option>
-                    <option value='default'>Default import</option>
-                    <option value='default-and-named'>Default + named members</option>
-                    <option value='namespace'>Namespace import (* as alias)</option>
-                    <option value='side-effect'>Side effect (import 'specifier')</option>
-                  </select>
-                </label>
-              </div>
-
-              {(entry.importKind === 'default' || entry.importKind === 'default-and-named') && (
-                <div class='mt-3 grid grid-cols-1 gap-3 md:grid-cols-[200px_minmax(0,1fr)]'>
+              <div class="mt-6 space-y-6">
+                <div class="space-y-2">
                   <Input
-                    label='Default import name'
-                    placeholder='ModuleDefault'
-                    value={entry.defaultAlias}
-                    onInput={(event: JSX.TargetedEvent<HTMLInputElement, Event>) =>
-                      updateEntry(entry.id, 'defaultAlias', event.currentTarget.value)}
-                    intentType={validation.hasErrors &&
-                        !entry.defaultAlias.trim() &&
-                        (entry.importKind === 'default' || entry.importKind === 'default-and-named')
-                      ? IntentTypes.Error
-                      : undefined}
+                    label="Module specifier"
+                    placeholder="https://esm.sh/lodash-es?target=deno"
+                    value={entry.specifier}
+                    onInput={(
+                      event: JSX.TargetedEvent<HTMLInputElement, Event>
+                    ) =>
+                      updateEntry(
+                        entry.id,
+                        'specifier',
+                        event.currentTarget.value
+                      )
+                    }
+                    intentType={
+                      validation.hasErrors &&
+                      entry.specifier.trim().length === 0
+                        ? IntentTypes.Error
+                        : undefined
+                    }
                   />
-                  <p class='text-xs text-neutral-400'>
-                    Generates{' '}
-                    <code>
-                      {entry.importKind === 'default-and-named'
-                        ? `import ${entry.defaultAlias || 'DefaultExport'}, { ... } from '${
-                          entry.specifier || 'module'
-                        }';`
-                        : `import ${entry.defaultAlias || 'DefaultExport'} from '${
-                          entry.specifier || 'module'
-                        }';`}
-                    </code>
+                  <p class="text-xs text-neutral-400">
+                    Use a fully-qualified URL for best autocomplete results
+                    (e.g. <code>https://esm.sh/[package]</code>).
                   </p>
                 </div>
-              )}
 
-              {entry.importKind === 'namespace' && (
-                <div class='mt-3 grid grid-cols-1 gap-3 md:grid-cols-[160px_minmax(0,1fr)]'>
-                  <Input
-                    label='Alias'
-                    placeholder='ModuleNamespace'
-                    value={entry.namespaceAlias}
-                    onInput={(event: JSX.TargetedEvent<HTMLInputElement, Event>) =>
-                      updateEntry(entry.id, 'namespaceAlias', event.currentTarget.value)}
-                    intentType={validation.hasErrors && !entry.namespaceAlias.trim()
-                      ? IntentTypes.Error
-                      : undefined}
-                  />
-                  <p class='text-xs text-neutral-400'>
-                    Generates <code>import * as Alias from '{entry.specifier || 'module'}';</code>
-                  </p>
-                </div>
-              )}
-
-              {(entry.importKind === 'named' || entry.importKind === 'default-and-named') && (
-                <div class='mt-3 space-y-3'>
-                  <div class='flex flex-wrap items-center gap-3 rounded border border-neutral-800 bg-neutral-950/80 px-3 py-2'>
-                    <span class='text-lg font-semibold text-neutral-500'>{BRACE_LEFT}</span>
-                    <div class='flex flex-1 flex-wrap items-center gap-2'>
-                      {entry.members.map((member: string) => (
-                        <span
-                          key={member}
-                          class='inline-flex items-center gap-2 rounded bg-neutral-800 px-2 py-1 text-xs text-neutral-200'
-                        >
-                          {member}
-                          <button
-                            type='button'
-                            class='text-[11px] uppercase tracking-wide text-red-300 hover:text-red-200'
-                            onClick={() => removeNamedMember(entry.id, member)}
-                          >
-                            remove
-                          </button>
-                        </span>
-                      ))}
-
-                      <input
-                        class='h-8 min-w-[160px] flex-1 rounded border border-neutral-700 bg-neutral-950 px-2 text-xs text-neutral-100 outline-none focus:border-teal-400'
-                        placeholder='addMember or member as alias'
-                        value={entry.memberDraft}
-                        onInput={(event: JSX.TargetedEvent<HTMLInputElement, Event>) =>
-                          updateEntry(entry.id, 'memberDraft', event.currentTarget.value)}
-                        onKeyDown={(event: JSX.TargetedKeyboardEvent<HTMLInputElement>) => {
-                          if (event.key === 'Enter' || event.key === ',') {
-                            event.preventDefault();
-                            addNamedMember(entry.id, entry.memberDraft);
-                          }
-                        }}
-                        onBlur={() => addNamedMember(entry.id, entry.memberDraft)}
-                      />
+                <div class="flex flex-col gap-2 md:flex-row md:items-end md:gap-4">
+                  <label class="flex flex-col text-xs text-neutral-300 md:w-64">
+                    <span class="mb-2 font-semibold uppercase tracking-wide text-neutral-500">
+                      Import style
+                    </span>
+                    <div class="text-xs text-neutral-400 md:flex-1">
+                      Choose how this module is consumed. Adjusting the style
+                      will reset incompatible fields automatically.
                     </div>
-                    <span class='text-lg font-semibold text-neutral-500'>{BRACE_RIGHT}</span>
-                  </div>
+                    <select
+                      class="h-10 rounded border border-neutral-700 bg-neutral-900 px-3 text-sm text-neutral-100 outline-none focus:border-teal-400"
+                      value={entry.importKind}
+                      onInput={(
+                        event: JSX.TargetedEvent<HTMLSelectElement, Event>
+                      ) =>
+                        updateEntry(
+                          entry.id,
+                          'importKind',
+                          event.currentTarget.value as ImportKind
+                        )
+                      }
+                    >
+                      <option value="named">Named members {'{ foo }'}</option>
+                      <option value="default">Default import</option>
+                      <option value="default-and-named">
+                        Default + named members
+                      </option>
+                      <option value="namespace">
+                        Namespace import (* as alias)
+                      </option>
+                      <option value="side-effect">
+                        Side effect (import 'specifier')
+                      </option>
+                    </select>
+                  </label>
 
-                  <div class='flex flex-wrap items-center gap-2'>
+                  <div class="flex flex-wrap items-center gap-2">
                     <Action
-                      type='button'
-                      styleType={ActionStyleTypes.Outline | ActionStyleTypes.Rounded}
+                      type="button"
+                      styleType={
+                        ActionStyleTypes.Outline | ActionStyleTypes.Rounded
+                      }
                       intentType={IntentTypes.Secondary}
                       onClick={() => requestSuggestions(entry.id)}
                     >
@@ -569,16 +551,151 @@ export function SurfaceInterfaceImportsTab({
                       </p>
                     )}
                   </div>
+                </div>
+              </div>
+
+              {(entry.importKind === 'default' ||
+                entry.importKind === 'default-and-named') && (
+                <div class="mt-6 flex flex-col gap-3 md:flex-row md:items-start md:gap-4">
+                  <div class="md:w-72">
+                    <Input
+                      label="Default import name"
+                      placeholder="ModuleDefault"
+                      value={entry.defaultAlias}
+                      onInput={(
+                        event: JSX.TargetedEvent<HTMLInputElement, Event>
+                      ) =>
+                        updateEntry(
+                          entry.id,
+                          'defaultAlias',
+                          event.currentTarget.value
+                        )
+                      }
+                      intentType={
+                        validation.hasErrors &&
+                        !entry.defaultAlias.trim() &&
+                        (entry.importKind === 'default' ||
+                          entry.importKind === 'default-and-named')
+                          ? IntentTypes.Error
+                          : undefined
+                      }
+                    />
+                  </div>
+                  <p class="text-xs text-neutral-400 md:flex-1">
+                    Generates{' '}
+                    <code>
+                      {entry.importKind === 'default-and-named'
+                        ? `import ${
+                            entry.defaultAlias || 'DefaultExport'
+                          }, { ... } from '${entry.specifier || 'module'}';`
+                        : `import ${
+                            entry.defaultAlias || 'DefaultExport'
+                          } from '${entry.specifier || 'module'}';`}
+                    </code>
+                  </p>
+                </div>
+              )}
+
+              {entry.importKind === 'namespace' && (
+                <div class="mt-6 flex flex-col gap-3 md:flex-row md:items-start md:gap-4">
+                  <div class="md:w-64">
+                    <Input
+                      label="Namespace alias"
+                      placeholder="ModuleNamespace"
+                      value={entry.namespaceAlias}
+                      onInput={(
+                        event: JSX.TargetedEvent<HTMLInputElement, Event>
+                      ) =>
+                        updateEntry(
+                          entry.id,
+                          'namespaceAlias',
+                          event.currentTarget.value
+                        )
+                      }
+                      intentType={
+                        validation.hasErrors && !entry.namespaceAlias.trim()
+                          ? IntentTypes.Error
+                          : undefined
+                      }
+                    />
+                  </div>
+                  <p class="text-xs text-neutral-400 md:flex-1">
+                    Generates{' '}
+                    <code>
+                      import * as Alias from '{entry.specifier || 'module'}';
+                    </code>
+                  </p>
+                </div>
+              )}
+
+              {(entry.importKind === 'named' ||
+                entry.importKind === 'default-and-named') && (
+                <div class="mt-6 space-y-4">
+                  <div class="space-y-2">
+                    <span class="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                      Named members
+                    </span>
+                    <div class="flex flex-wrap items-center gap-2 rounded border border-neutral-800 bg-neutral-950/80 px-3 py-2">
+                      {entry.members.map((member: string) => (
+                        <span
+                          key={member}
+                          class="inline-flex items-center gap-2 rounded bg-neutral-800 px-2 py-1 text-xs text-neutral-200"
+                        >
+                          {member}
+                          <button
+                            type="button"
+                            class="text-[11px] uppercase tracking-wide text-red-300 hover:text-red-200"
+                            onClick={() => removeNamedMember(entry.id, member)}
+                          >
+                            remove
+                          </button>
+                        </span>
+                      ))}
+                      <input
+                        class="h-9 min-w-[200px] flex-1 rounded border border-neutral-700 bg-neutral-950 px-3 text-xs text-neutral-100 outline-none focus:border-teal-400"
+                        placeholder="addMember or member as alias"
+                        value={entry.memberDraft}
+                        onInput={(
+                          event: JSX.TargetedEvent<HTMLInputElement, Event>
+                        ) =>
+                          updateEntry(
+                            entry.id,
+                            'memberDraft',
+                            event.currentTarget.value
+                          )
+                        }
+                        onKeyDown={(
+                          event: JSX.TargetedKeyboardEvent<HTMLInputElement>
+                        ) => {
+                          if (event.key === 'Enter' || event.key === ',') {
+                            event.preventDefault();
+                            addNamedMember(entry.id, entry.memberDraft);
+                          }
+                        }}
+                        onBlur={() =>
+                          addNamedMember(entry.id, entry.memberDraft)
+                        }
+                      />
+                    </div>
+                    <p class="text-xs text-neutral-400">
+                      Members render inside <code>{`{ ... }`}</code>. Press
+                      Enter (or comma) to add the value currently in the field.
+                    </p>
+                  </div>
 
                   {showRecommendation && recommendationKind && (
-                    <div class='mt-2 rounded border border-teal-500/40 bg-teal-500/10 px-3 py-2 text-xs text-teal-200'>
+                    <div class="rounded border border-teal-500/40 bg-teal-500/10 px-3 py-2 text-xs text-teal-200">
                       <p>{recommendationMessage}</p>
-                      <div class='mt-2 flex flex-wrap gap-2'>
+                      <div class="mt-2 flex flex-wrap gap-2">
                         <Action
-                          type='button'
-                          styleType={ActionStyleTypes.Outline | ActionStyleTypes.Rounded}
+                          type="button"
+                          styleType={
+                            ActionStyleTypes.Outline | ActionStyleTypes.Rounded
+                          }
                           intentType={IntentTypes.Primary}
-                          onClick={() => applyRecommendedKind(entry.id, recommendationKind)}
+                          onClick={() =>
+                            applyRecommendedKind(entry.id, recommendationKind)
+                          }
                         >
                           Apply {getImportKindLabel(recommendationKind)}
                         </Action>
@@ -587,22 +704,25 @@ export function SurfaceInterfaceImportsTab({
                   )}
 
                   {entry.suggestions.length > 0 && (
-                    <div class='space-y-2 rounded border border-neutral-800 bg-neutral-950/60 p-3 text-xs text-neutral-200'>
-                      <div class='flex flex-wrap items-center justify-between gap-2'>
-                        <p class='font-semibold uppercase tracking-wide text-neutral-400'>
+                    <div class="space-y-2 rounded border border-neutral-800 bg-neutral-950/60 p-3 text-xs text-neutral-200">
+                      <div class="flex flex-wrap items-center justify-between gap-2">
+                        <p class="font-semibold uppercase tracking-wide text-neutral-400">
                           Suggestions
                         </p>
                         <button
-                          type='button'
-                          class='text-[11px] uppercase tracking-wide text-teal-300 hover:text-teal-200'
+                          type="button"
+                          class="text-[11px] uppercase tracking-wide text-teal-300 hover:text-teal-200"
                           onClick={() => {
                             setEntries((current: ImportEntry[]) =>
                               current.map((item: ImportEntry) =>
                                 item.id === entry.id
                                   ? {
-                                    ...item,
-                                    members: mergeMembers(item.members, ...entry.suggestions),
-                                  }
+                                      ...item,
+                                      members: mergeMembers(
+                                        item.members,
+                                        ...entry.suggestions
+                                      ),
+                                    }
                                   : item
                               )
                             );
@@ -611,12 +731,12 @@ export function SurfaceInterfaceImportsTab({
                           Add all
                         </button>
                       </div>
-                      <div class='flex flex-wrap gap-2'>
+                      <div class="flex flex-wrap gap-2">
                         {entry.suggestions.map((suggestion: string) => (
                           <button
                             key={suggestion}
-                            type='button'
-                            class='rounded border border-teal-500/40 bg-teal-500/10 px-2 py-1 text-xs text-teal-200 hover:bg-teal-500/20'
+                            type="button"
+                            class="rounded border border-teal-500/40 bg-teal-500/10 px-2 py-1 text-xs text-teal-200 hover:bg-teal-500/20"
                             onClick={() => addNamedMember(entry.id, suggestion)}
                           >
                             {suggestion}
@@ -629,25 +749,20 @@ export function SurfaceInterfaceImportsTab({
               )}
 
               {validation.hasErrors && (
-                <ul class='mt-4 list-disc space-y-1 pl-6 text-xs text-red-400'>
+                <ul class="mt-4 list-disc space-y-1 pl-6 text-xs text-red-400">
                   {validation.messages.map((message, idx) => (
                     <li key={`${entry.id}-err-${idx}`}>{message}</li>
                   ))}
                 </ul>
               )}
-
-              <footer class='mt-4 rounded border border-neutral-800 bg-neutral-950/80 px-3 py-2 text-xs text-neutral-400'>
-                <span class='font-semibold text-neutral-200'>Preview:</span>{' '}
-                <code class='text-xs text-neutral-300'>{preview}</code>
-              </footer>
             </article>
           );
         })}
       </div>
 
-      <div class='flex justify-start'>
+      <div class="flex justify-start">
         <Action
-          type='button'
+          type="button"
           styleType={ActionStyleTypes.Solid | ActionStyleTypes.Rounded}
           intentType={IntentTypes.Secondary}
           onClick={addEntry}
@@ -660,17 +775,19 @@ export function SurfaceInterfaceImportsTab({
 }
 function EmptyImportsState({ onAdd }: { onAdd: () => void }): JSX.Element {
   return (
-    <div class='rounded border border-dashed border-neutral-800 bg-neutral-950/40 p-6 text-center text-sm text-neutral-300'>
-      <p class='text-base font-semibold text-neutral-200'>No third-party imports yet</p>
-      <p class='mt-2 text-xs text-neutral-400'>
-        Add an import to get started. You can use default exports, mix default with named members,
-        or pull the full module via <code>*</code>.
+    <div class="rounded border border-dashed border-neutral-800 bg-neutral-950/40 p-6 text-center text-sm text-neutral-300">
+      <p class="text-base font-semibold text-neutral-200">
+        No third-party imports yet
+      </p>
+      <p class="mt-2 text-xs text-neutral-400">
+        Add an import to get started. You can use default exports, mix default
+        with named members, or pull the full module via <code>*</code>.
       </p>
       <Action
-        type='button'
+        type="button"
         styleType={ActionStyleTypes.Solid | ActionStyleTypes.Rounded}
         intentType={IntentTypes.Primary}
-        class='mt-4'
+        class="mt-4"
         onClick={onAdd}
       >
         Create first import
@@ -687,9 +804,9 @@ function snapshotEntry(entry: ImportEntry): ImportEntry {
     recommendedKind: entry.recommendedKind ?? null,
     moduleAnalysis: entry.moduleAnalysis
       ? {
-        named: [...entry.moduleAnalysis.named],
-        hasDefault: entry.moduleAnalysis.hasDefault,
-      }
+          named: [...entry.moduleAnalysis.named],
+          hasDefault: entry.moduleAnalysis.hasDefault,
+        }
       : undefined,
   };
 }
@@ -768,13 +885,14 @@ function dedupeMembers(members: string[]): string[] {
     new Set(
       members
         .map((member) => member.trim())
-        .filter((member) => member.length > 0),
-    ),
+        .filter((member) => member.length > 0)
+    )
   );
 }
 
 function determinePreferredKind(summary: ModuleExportSummary): ImportKind {
-  if (summary.hasDefault && summary.named.length > 0) return 'default-and-named';
+  if (summary.hasDefault && summary.named.length > 0)
+    return 'default-and-named';
   if (summary.hasDefault) return 'default';
   if (summary.named.length > 0) return 'named';
   return 'side-effect';
@@ -782,7 +900,7 @@ function determinePreferredKind(summary: ModuleExportSummary): ImportKind {
 
 function determineRecommendedKind(
   current: ImportKind,
-  summary: ModuleExportSummary,
+  summary: ModuleExportSummary
 ): ImportKind | null {
   const preferred = determinePreferredKind(summary);
   if (preferred === 'side-effect' || preferred === current) return null;
@@ -805,20 +923,25 @@ function determineRecommendedKind(
 
 function shouldAutoApplyImportKind(
   current: ImportKind,
-  summary: ModuleExportSummary,
+  summary: ModuleExportSummary
 ): boolean {
   if (summary.hasDefault && summary.named.length === 0 && current === 'named') {
     return true;
   }
 
   if (
-    !summary.hasDefault && summary.named.length > 0 &&
+    !summary.hasDefault &&
+    summary.named.length > 0 &&
     (current === 'default' || current === 'default-and-named')
   ) {
     return true;
   }
 
-  if (summary.hasDefault && summary.named.length === 0 && current === 'default-and-named') {
+  if (
+    summary.hasDefault &&
+    summary.named.length === 0 &&
+    current === 'default-and-named'
+  ) {
     return true;
   }
 
@@ -843,7 +966,7 @@ function getImportKindLabel(kind: ImportKind): string {
 
 function buildRecommendationReason(
   kind: ImportKind,
-  summary?: ModuleExportSummary,
+  summary?: ModuleExportSummary
 ): string {
   const hasNamed = summary?.named.length ? summary.named.length > 0 : false;
   const hasDefault = summary?.hasDefault ?? false;
@@ -880,7 +1003,9 @@ function describeModuleSummary(summary: ModuleExportSummary): string {
     return 'Detected default export.';
   }
   if (hasNamed) {
-    return `Detected ${summary.named.length} named export${summary.named.length === 1 ? '' : 's'}.`;
+    return `Detected ${summary.named.length} named export${
+      summary.named.length === 1 ? '' : 's'
+    }.`;
   }
   return 'Module export shape could not be determined.';
 }
@@ -906,7 +1031,9 @@ function deriveDefaultAlias(specifier: string): string {
 
   const alias = parts
     .map((part, index) =>
-      index === 0 ? part.toLowerCase() : part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
+      index === 0
+        ? part.toLowerCase()
+        : part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
     )
     .join('');
 
@@ -918,7 +1045,7 @@ function applyImportKindToEntry(
   entry: ImportEntry,
   kind: ImportKind,
   summary: ModuleExportSummary,
-  specifier?: string,
+  specifier?: string
 ): ImportEntry {
   const resets = resetEntryForKind(kind);
   const next: ImportEntry = {
@@ -930,7 +1057,10 @@ function applyImportKindToEntry(
     suggestions: [...summary.named],
   };
 
-  if ((kind === 'default' || kind === 'default-and-named') && !next.defaultAlias.trim()) {
+  if (
+    (kind === 'default' || kind === 'default-and-named') &&
+    !next.defaultAlias.trim()
+  ) {
     next.defaultAlias = deriveDefaultAlias(specifier ?? entry.specifier);
   }
 
@@ -940,7 +1070,11 @@ function applyImportKindToEntry(
     if (!next.members.length) {
       next.members = dedupeMembers(summary.named);
     }
-  } else if (kind === 'default' || kind === 'side-effect' || kind === 'namespace') {
+  } else if (
+    kind === 'default' ||
+    kind === 'side-effect' ||
+    kind === 'namespace'
+  ) {
     next.members = [];
   }
 
@@ -953,7 +1087,7 @@ function applyImportKindToEntry(
 function resolveStatusMessage(
   entry: ImportEntry,
   mode: 'list' | 'edit',
-  validation?: ImportValidation,
+  validation?: ImportValidation
 ): string | undefined {
   if (mode === 'list') {
     if (entry.status === 'error' || entry.status === 'loading') {
@@ -977,7 +1111,7 @@ function resolveStatusMessage(
 function applyModuleAnalysis(
   entry: ImportEntry,
   result: ModuleFetchResult,
-  specifier: string,
+  specifier: string
 ): ImportEntry {
   if (result.error) {
     return {
@@ -1011,11 +1145,14 @@ function applyModuleAnalysis(
     const autoKind = preferred === 'side-effect' ? entry.importKind : preferred;
     next = applyImportKindToEntry(next, autoKind, summary, specifier);
     next.status = 'success';
-    next.statusMessage = `${description} Updated import kind to ${getImportKindLabel(autoKind)}.`;
+    next.statusMessage = `${description} Updated import kind to ${getImportKindLabel(
+      autoKind
+    )}.`;
   } else {
     next.recommendedKind = recommendation;
     if (
-      (recommendation === 'default' || recommendation === 'default-and-named') &&
+      (recommendation === 'default' ||
+        recommendation === 'default-and-named') &&
       !next.defaultAlias.trim()
     ) {
       next.defaultAlias = deriveDefaultAlias(specifier);
@@ -1027,7 +1164,8 @@ function applyModuleAnalysis(
 
 function validateImportEntry(entry: ImportEntry): ImportValidation {
   const specifier = entry.specifier.trim();
-  const isBlank = specifier.length === 0 &&
+  const isBlank =
+    specifier.length === 0 &&
     entry.namespaceAlias.trim().length === 0 &&
     entry.defaultAlias.trim().length === 0 &&
     entry.members.length === 0 &&
@@ -1040,7 +1178,9 @@ function validateImportEntry(entry: ImportEntry): ImportValidation {
   const messages: string[] = [];
 
   if (!specifier) {
-    messages.push('Provide the module specifier (e.g. https://cdn.example/mod.js).');
+    messages.push(
+      'Provide the module specifier (e.g. https://cdn.example/mod.js).'
+    );
   }
 
   const hasNamespaceAlias = entry.namespaceAlias.trim().length > 0;
@@ -1048,7 +1188,9 @@ function validateImportEntry(entry: ImportEntry): ImportValidation {
   const hasMembers = entry.members.length > 0;
 
   if (entry.importKind === 'named' && !hasMembers) {
-    messages.push('Add at least one named import or switch to a different import style.');
+    messages.push(
+      'Add at least one named import or switch to a different import style.'
+    );
   }
 
   if (entry.importKind === 'default' && !hasDefaultAlias) {
@@ -1057,10 +1199,14 @@ function validateImportEntry(entry: ImportEntry): ImportValidation {
 
   if (entry.importKind === 'default-and-named') {
     if (!hasDefaultAlias) {
-      messages.push('Provide a name for the default import (e.g. ModuleDefault).');
+      messages.push(
+        'Provide a name for the default import (e.g. ModuleDefault).'
+      );
     }
     if (!hasMembers) {
-      messages.push('Add at least one named member to accompany the default import.');
+      messages.push(
+        'Add at least one named member to accompany the default import.'
+      );
     }
   }
 
@@ -1122,10 +1268,12 @@ function placeholderPreview(entry: ImportEntry): string {
   }
   if (entry.importKind === 'default-and-named') {
     const alias = entry.defaultAlias.trim() || 'DefaultExport';
-    const members = entry.members.length > 0 ? entry.members.join(', ') : 'member';
+    const members =
+      entry.members.length > 0 ? entry.members.join(', ') : 'member';
     return `import ${alias}, { ${members} } from '${specifier}';`;
   }
-  const members = entry.members.length > 0 ? entry.members.join(', ') : 'member';
+  const members =
+    entry.members.length > 0 ? entry.members.join(', ') : 'member';
   return `import { ${members} } from '${specifier}';`;
 }
 
@@ -1142,7 +1290,7 @@ function parseImportLine(line: string): ImportEntry | null {
   if (trimmed.length === 0) return null;
 
   const defaultWithNamedMatch = trimmed.match(
-    /^import\s+([A-Za-z0-9_$]+)\s*,\s*\{\s*([^}]*)\s*\}\s*from\s*['"]([^'"]+)['"]\s*;?\s*$/i,
+    /^import\s+([A-Za-z0-9_$]+)\s*,\s*\{\s*([^}]*)\s*\}\s*from\s*['"]([^'"]+)['"]\s*;?\s*$/i
   );
   if (defaultWithNamedMatch) {
     const members = defaultWithNamedMatch[2]
@@ -1168,7 +1316,7 @@ function parseImportLine(line: string): ImportEntry | null {
   }
 
   const defaultMatch = trimmed.match(
-    /^import\s+([A-Za-z0-9_$]+)\s+from\s*['"]([^'"]+)['"]\s*;?\s*$/i,
+    /^import\s+([A-Za-z0-9_$]+)\s+from\s*['"]([^'"]+)['"]\s*;?\s*$/i
   );
   if (defaultMatch) {
     return {
@@ -1189,7 +1337,7 @@ function parseImportLine(line: string): ImportEntry | null {
   }
 
   const namedMatch = trimmed.match(
-    /^import\s*\{\s*([^}]*)\s*\}\s*from\s*['"]([^'"]+)['"]\s*;?\s*$/i,
+    /^import\s*\{\s*([^}]*)\s*\}\s*from\s*['"]([^'"]+)['"]\s*;?\s*$/i
   );
   if (namedMatch) {
     const members = namedMatch[1]
@@ -1215,7 +1363,7 @@ function parseImportLine(line: string): ImportEntry | null {
   }
 
   const namespaceMatch = trimmed.match(
-    /^import\s*\*\s*as\s*([A-Za-z0-9_$]+)\s*from\s*['"]([^'"]+)['"]\s*;?\s*$/i,
+    /^import\s*\*\s*as\s*([A-Za-z0-9_$]+)\s*from\s*['"]([^'"]+)['"]\s*;?\s*$/i
   );
   if (namespaceMatch) {
     return {
@@ -1286,12 +1434,15 @@ function generateId(): string {
   return `import-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-async function fetchModuleExports(specifier: string): Promise<ModuleFetchResult> {
+async function fetchModuleExports(
+  specifier: string
+): Promise<ModuleFetchResult> {
   if (!specifier.startsWith('http://') && !specifier.startsWith('https://')) {
     return {
       exports: [],
       hasDefault: false,
-      error: 'Autocomplete is available for fully-qualified http(s) module URLs.',
+      error:
+        'Autocomplete is available for fully-qualified http(s) module URLs.',
     };
   }
 
@@ -1313,7 +1464,10 @@ async function fetchModuleExports(specifier: string): Promise<ModuleFetchResult>
     return {
       exports: [],
       hasDefault: false,
-      error: error instanceof Error ? error.message : 'Failed to fetch module contents.',
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to fetch module contents.',
     };
   }
 }

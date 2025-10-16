@@ -1,39 +1,49 @@
 import {
   Badge,
-  CodeMirrorEditor,
   IntentTypes,
-  JSONSchema7,
   type JSX,
   ToggleCheckbox,
 } from '../../../.deps.ts';
-import type { EaCInterfaceGeneratedDataSlice, EaCInterfacePageDataAction } from '../../../.deps.ts';
+import type {
+  EaCInterfaceDataConnectionFeatures,
+  EaCInterfaceGeneratedDataSlice,
+  EaCInterfaceHistoricRange,
+  EaCInterfaceHistoricSliceFormat,
+  EaCInterfaceHistoricWindowMode,
+  EaCInterfacePageDataAccessMode,
+  EaCInterfacePageDataAction,
+  EaCInterfaceHistoricAbsoluteRange,
+  EaCInterfaceRelativeTimeOffset,
+  JSONSchema7,
+} from '../../../.deps.ts';
 
 type SurfaceInterfacePageDataTabProps = {
   generatedSlices: Array<[string, EaCInterfaceGeneratedDataSlice]>;
-  customSchemaText: string;
-  customSchemaError?: string;
   onToggleSlice: (key: string, enabled: boolean) => void;
-  onCustomSchemaTextChange: (value: string) => void;
+  onAccessModeChange: (key: string, mode: EaCInterfacePageDataAccessMode) => void;
+  onDataConnectionChange: (
+    key: string,
+    features: EaCInterfaceDataConnectionFeatures | undefined,
+  ) => void;
 };
 
 export function SurfaceInterfacePageDataTab({
   generatedSlices,
-  customSchemaText,
-  customSchemaError,
   onToggleSlice,
-  onCustomSchemaTextChange,
+  onAccessModeChange,
+  onDataConnectionChange,
 }: SurfaceInterfacePageDataTabProps): JSX.Element {
   const enabledCount = generatedSlices.filter(([, slice]) => slice.Enabled !== false).length;
 
   return (
     <div class='flex h-full min-h-0 flex-col gap-4'>
-      <section class='flex flex-col gap-3'>
+      <section class='flex flex-1 min-h-0 flex-col gap-3'>
         <header class='flex items-start justify-between gap-3'>
           <div>
-            <h3 class='text-sm font-semibold text-neutral-100'>Generated State</h3>
+            <h3 class='text-sm font-semibold text-neutral-100'>Generated Data Contracts</h3>
             <p class='text-xs text-neutral-400'>
-              Automatically contributed fields from connected capabilities. Disable items to exclude
-              them from the page data contract.
+              Review the slices supplied by connected capabilities. Enable the slices you want and
+              control where the data is available (handler, client, or both).
             </p>
           </div>
           <Badge intentType={IntentTypes.Secondary} class='text-[11px] uppercase tracking-wide'>
@@ -41,7 +51,7 @@ export function SurfaceInterfacePageDataTab({
           </Badge>
         </header>
 
-        <div class='space-y-2 max-h-72 overflow-y-auto pr-1'>
+        <div class='flex-1 min-h-0 space-y-2 overflow-y-auto pr-1'>
           {generatedSlices.length === 0
             ? (
               <div class='rounded border border-dashed border-neutral-800 bg-neutral-950 p-4 text-xs text-neutral-500'>
@@ -56,34 +66,11 @@ export function SurfaceInterfacePageDataTab({
                   sliceKey={key}
                   slice={slice}
                   onToggle={onToggleSlice}
+                  onAccessModeChange={onAccessModeChange}
+                  onDataConnectionChange={onDataConnectionChange}
                 />
               ))
             )}
-        </div>
-      </section>
-
-      <section class='flex flex-1 min-h-0 flex-col gap-2'>
-        <header class='flex items-center justify-between'>
-          <div>
-            <h3 class='text-sm font-semibold text-neutral-100'>Custom Schema</h3>
-            <p class='text-xs text-neutral-400'>
-              Extend or override generated fields with bespoke JSON Schema. Leave empty to rely
-              solely on generated slices.
-            </p>
-          </div>
-        </header>
-        <CodeMirrorEditor
-          fileContent={customSchemaText}
-          onContentChange={onCustomSchemaTextChange}
-          class='flex-1 min-h-[180px] [&>.cm-editor]:h-full [&>.cm-editor]:min-h-0'
-        />
-        <div class='space-y-1 text-xs'>
-          {customSchemaError && <p class='text-rose-400'>{customSchemaError}</p>}
-          <p class='text-neutral-400'>
-            The custom schema merges with enabled generated slices to form the final contract
-            returned from
-            <code>loadPageData</code>.
-          </p>
         </div>
       </section>
     </div>
@@ -94,16 +81,37 @@ type GeneratedSliceCardProps = {
   sliceKey: string;
   slice: EaCInterfaceGeneratedDataSlice;
   onToggle: (key: string, enabled: boolean) => void;
+  onAccessModeChange: (key: string, mode: EaCInterfacePageDataAccessMode) => void;
+  onDataConnectionChange: (
+    key: string,
+    features: EaCInterfaceDataConnectionFeatures | undefined,
+  ) => void;
 };
 
 function GeneratedSliceCard({
   sliceKey,
   slice,
   onToggle,
+  onAccessModeChange,
+  onDataConnectionChange,
 }: GeneratedSliceCardProps): JSX.Element {
   const enabled = slice.Enabled !== false;
   const hydrationSummary = describeHydration(slice.Hydration);
   const schemaSummary = summarizeSchema(slice.Schema);
+  const accessMode = slice.AccessMode ?? 'both';
+  const isDataConnection = (slice.SourceCapability ?? '').startsWith('dataConnection:');
+
+  const handleAccessModeSelect = (mode: EaCInterfacePageDataAccessMode) => {
+    onAccessModeChange(sliceKey, mode);
+  };
+
+  const handleFeaturesUpdate = (
+    updater: (prev: EaCInterfaceDataConnectionFeatures | undefined) =>
+      EaCInterfaceDataConnectionFeatures | undefined,
+  ) => {
+    const next = updater(slice.DataConnection);
+    onDataConnectionChange(sliceKey, normalizeDataConnectionFeatures(next));
+  };
 
   return (
     <div
@@ -132,44 +140,381 @@ function GeneratedSliceCard({
         />
       </div>
 
-      {slice.Actions && slice.Actions.length > 0 && (
-        <div class='mt-3 space-y-1 text-xs text-neutral-300'>
-          <p class='font-semibold text-neutral-200'>Actions</p>
-          <ul class='space-y-1'>
-            {slice.Actions.map((action: EaCInterfacePageDataAction) => (
-              <li
-                key={action.Key}
-                class='flex items-start justify-between gap-2 rounded border border-neutral-900 bg-neutral-950/70 px-2 py-1'
+      <div class='mt-3 space-y-3 text-xs text-neutral-200'>
+        <div>
+          <p class='font-semibold text-neutral-200'>Availability</p>
+          <div class='mt-2 flex flex-wrap gap-2'>
+            {([
+              ['server', 'Handler only'],
+              ['client', 'Client only'],
+              ['both', 'Handler & client'],
+            ] as Array<[EaCInterfacePageDataAccessMode, string]>).map(([mode, label]) => (
+              <button
+                key={mode}
+                type='button'
+                class={`rounded border px-2 py-1 text-xs transition ${
+                  accessMode === mode
+                    ? 'border-teal-400 bg-teal-500/10 text-teal-200'
+                    : 'border-neutral-700 bg-neutral-900 text-neutral-300 hover:border-neutral-500'
+                }`}
+                onClick={() => handleAccessModeSelect(mode)}
               >
-                <div class='flex-1'>
-                  <p class='font-medium text-neutral-100'>
-                    {action.Label ?? action.Key}
-                  </p>
-                  {action.Description && (
-                    <p class='text-[11px] text-neutral-500'>{action.Description}</p>
-                  )}
-                </div>
-                <div class='flex flex-col items-end gap-1'>
-                  {action.Invocation?.Type && (
-                    <Badge
-                      intentType={IntentTypes.Info}
-                      class='text-[10px] uppercase tracking-wide'
-                    >
-                      {action.Invocation.Type}
-                      {action.Invocation.Lookup ? ` · ${action.Invocation.Lookup}` : ''}
-                    </Badge>
-                  )}
-                  {action.Invocation?.Mode && (
-                    <span class='text-[10px] uppercase tracking-wide text-neutral-500'>
-                      {action.Invocation.Mode} call
-                    </span>
-                  )}
-                </div>
-              </li>
+                {label}
+              </button>
             ))}
-          </ul>
+          </div>
+          <p class='mt-1 text-[11px] text-neutral-500'>
+            Determines where this slice is hydrated. Use handler-only for sensitive server data,
+            client-only for UI helpers, or both for shared state.
+          </p>
+        </div>
+
+        {isDataConnection && (
+          <DataConnectionSettings
+            features={slice.DataConnection}
+            handleFeaturesUpdate={handleFeaturesUpdate}
+          />
+        )}
+
+        {slice.Actions && slice.Actions.length > 0 && (
+          <div class='space-y-2'>
+            <p class='font-semibold text-neutral-200'>Actions</p>
+            <ul class='space-y-1'>
+              {slice.Actions.map((action: EaCInterfacePageDataAction) => (
+                <li
+                  key={action.Key}
+                  class='flex items-start justify-between gap-2 rounded border border-neutral-900 bg-neutral-950/70 px-2 py-1 text-neutral-300'
+                >
+                  <div class='flex-1'>
+                    <p class='font-medium text-neutral-100'>
+                      {action.Label ?? action.Key}
+                    </p>
+                    {action.Description && (
+                      <p class='text-[11px] text-neutral-500'>{action.Description}</p>
+                    )}
+                  </div>
+                  <div class='flex flex-col items-end gap-1 text-[10px] uppercase tracking-wide'>
+                    {action.Invocation?.Type && (
+                      <Badge intentType={IntentTypes.Info} class='text-[10px] uppercase tracking-wide'>
+                        {action.Invocation.Type}
+                        {action.Invocation.Lookup ? ` · ${action.Invocation.Lookup}` : ''}
+                      </Badge>
+                    )}
+                    {action.Invocation?.Mode && (
+                      <span class='text-neutral-500'>{action.Invocation.Mode} call</span>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+type DataConnectionSettingsProps = {
+  features: EaCInterfaceDataConnectionFeatures | undefined;
+  handleFeaturesUpdate: (
+    updater: (prev: EaCInterfaceDataConnectionFeatures | undefined) =>
+      EaCInterfaceDataConnectionFeatures | undefined,
+  ) => void;
+};
+
+function DataConnectionSettings({
+  features,
+  handleFeaturesUpdate,
+}: DataConnectionSettingsProps): JSX.Element {
+  const allowHistoric = features?.AllowHistoricDownload ?? false;
+  const formatSet = new Set(features?.HistoricDownloadFormats ?? []);
+  const prefetch = features?.PrefetchHistoricSlice;
+  const prefetchEnabled = prefetch?.Enabled ?? false;
+  const windowMode: EaCInterfaceHistoricWindowMode = prefetch?.Mode ?? 'relative';
+
+  const updateHistoricFormats = (format: EaCInterfaceHistoricSliceFormat, checked: boolean) => {
+    handleFeaturesUpdate((prev) => {
+      const next: EaCInterfaceDataConnectionFeatures = { ...(prev ?? {}) };
+      const current = new Set(next.HistoricDownloadFormats ?? []);
+      if (checked) {
+        current.add(format);
+      } else {
+        current.delete(format);
+      }
+      next.HistoricDownloadFormats = Array.from(current);
+      if (next.HistoricDownloadFormats.length === 0) {
+        delete next.HistoricDownloadFormats;
+      }
+      return next;
+    });
+  };
+
+  const createPrefetchSlice = (
+    mode: EaCInterfaceHistoricWindowMode,
+    existing?: NonNullable<EaCInterfaceDataConnectionFeatures['PrefetchHistoricSlice']>,
+  ): NonNullable<EaCInterfaceDataConnectionFeatures['PrefetchHistoricSlice']> => {
+    const slice: NonNullable<EaCInterfaceDataConnectionFeatures['PrefetchHistoricSlice']> = {
+      Enabled: existing?.Enabled ?? true,
+      Format: existing?.Format ?? 'json',
+      Mode: mode,
+    };
+
+    if (mode === 'absolute') {
+      const existingAbsolute = existing?.AbsoluteRange;
+      slice.AbsoluteRange = existingAbsolute && isValidAbsoluteRange(existingAbsolute)
+        ? { ...existingAbsolute }
+        : { Start: new Date().toISOString() };
+    } else {
+      const existingRange = existing?.Range;
+      slice.Range = existingRange && isValidRange(existingRange)
+        ? { ...existingRange }
+        : { Amount: 7, Unit: 'days' };
+    }
+
+    if (mode === 'absolute') {
+      delete slice.Range;
+    } else {
+      delete slice.AbsoluteRange;
+    }
+
+    return slice;
+  };
+
+  const updatePrefetchSlice = (
+    mode: EaCInterfaceHistoricWindowMode,
+    mutate: (slice: NonNullable<EaCInterfaceDataConnectionFeatures['PrefetchHistoricSlice']>) => void,
+  ) => {
+    handleFeaturesUpdate((prev) => {
+      const next: EaCInterfaceDataConnectionFeatures = { ...(prev ?? {}) };
+      const baseSlice = createPrefetchSlice(mode, prev?.PrefetchHistoricSlice);
+      mutate(baseSlice);
+      next.PrefetchHistoricSlice = baseSlice;
+      return next;
+    });
+  };
+
+  return (
+    <div class='space-y-3 rounded border border-neutral-800 bg-neutral-950/80 p-3'>
+      <p class='font-semibold text-neutral-200'>Data connection settings</p>
+
+      <label class='flex items-start gap-3 text-xs text-neutral-300'>
+        <input
+          type='checkbox'
+          class='mt-[2px] h-4 w-4 accent-teal-500'
+          checked={allowHistoric}
+          onChange={(event) => {
+            const checked = event.currentTarget.checked;
+            handleFeaturesUpdate((prev) => {
+              const next: EaCInterfaceDataConnectionFeatures = { ...(prev ?? {}) };
+              next.AllowHistoricDownload = checked;
+              if (!checked) {
+                delete next.HistoricDownloadFormats;
+              } else if (!next.HistoricDownloadFormats || next.HistoricDownloadFormats.length === 0) {
+                next.HistoricDownloadFormats = ['json'];
+              }
+              return next;
+            });
+          }}
+        />
+        <span>
+          <span class='font-semibold text-neutral-100'>Allow historic downloads</span>
+          <span class='block text-[11px] text-neutral-500'>
+            Generate signed URLs for bulk downloads. Choose permitted formats when enabled.
+          </span>
+        </span>
+      </label>
+
+      {allowHistoric && (
+        <div class='ml-6 space-y-2 text-neutral-300'>
+          <p class='text-[11px] uppercase tracking-wide text-neutral-500'>Permitted formats</p>
+          <div class='flex flex-wrap gap-3 text-xs'>
+            {(['json', 'csv'] as EaCInterfaceHistoricSliceFormat[]).map((format) => (
+              <label key={format} class='flex items-center gap-2'>
+                <input
+                  type='checkbox'
+                  class='h-4 w-4 accent-teal-500'
+                  checked={formatSet.has(format)}
+                  onChange={(event) => updateHistoricFormats(format, event.currentTarget.checked)}
+                />
+                <span class='text-neutral-200'>{format.toUpperCase()}</span>
+              </label>
+            ))}
+          </div>
         </div>
       )}
+
+      <div class='space-y-2 text-neutral-300'>
+        <div class='flex items-center justify-between'>
+          <p class='text-[11px] uppercase tracking-wide text-neutral-500'>Prefetch window</p>
+          <ToggleCheckbox
+            checked={prefetchEnabled}
+            onToggle={(checked) => {
+              updatePrefetchSlice(windowMode, (slice) => {
+                slice.Enabled = checked;
+              });
+            }}
+            title='Toggle prefetch window'
+            checkedIntentType={IntentTypes.Primary}
+            uncheckedIntentType={IntentTypes.Secondary}
+          />
+        </div>
+        <p class='text-[11px] text-neutral-500'>
+          Prefetch a historic slice on load. Useful when the page needs initial historical context.
+        </p>
+
+        {prefetchEnabled && (
+          <div class='space-y-3 rounded border border-neutral-800 bg-neutral-950/60 p-3'>
+            <div class='flex flex-wrap items-center gap-2 text-xs text-neutral-300'>
+              <span class='text-[11px] uppercase tracking-wide text-neutral-500'>Window type</span>
+              {(['relative', 'absolute'] as EaCInterfaceHistoricWindowMode[]).map((mode) => (
+                <button
+                  key={mode}
+                  type='button'
+                  class={`rounded border px-2 py-1 transition ${
+                    windowMode === mode
+                      ? 'border-teal-400 bg-teal-500/10 text-teal-200'
+                      : 'border-neutral-700 bg-neutral-900 text-neutral-300 hover:border-neutral-500'
+                  }`}
+                  onClick={() => {
+                    updatePrefetchSlice(mode, (slice) => {
+                      slice.Enabled = slice.Enabled ?? true;
+                      slice.Mode = mode;
+                    });
+                  }}
+                >
+                  {mode === 'relative' ? 'Recent records' : 'Specific dates'}
+                </button>
+              ))}
+            </div>
+
+            <div class='flex flex-wrap gap-3 text-xs text-neutral-200'>
+              <label class='flex flex-col gap-1'>
+                <span class='text-[11px] uppercase tracking-wide text-neutral-500'>Format</span>
+                <select
+                  class='h-8 rounded border border-neutral-700 bg-neutral-900 px-2 outline-none focus:border-teal-400'
+                  value={prefetch?.Format ?? 'json'}
+                  onChange={(event) => {
+                    const value = event.currentTarget.value as EaCInterfaceHistoricSliceFormat;
+                    updatePrefetchSlice(windowMode, (slice) => {
+                      slice.Enabled = true;
+                      slice.Format = value;
+                    });
+                  }}
+                >
+                  <option value='json'>JSON</option>
+                  <option value='csv'>CSV</option>
+                </select>
+              </label>
+            </div>
+
+            {windowMode === 'relative' && (
+              <div class='grid gap-3 text-xs text-neutral-200 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'>
+                <label class='flex flex-col gap-1'>
+                  <span class='text-[11px] uppercase tracking-wide text-neutral-500'>Range amount</span>
+                  <input
+                    type='number'
+                    min={1}
+                    class='h-8 rounded border border-neutral-700 bg-neutral-900 px-2 outline-none focus:border-teal-400'
+                    value={prefetch?.Range?.Amount ?? 7}
+                    onChange={(event) => {
+                      const amount = clampPositiveInteger(event.currentTarget.value, prefetch?.Range?.Amount ?? 7);
+                      updatePrefetchSlice('relative', (slice) => {
+                        slice.Enabled = true;
+                        slice.Mode = 'relative';
+                        slice.Range = {
+                          Amount: amount,
+                          Unit: slice.Range?.Unit ?? 'days',
+                        };
+                      });
+                    }}
+                  />
+                </label>
+
+                <label class='flex flex-col gap-1'>
+                  <span class='text-[11px] uppercase tracking-wide text-neutral-500'>Range unit</span>
+                  <select
+                    class='h-8 rounded border border-neutral-700 bg-neutral-900 px-2 outline-none focus:border-teal-400'
+                    value={prefetch?.Range?.Unit ?? 'days'}
+                    onChange={(event) => {
+                      const unit = event.currentTarget.value as EaCInterfaceHistoricRange['Unit'];
+                      updatePrefetchSlice('relative', (slice) => {
+                        slice.Enabled = true;
+                        slice.Mode = 'relative';
+                        slice.Range = {
+                          Amount: slice.Range?.Amount ?? 7,
+                          Unit: unit,
+                        };
+                      });
+                    }}
+                  >
+                    <option value='minutes'>Minutes</option>
+                    <option value='hours'>Hours</option>
+                    <option value='days'>Days</option>
+                  </select>
+                </label>
+                <p class='md:col-span-2 text-[11px] text-neutral-500'>
+                  Fetch the most recent records using a rolling window (e.g. last 30 minutes or last 7 days).
+                </p>
+              </div>
+            )}
+
+            {windowMode === 'absolute' && (
+              <div class='grid gap-3 text-xs text-neutral-200 md:grid-cols-[repeat(2,minmax(0,1fr))]'>
+                <label class='flex flex-col gap-1'>
+                  <span class='text-[11px] uppercase tracking-wide text-neutral-500'>Start date/time</span>
+                  <input
+                    type='datetime-local'
+                    class='h-8 rounded border border-neutral-700 bg-neutral-900 px-2 outline-none focus:border-teal-400'
+                    value={isoToLocalInput(prefetch?.AbsoluteRange?.Start)}
+                    onChange={(event) => {
+                      const iso = localInputToIso(event.currentTarget.value);
+                      if (!iso) return;
+                      updatePrefetchSlice('absolute', (slice) => {
+                        slice.Enabled = true;
+                        slice.Mode = 'absolute';
+                        const current = slice.AbsoluteRange ?? { Start: iso };
+                        slice.AbsoluteRange = { ...current, Start: iso };
+                      });
+                    }}
+                  />
+                </label>
+
+                <label class='flex flex-col gap-1'>
+                  <span class='text-[11px] uppercase tracking-wide text-neutral-500'>End date/time</span>
+                  <input
+                    type='datetime-local'
+                    class='h-8 rounded border border-neutral-700 bg-neutral-900 px-2 outline-none focus:border-teal-400'
+                    value={isoToLocalInput(prefetch?.AbsoluteRange?.End)}
+                    onChange={(event) => {
+                      const value = event.currentTarget.value;
+                      updatePrefetchSlice('absolute', (slice) => {
+                        slice.Enabled = true;
+                        slice.Mode = 'absolute';
+                        if (!value) {
+                          if (slice.AbsoluteRange) {
+                            delete slice.AbsoluteRange.End;
+                          }
+                          return;
+                        }
+                        const iso = localInputToIso(value);
+                        if (!iso) return;
+                        const current = slice.AbsoluteRange ?? { Start: new Date().toISOString() };
+                        slice.AbsoluteRange = { ...current, End: iso };
+                      });
+                    }}
+                  />
+                  <span class='text-[10px] text-neutral-500'>Leave blank to fetch everything from the start onward.</span>
+                </label>
+
+                <p class='md:col-span-2 text-[11px] text-neutral-500'>
+                  Fetch a fixed historical window using explicit timestamps (UTC). Useful for investigations or
+                  reproducible reports.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -216,4 +561,139 @@ function summarizeSchema(schema: JSONSchema7 | undefined): string {
   if (typeof type === 'string') return type;
 
   return 'schema';
+}
+
+function normalizeDataConnectionFeatures(
+  features: EaCInterfaceDataConnectionFeatures | undefined,
+): EaCInterfaceDataConnectionFeatures | undefined {
+  if (!features) return undefined;
+
+  const result: EaCInterfaceDataConnectionFeatures = {};
+
+  if (typeof features.AllowHistoricDownload === 'boolean') {
+    result.AllowHistoricDownload = features.AllowHistoricDownload;
+  }
+
+  if (features.HistoricDownloadFormats && features.HistoricDownloadFormats.length > 0) {
+    const formats = Array.from(
+      new Set<EaCInterfaceHistoricSliceFormat>(
+        features.HistoricDownloadFormats.filter((format) => format === 'json' || format === 'csv'),
+      ),
+    );
+    if (formats.length > 0) {
+      result.HistoricDownloadFormats = formats;
+    }
+  }
+
+  if (features.PrefetchHistoricSlice) {
+    const slice = features.PrefetchHistoricSlice;
+    const normalizedSlice: NonNullable<EaCInterfaceDataConnectionFeatures['PrefetchHistoricSlice']> = {};
+    if (typeof slice.Enabled === 'boolean') normalizedSlice.Enabled = slice.Enabled;
+    if (slice.Format === 'json' || slice.Format === 'csv') normalizedSlice.Format = slice.Format;
+
+    if (slice.Mode === 'relative' || slice.Mode === 'absolute') {
+      normalizedSlice.Mode = slice.Mode;
+    }
+
+    if (slice.Range) {
+      const range = slice.Range;
+      if (isValidRange(range)) {
+        normalizedSlice.Range = {
+          Amount: Math.round(range.Amount),
+          Unit: range.Unit,
+          ...(range.Offset && isValidOffset(range.Offset)
+            ? { Offset: { Amount: Math.round(range.Offset.Amount), Unit: range.Offset.Unit } }
+            : {}),
+        };
+      }
+    }
+
+    if (slice.AbsoluteRange && isValidAbsoluteRange(slice.AbsoluteRange)) {
+      normalizedSlice.AbsoluteRange = {
+        Start: slice.AbsoluteRange.Start,
+        ...(slice.AbsoluteRange.End ? { End: slice.AbsoluteRange.End } : {}),
+      };
+    }
+
+    if (!normalizedSlice.Mode) {
+      if (normalizedSlice.AbsoluteRange) {
+        normalizedSlice.Mode = 'absolute';
+        delete normalizedSlice.Range;
+      } else if (normalizedSlice.Range) {
+        normalizedSlice.Mode = 'relative';
+      }
+    }
+
+    if (normalizedSlice.Mode === 'absolute') {
+      delete normalizedSlice.Range;
+      if (!normalizedSlice.AbsoluteRange) {
+        delete normalizedSlice.Mode;
+      }
+    }
+
+    if (normalizedSlice.Mode === 'relative') {
+      delete normalizedSlice.AbsoluteRange;
+      if (!normalizedSlice.Range) {
+        delete normalizedSlice.Mode;
+      }
+    }
+
+    if (Object.keys(normalizedSlice).length > 0) {
+      result.PrefetchHistoricSlice = normalizedSlice;
+    }
+  }
+
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+function isValidRange(range: EaCInterfaceHistoricRange): boolean {
+  return (
+    typeof range.Amount === 'number' &&
+    range.Amount > 0 &&
+    (range.Unit === 'minutes' || range.Unit === 'hours' || range.Unit === 'days')
+  );
+}
+
+function isValidOffset(offset: EaCInterfaceRelativeTimeOffset): boolean {
+  return (
+    typeof offset.Amount === 'number' &&
+    offset.Amount > 0 &&
+    (offset.Unit === 'minutes' || offset.Unit === 'hours' || offset.Unit === 'days')
+  );
+}
+
+function clampPositiveInteger(value: string, fallback: number): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return Math.round(parsed);
+}
+
+function isValidAbsoluteRange(range: EaCInterfaceHistoricAbsoluteRange): boolean {
+  if (!range || !isValidIsoDate(range.Start)) return false;
+  if (range.End !== undefined && !isValidIsoDate(range.End)) return false;
+  return true;
+}
+
+function isoToLocalInput(iso?: string): string {
+  if (!iso || !isValidIsoDate(iso)) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function localInputToIso(value: string): string | undefined {
+  if (!value) return undefined;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return date.toISOString();
+}
+
+function isValidIsoDate(value: string | undefined): boolean {
+  if (!value) return false;
+  return Number.isFinite(Date.parse(value));
 }

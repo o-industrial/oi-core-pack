@@ -39,6 +39,7 @@ export const DEFAULT_PAGE_DATA_SLICE: EaCInterfaceGeneratedDataSlice = {
     Server: true,
   },
   Enabled: true,
+  AccessMode: 'server',
 };
 
 export const DEFAULT_PAGE_DATA_TYPE: EaCInterfacePageDataType = {
@@ -64,6 +65,22 @@ const VALID_INVOCATION_TYPES = new Set<PageDataActionInvocationType>([
   'mcpResource',
   'custom',
 ] as PageDataActionInvocationType[]);
+
+type PageDataAccessMode = NonNullable<EaCInterfaceGeneratedDataSlice['AccessMode']>;
+type DataConnectionFeatures = NonNullable<EaCInterfaceGeneratedDataSlice['DataConnection']>;
+type DataConnectionHistoricSlice = NonNullable<NonNullable<
+  EaCInterfaceGeneratedDataSlice['DataConnection']
+>['PrefetchHistoricSlice']>;
+type HistoricRange = NonNullable<DataConnectionHistoricSlice['Range']>;
+type HistoricFormat = NonNullable<
+  NonNullable<EaCInterfaceGeneratedDataSlice['DataConnection']>['HistoricDownloadFormats']
+>[number];
+type TimeUnit = HistoricRange['Unit'];
+
+const VALID_ACCESS_MODES = new Set<PageDataAccessMode>(['server', 'client', 'both']);
+const VALID_HISTORIC_FORMATS = new Set<HistoricFormat>(['json', 'csv']);
+const VALID_TIME_UNITS = new Set<TimeUnit>(['minutes', 'hours', 'days']);
+const VALID_WINDOW_MODES = new Set<DataConnectionHistoricSlice['Mode']>(['relative', 'absolute']);
 
 type SanitizeOptions = {
   ensureDefaultSlice?: boolean;
@@ -96,6 +113,181 @@ function sanitizeHydration(value: unknown): PageDataHydration | undefined {
   }
 
   return Object.keys(result).length ? result : undefined;
+}
+
+function sanitizeAccessMode(value: unknown): PageDataAccessMode | undefined {
+  if (typeof value !== 'string') return undefined;
+  const normalized = value.toLowerCase() as PageDataAccessMode;
+  return VALID_ACCESS_MODES.has(normalized) ? normalized : undefined;
+}
+
+function sanitizeHistoricFormat(value: unknown): HistoricFormat | undefined {
+  if (typeof value !== 'string') return undefined;
+  const normalized = value.toLowerCase() as HistoricFormat;
+  return VALID_HISTORIC_FORMATS.has(normalized) ? normalized : undefined;
+}
+
+function sanitizeHistoricDownloadFormats(value: unknown): HistoricFormat[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const unique = new Set<HistoricFormat>();
+  for (const entry of value) {
+    const format = sanitizeHistoricFormat(entry);
+    if (format) unique.add(format);
+  }
+  return unique.size > 0 ? Array.from(unique) : undefined;
+}
+
+function sanitizeTimeUnit(value: unknown): TimeUnit | undefined {
+  if (typeof value !== 'string') return undefined;
+  const normalized = value.toLowerCase() as TimeUnit;
+  return VALID_TIME_UNITS.has(normalized) ? normalized : undefined;
+}
+
+function sanitizeWindowMode(value: unknown): DataConnectionHistoricSlice['Mode'] | undefined {
+  if (typeof value !== 'string') return undefined;
+  const normalized = value.toLowerCase() as DataConnectionHistoricSlice['Mode'];
+  return VALID_WINDOW_MODES.has(normalized) ? normalized : undefined;
+}
+
+function sanitizeAbsoluteRange(
+  value: unknown,
+): NonNullable<DataConnectionHistoricSlice['AbsoluteRange']> | undefined {
+  if (!isPlainObject(value)) return undefined;
+  const source = value as Record<string, unknown>;
+  const start = typeof source.Start === 'string' && isValidIsoDate(source.Start)
+    ? source.Start
+    : undefined;
+  if (!start) return undefined;
+
+  const absolute: NonNullable<DataConnectionHistoricSlice['AbsoluteRange']> = {
+    Start: start,
+  };
+
+  const end = typeof source.End === 'string' && isValidIsoDate(source.End)
+    ? source.End
+    : undefined;
+  if (end) {
+    absolute.End = end;
+  }
+
+  return absolute;
+}
+
+function sanitizeHistoricRange(value: unknown): HistoricRange | undefined {
+  if (!isPlainObject(value)) return undefined;
+
+  const source = value as Record<string, unknown>;
+  const amount = typeof source.Amount === 'number' && Number.isFinite(source.Amount)
+    ? Math.abs(source.Amount)
+    : undefined;
+  const unit = sanitizeTimeUnit(source.Unit);
+
+  if (!amount || amount === 0 || !unit) return undefined;
+
+  const range: HistoricRange = {
+    Amount: amount,
+    Unit: unit,
+  };
+
+  const offsetSource = source.Offset;
+  if (isPlainObject(offsetSource)) {
+    const offsetAmount = typeof offsetSource.Amount === 'number' && Number.isFinite(offsetSource.Amount)
+      ? Math.abs(offsetSource.Amount)
+      : undefined;
+    const offsetUnit = sanitizeTimeUnit(offsetSource.Unit);
+    if (offsetAmount && offsetAmount !== 0 && offsetUnit) {
+      range.Offset = {
+        Amount: offsetAmount,
+        Unit: offsetUnit,
+      };
+    }
+  }
+
+  return range;
+}
+
+function sanitizeHistoricSlice(value: unknown): DataConnectionHistoricSlice | undefined {
+  if (!isPlainObject(value)) return undefined;
+
+  const source = value as Record<string, unknown>;
+  const result: DataConnectionHistoricSlice = {};
+
+  if (typeof source.Enabled === 'boolean') {
+    result.Enabled = source.Enabled;
+  }
+
+  const format = sanitizeHistoricFormat(source.Format);
+  if (format) {
+    result.Format = format;
+  }
+
+  const range = sanitizeHistoricRange(source.Range);
+  if (range) {
+    result.Range = range;
+  }
+
+  const mode = sanitizeWindowMode(source.Mode);
+  const absolute = sanitizeAbsoluteRange(source.AbsoluteRange);
+  if (mode) {
+    result.Mode = mode;
+  }
+
+  if (absolute) {
+    result.AbsoluteRange = absolute;
+  }
+
+  if (result.Mode === 'absolute') {
+    delete result.Range;
+    if (!result.AbsoluteRange) {
+      delete result.Mode;
+    }
+  }
+
+  if (result.Mode === 'relative') {
+    delete result.AbsoluteRange;
+    if (!result.Range) {
+      delete result.Mode;
+    }
+  }
+
+  if (!result.Mode) {
+    if (result.AbsoluteRange) {
+      result.Mode = 'absolute';
+      delete result.Range;
+    } else if (result.Range) {
+      result.Mode = 'relative';
+    }
+  }
+
+  return Object.keys(result).length ? result : undefined;
+}
+
+function sanitizeDataConnectionFeatures(value: unknown): DataConnectionFeatures | undefined {
+  if (!isPlainObject(value)) return undefined;
+
+  const source = value as Record<string, unknown>;
+  const result: DataConnectionFeatures = {};
+
+  if (typeof source.AllowHistoricDownload === 'boolean') {
+    result.AllowHistoricDownload = source.AllowHistoricDownload;
+  }
+
+  const formats = sanitizeHistoricDownloadFormats(source.HistoricDownloadFormats);
+  if (formats) {
+    result.HistoricDownloadFormats = formats;
+  }
+
+  const slice = sanitizeHistoricSlice(source.PrefetchHistoricSlice);
+  if (slice) {
+    result.PrefetchHistoricSlice = slice;
+  }
+
+  return Object.keys(result).length ? result : undefined;
+}
+
+function isValidIsoDate(value: string): boolean {
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed);
 }
 
 function sanitizeInvocation(
@@ -216,6 +408,21 @@ function sanitizeGeneratedSlice(
     result.Actions = actions;
   }
 
+  const accessMode = sanitizeAccessMode(source.AccessMode);
+  if (accessMode) {
+    result.AccessMode = accessMode;
+  } else if (
+    source.AccessMode === undefined &&
+    typeof DEFAULT_PAGE_DATA_SLICE.AccessMode === 'string'
+  ) {
+    result.AccessMode = DEFAULT_PAGE_DATA_SLICE.AccessMode;
+  }
+
+  const dataConnection = sanitizeDataConnectionFeatures(source.DataConnection);
+  if (dataConnection) {
+    result.DataConnection = dataConnection;
+  }
+
   if (typeof source.Enabled === 'boolean') {
     result.Enabled = source.Enabled;
   } else if (
@@ -247,7 +454,6 @@ function sanitizePageDataType(
 ): EaCInterfacePageDataType | undefined {
   const source = isPlainObject(value) ? value : undefined;
   const generated = buildGeneratedSlices(source?.Generated);
-  const custom = sanitizeSchema(source?.Custom);
 
   if (options.ensureDefaultSlice && !generated[DEFAULT_PAGE_DATA_SLICE_KEY]) {
     generated[DEFAULT_PAGE_DATA_SLICE_KEY] = sanitizeGeneratedSlice(
@@ -258,7 +464,6 @@ function sanitizePageDataType(
   if (
     !source &&
     !options.ensureDefaultSlice &&
-    custom === undefined &&
     Object.keys(generated).length === 0
   ) {
     return undefined;
@@ -267,10 +472,6 @@ function sanitizePageDataType(
   const result: EaCInterfacePageDataType = {
     Generated: generated,
   };
-
-  if (custom !== undefined) {
-    result.Custom = custom;
-  }
 
   return result;
 }

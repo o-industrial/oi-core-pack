@@ -1,6 +1,20 @@
 import type { FunctionalComponent } from 'npm:preact@10.20.1';
 export type { ComponentType, FunctionComponent, JSX } from 'npm:preact@10.20.1';
 
+export { memo } from 'npm:preact@10.20.1/compat';
+export {
+  type Dispatch,
+  type StateUpdater,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'npm:preact@10.20.1/hooks';
+
+export type { NodeProps } from 'npm:reactflow@11.11.4';
+export { Position as ReactPosition } from 'npm:reactflow@11.11.4';
+
 export type {
   EaCAgentDetails,
   EaCAzureDockerSimulatorDetails,
@@ -15,6 +29,15 @@ export type {
   EaCInterfaceGeneratedDataSlice,
   EaCInterfacePageDataAction,
   EaCInterfacePageDataType,
+  EaCInterfaceDataConnectionFeatures,
+  EaCInterfaceDataConnectionHistoricSlice,
+  EaCInterfaceHistoricAbsoluteRange,
+  EaCInterfaceHistoricRange,
+  EaCInterfaceHistoricSliceFormat,
+  EaCInterfaceHistoricWindowMode,
+  EaCInterfacePageDataAccessMode,
+  EaCInterfaceRelativeTimeOffset,
+  EaCInterfaceRelativeTimeUnit,
   EaCRootSchemaDetails,
   EaCSchemaAsCode,
   EaCSchemaDetails,
@@ -30,20 +53,8 @@ export type {
   SurfaceInterfaceSettings,
   SurfaceSchemaSettings,
   SurfaceWarmQuerySettings,
-} from 'jsr:@o-industrial/common@0.0.499/eac';
-export { memo } from 'npm:preact@10.20.1/compat';
-export {
-  type Dispatch,
-  type StateUpdater,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'npm:preact@10.20.1/hooks';
-
-export type { NodeProps } from 'npm:reactflow@11.11.4';
-export { Position as ReactPosition } from 'npm:reactflow@11.11.4';
+// } from 'jsr:@o-industrial/common@0.0.499/eac';
+} from '../../../o-industrial/open-industrial-reference-architecture/src/eac/.exports.ts';
 
 export { merge, type NullableArrayOrObject } from 'jsr:@fathym/common@0.2.274';
 export { z } from 'jsr:@fathym/common@0.2.274/third-party/zod';

@@ -7,22 +7,24 @@ import {
   CodeMirrorEditor,
   Input,
   IntentTypes,
+  WorkspaceManager,
   interfacePageDataToSchema,
   Modal,
   TabbedPanel,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
-  WorkspaceManager,
 } from '../../../.deps.ts';
 import type {
   EaCInterfaceCodeBlock,
+  EaCInterfaceDataConnectionFeatures,
   EaCInterfaceDetails,
   EaCInterfaceGeneratedDataSlice,
+  EaCInterfacePageDataAccessMode,
   EaCInterfacePageDataType,
   EverythingAsCodeOIWorkspace,
-  JSONSchema7,
   JSX,
   SurfaceInterfaceSettings,
 } from '../../../.deps.ts';
@@ -90,11 +92,6 @@ export function SurfaceInterfaceModal({
       interfaceLookup,
     );
   });
-  const [customSchemaText, setCustomSchemaText] = useState(() =>
-    formatCustomSchema(pageDataType.Custom)
-  );
-  const [customSchemaError, setCustomSchemaError] = useState<string | undefined>(undefined);
-
   const [handlerCode, setHandlerCode] = useState(
     resolvedDetails.PageHandler?.Code ?? '',
   );
@@ -144,8 +141,6 @@ export function SurfaceInterfaceModal({
       interfaceLookup,
     );
     setPageDataType(reconciled);
-    setCustomSchemaText(formatCustomSchema(reconciled.Custom));
-    setCustomSchemaError(undefined);
 
     setHandlerCode(resolvedDetails.PageHandler?.Code ?? '');
     setHandlerDescription(resolvedDetails.PageHandler?.Description ?? '');
@@ -205,7 +200,7 @@ export function SurfaceInterfaceModal({
   }, [resolvedSnapshot]);
 
   const nextDetails = useMemo(() => {
-    if (importsInvalid || customSchemaError) return null;
+    if (importsInvalid) return null;
 
     return buildInterfaceDetailsPatch(
       resolvedDetails.PageHandler,
@@ -223,7 +218,6 @@ export function SurfaceInterfaceModal({
     );
   }, [
     importsInvalid,
-    customSchemaError,
     resolvedDetails.PageHandler,
     resolvedDetails.Page,
     imports,
@@ -246,35 +240,50 @@ export function SurfaceInterfaceModal({
     onDetailsChange(nextDetails);
   }, [nextDetails, onDetailsChange]);
 
-  const handleGeneratedSliceToggle = (key: string, enabled: boolean) => {
-    setPageDataType((current) => {
-      const slice = current.Generated[key];
-      if (!slice) return current;
-      return {
-        ...current,
-        Generated: {
-          ...current.Generated,
-          [key]: {
-            ...slice,
-            Enabled: enabled,
+  const updateGeneratedSlice = useCallback(
+    (
+      key: string,
+      updater: (slice: EaCInterfaceGeneratedDataSlice) => EaCInterfaceGeneratedDataSlice | null,
+    ) => {
+      setPageDataType((current) => {
+        const slice = current.Generated[key];
+        if (!slice) return current;
+        const nextSlice = updater(slice);
+        if (!nextSlice) return current;
+        if (nextSlice === slice) return current;
+        return {
+          ...current,
+          Generated: {
+            ...current.Generated,
+            [key]: nextSlice,
           },
-        },
-      };
-    });
+        };
+      });
+    },
+    [],
+  );
+
+  const handleGeneratedSliceToggle = (key: string, enabled: boolean) => {
+    updateGeneratedSlice(key, (slice) => ({
+      ...slice,
+      Enabled: enabled,
+    }));
   };
 
-  const handleCustomSchemaTextChange = (nextText: string) => {
-    setCustomSchemaText(nextText);
-    const { schema, error } = parseCustomSchema(nextText);
-    if (error) {
-      setCustomSchemaError(error);
-      return;
-    }
+  const handleAccessModeChange = (key: string, mode: EaCInterfacePageDataAccessMode) => {
+    updateGeneratedSlice(key, (slice) => ({
+      ...slice,
+      AccessMode: mode,
+    }));
+  };
 
-    setCustomSchemaError(undefined);
-    setPageDataType((current) => ({
-      ...current,
-      Custom: schema,
+  const handleDataConnectionFeaturesChange = (
+    key: string,
+    features: EaCInterfaceDataConnectionFeatures | undefined,
+  ) => {
+    updateGeneratedSlice(key, (slice) => ({
+      ...slice,
+      DataConnection: features ? JSON.parse(JSON.stringify(features)) : undefined,
     }));
   };
 
@@ -296,6 +305,8 @@ export function SurfaceInterfaceModal({
           enabled: slice.Enabled !== false,
           source: slice.SourceCapability,
           hydration: slice.Hydration,
+          accessMode: slice.AccessMode,
+          dataConnection: slice.DataConnection,
           actionCount: slice.Actions?.length ?? 0,
           actions: slice.Actions?.map((action) => ({
             key: action.Key,
@@ -304,11 +315,6 @@ export function SurfaceInterfaceModal({
             type: action.Invocation?.Type,
           })),
         })),
-        customSchemaPreview: customSchemaText
-          ? customSchemaText.length > 240
-            ? `${customSchemaText.slice(0, 240)}...`
-            : customSchemaText
-          : undefined,
       },
       handler: {
         code: handlerCode,
@@ -327,7 +333,6 @@ export function SurfaceInterfaceModal({
       enterpriseLookup,
       imports,
       pageDataType,
-      customSchemaText,
       generatedSliceEntries,
       enabledGeneratedCount,
       handlerCode,
@@ -357,10 +362,9 @@ export function SurfaceInterfaceModal({
       content: (
         <SurfaceInterfacePageDataTab
           generatedSlices={generatedSliceEntries}
-          customSchemaText={customSchemaText}
-          customSchemaError={customSchemaError}
           onToggleSlice={handleGeneratedSliceToggle}
-          onCustomSchemaTextChange={handleCustomSchemaTextChange}
+          onAccessModeChange={handleAccessModeChange}
+          onDataConnectionChange={handleDataConnectionFeaturesChange}
         />
       ),
     },
@@ -756,37 +760,4 @@ function buildInterfaceDetailsPatch(
       pageMessageGroups,
     ),
   };
-}
-
-function formatCustomSchema(schema: JSONSchema7 | undefined): string {
-  if (!schema) return '';
-  try {
-    return JSON.stringify(schema, null, 2);
-  } catch {
-    return '';
-  }
-}
-
-function parseCustomSchema(
-  schemaText: string,
-): { schema?: JSONSchema7; error?: string } {
-  const trimmed = schemaText.trim();
-  if (!trimmed) {
-    return { schema: undefined };
-  }
-
-  try {
-    const parsed = JSON.parse(schemaText);
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      return {
-        error: 'Page data schema must be a JSON object.',
-      };
-    }
-
-    return { schema: parsed as JSONSchema7 };
-  } catch (error) {
-    return {
-      error: error instanceof Error ? error.message : 'Invalid JSON schema.',
-    };
-  }
 }

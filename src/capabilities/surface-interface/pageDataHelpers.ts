@@ -30,6 +30,9 @@ type ReconcileContext = {
   interfaceSettings?: SurfaceInterfaceSettings;
 };
 
+type DataConnectionFeatures = NonNullable<EaCInterfaceGeneratedDataSlice['DataConnection']>;
+type DataConnectionHistoricSlice = NonNullable<DataConnectionFeatures['PrefetchHistoricSlice']>;
+
 export function reconcileInterfacePageData(
   pageData: EaCInterfacePageDataType,
   settings: SurfaceInterfaceSettings | undefined,
@@ -160,6 +163,7 @@ function buildWarmQuerySlice(
       },
     ],
     Enabled: true,
+    AccessMode: 'both',
   };
 
   return base;
@@ -202,6 +206,20 @@ function buildDataConnectionSlice(
       },
     ],
     Enabled: true,
+    AccessMode: 'both',
+    DataConnection: {
+      AllowHistoricDownload: true,
+      HistoricDownloadFormats: ['json'],
+      PrefetchHistoricSlice: {
+        Enabled: false,
+        Format: 'json',
+        Mode: 'relative',
+        Range: {
+          Amount: 7,
+          Unit: 'days',
+        },
+      },
+    },
   };
 
   return base;
@@ -238,6 +256,7 @@ function buildChildInterfaceSlice(
       },
     ],
     Enabled: true,
+    AccessMode: 'both',
   };
 
   return base;
@@ -262,6 +281,7 @@ function buildSchemaSlice(
     Schema: schema ? cloneJsonSchema(schema) : buildSchemaFallback(),
     Hydration: { Server: true },
     Enabled: true,
+    AccessMode: 'server',
   };
 }
 
@@ -279,6 +299,12 @@ function mergeSlices(
     Hydration: existing.Hydration ?? base.Hydration,
     Actions: mergeActions(existing.Actions, base.Actions),
   };
+
+  merged.AccessMode = existing.AccessMode ?? base.AccessMode;
+  merged.DataConnection = mergeDataConnectionFeatures(
+    existing.DataConnection,
+    base.DataConnection,
+  );
 
   return merged;
 }
@@ -313,13 +339,60 @@ function mergeActions(
   return merged;
 }
 
+function mergeDataConnectionFeatures(
+  existing: EaCInterfaceGeneratedDataSlice['DataConnection'],
+  base: EaCInterfaceGeneratedDataSlice['DataConnection'],
+): DataConnectionFeatures | undefined {
+  const existingClone = cloneDataConnectionFeatures(existing);
+  const baseClone = cloneDataConnectionFeatures(base);
+
+  if (!existingClone && !baseClone) return undefined;
+
+  const result: DataConnectionFeatures = {};
+
+  const allowHistoricDownload = existingClone?.AllowHistoricDownload ??
+    baseClone?.AllowHistoricDownload;
+  if (allowHistoricDownload !== undefined) {
+    result.AllowHistoricDownload = allowHistoricDownload;
+  }
+
+  const formatsSource = existingClone?.HistoricDownloadFormats ??
+    baseClone?.HistoricDownloadFormats;
+  if (formatsSource && formatsSource.length > 0) {
+    result.HistoricDownloadFormats = Array.from(new Set(formatsSource));
+  }
+
+  const prefetchSource = existingClone?.PrefetchHistoricSlice ??
+    baseClone?.PrefetchHistoricSlice;
+  if (prefetchSource) {
+    result.PrefetchHistoricSlice = cloneDataConnectionHistoricSlice(prefetchSource);
+  }
+
+  return Object.keys(result).length ? result : undefined;
+}
+
 function cloneSlice(slice: EaCInterfaceGeneratedDataSlice): EaCInterfaceGeneratedDataSlice {
   return {
     ...slice,
     Schema: cloneJsonSchema(slice.Schema),
     Hydration: slice.Hydration ? { ...slice.Hydration } : undefined,
     Actions: slice.Actions ? cloneActions(slice.Actions) : undefined,
+    DataConnection: cloneDataConnectionFeatures(slice.DataConnection),
   };
+}
+
+function cloneDataConnectionFeatures(
+  features: EaCInterfaceGeneratedDataSlice['DataConnection'],
+): DataConnectionFeatures | undefined {
+  if (!features) return undefined;
+  return JSON.parse(JSON.stringify(features)) as DataConnectionFeatures;
+}
+
+function cloneDataConnectionHistoricSlice(
+  slice: DataConnectionHistoricSlice | undefined,
+): DataConnectionHistoricSlice | undefined {
+  if (!slice) return undefined;
+  return JSON.parse(JSON.stringify(slice)) as DataConnectionHistoricSlice;
 }
 
 function cloneActions(actions: EaCInterfacePageDataAction[]): EaCInterfacePageDataAction[] {
