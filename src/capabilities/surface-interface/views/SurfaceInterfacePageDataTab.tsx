@@ -66,7 +66,8 @@ export function SurfaceInterfacePageDataTab({
                 <GeneratedSliceCard
                   key={key}
                   sliceKey={key}
-                  slice={slice}                  onAccessModeChange={onAccessModeChange}
+                  slice={slice}
+                  onAccessModeChange={onAccessModeChange}
                   onDataConnectionChange={onDataConnectionChange}
                   onActionModeChange={onActionModeChange}
                 />

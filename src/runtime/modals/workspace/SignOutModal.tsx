@@ -9,6 +9,12 @@ import {
   WorkspaceManager,
 } from '../../../.deps.ts';
 
+type VideoOption = {
+  baseSrc: string;
+  start: number;
+  duration: number;
+};
+
 export type SignOutModalProps = {
   workspaceMgr: WorkspaceManager;
   onClose: () => void;
@@ -16,15 +22,47 @@ export type SignOutModalProps = {
 
 export function SignOutModal({ workspaceMgr, onClose }: SignOutModalProps): JSX.Element {
   const [ready, setReady] = useState(false);
-  const [videoSrc] = useState(() => {
-    const videoOptions = [
-      'https://www.youtube.com/embed/rOXaPE6gklI?si=ZPGuZtTWiKyuuoew&controls=0&autoplay=1&mute=0&playsinline=1&start=3',
-      'https://www.youtube.com/embed/2mkm_mNiJME?controls=0&autoplay=1&mute=0&playsinline=1&start=71',
+  const joke = true;
+  const [chosenVideo] = useState<VideoOption>(() => {
+    const videoOptions: VideoOption[] = [
+      {
+        baseSrc:
+          'https://www.youtube.com/embed/rOXaPE6gklI?si=ZPGuZtTWiKyuuoew&controls=0&autoplay=1&mute=0&playsinline=1',
+        start: 3,
+        duration: 215,
+      },
+      {
+        baseSrc: 'https://www.youtube.com/embed/2mkm_mNiJME?controls=0&autoplay=1&mute=0&playsinline=1',
+        start: 71,
+        duration: 260,
+      },
     ];
 
     return videoOptions[Math.floor(Math.random() * videoOptions.length)];
   });
+  const [clicks, setClicks] = useState(0);
+  const [currentStart, setCurrentStart] = useState(chosenVideo.start);
   const { signOut } = workspaceMgr.UseAccountProfile();
+  const videoSrc = `${chosenVideo.baseSrc}&start=${currentStart}`;
+
+  const handleConfirmSignOut = () => {
+    if (!joke) {
+      signOut();
+      return;
+    }
+
+    const nextClicks = clicks + 1;
+    const nextStart = chosenVideo.start + nextClicks * 10;
+
+    if (nextStart > chosenVideo.duration) {
+      signOut();
+      return;
+    }
+
+    setClicks(nextClicks);
+    setCurrentStart(nextStart);
+    setReady(false);
+  };
 
   return (
     <Modal title='Sign Out' onClose={onClose}>
@@ -49,7 +87,7 @@ export function SignOutModal({ workspaceMgr, onClose }: SignOutModalProps): JSX.
           </Badge>
 
           <Action
-            onClick={() => signOut()}
+            onClick={handleConfirmSignOut}
             styleType={ActionStyleTypes.Solid | ActionStyleTypes.Rounded}
             intentType={IntentTypes.Error}
             disabled={!ready}

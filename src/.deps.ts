@@ -35,6 +35,7 @@ export type {
   EaCInterfaceHistoricRange,
   EaCInterfaceHistoricSliceFormat,
   EaCInterfaceHistoricWindowMode,
+  EaCInterfacePageDataActionInvocationMode,
   EaCInterfacePageDataAccessMode,
   EaCInterfaceRelativeTimeOffset,
   EaCInterfaceRelativeTimeUnit,
