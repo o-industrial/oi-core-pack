@@ -307,7 +307,7 @@ export function SignOutModal({ workspaceMgr, onClose }: SignOutModalProps): JSX.
           <span class='text-sm font-semibold text-neutral-200'>
             Pick your farewell performance
           </span>
-          <Select value={chosenVideo.id} onChange={handleVideoSelect} class='w-full'>
+          <Select value={chosenVideo.id} onChange={handleVideoSelect}>
             {SIGN_OUT_VIDEOS.map((video) => (
               <option key={video.id} value={video.id}>
                 {video.label}
