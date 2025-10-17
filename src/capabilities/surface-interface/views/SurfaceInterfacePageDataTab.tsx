@@ -1,4 +1,4 @@
-import { Badge, IntentTypes, type JSX, ToggleCheckbox } from '../../../.deps.ts';
+import { Badge, IntentTypes, type JSX, Select, ToggleCheckbox } from '../../../.deps.ts';
 import type {
   EaCInterfaceDataConnectionFeatures,
   EaCInterfaceGeneratedDataSlice,
@@ -469,8 +469,8 @@ function DataConnectionSettings({
             <div class='flex flex-wrap gap-3 text-xs text-neutral-200'>
               <label class='flex flex-col gap-1'>
                 <span class='text-[11px] uppercase tracking-wide text-neutral-500'>Format</span>
-                <select
-                  class='h-8 rounded border border-neutral-700 bg-neutral-900 px-2 outline-none focus:border-teal-400'
+                <Select
+                  // class='h-8 rounded border border-neutral-700 bg-neutral-900 px-2 outline-none focus:border-teal-400'
                   value={prefetch?.Format ?? 'json'}
                   onChange={(event) => {
                     const value = event.currentTarget.value as EaCInterfaceHistoricSliceFormat;
@@ -482,7 +482,7 @@ function DataConnectionSettings({
                 >
                   <option value='json'>JSON</option>
                   <option value='csv'>CSV</option>
-                </select>
+                </Select>
               </label>
             </div>
 
@@ -518,8 +518,8 @@ function DataConnectionSettings({
                   <span class='text-[11px] uppercase tracking-wide text-neutral-500'>
                     Range unit
                   </span>
-                  <select
-                    class='h-8 rounded border border-neutral-700 bg-neutral-900 px-2 outline-none focus:border-teal-400'
+                  <Select
+                    // class='h-8 rounded border border-neutral-700 bg-neutral-900 px-2 outline-none focus:border-teal-400'
                     value={prefetch?.Range?.Unit ?? 'days'}
                     onChange={(event) => {
                       const unit = event.currentTarget.value as EaCInterfaceHistoricRange['Unit'];
@@ -536,7 +536,7 @@ function DataConnectionSettings({
                     <option value='minutes'>Minutes</option>
                     <option value='hours'>Hours</option>
                     <option value='days'>Days</option>
-                  </select>
+                  </Select>
                 </label>
                 <p class='md:col-span-2 text-[11px] text-neutral-500'>
                   Fetch the most recent records using a rolling window (e.g. last 30 minutes or last

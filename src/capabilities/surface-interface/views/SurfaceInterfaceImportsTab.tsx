@@ -7,6 +7,7 @@ import {
   IntentTypes,
   type JSX,
   SaveIcon,
+  Select,
   SettingsIcon,
   useCallback,
   useEffect,
@@ -481,8 +482,8 @@ export function SurfaceInterfaceImportsTab({
                       Choose how this module is consumed. Adjusting the style will reset
                       incompatible fields automatically.
                     </div>
-                    <select
-                      class='h-10 rounded border border-neutral-700 bg-neutral-900 px-3 text-sm text-neutral-100 outline-none focus:border-teal-400'
+                    <Select
+                      // class='h-10 rounded border border-neutral-700 bg-neutral-900 px-3 text-sm text-neutral-100 outline-none focus:border-teal-400'
                       value={entry.importKind}
                       onInput={(
                         event: JSX.TargetedEvent<HTMLSelectElement, Event>,
@@ -504,7 +505,7 @@ export function SurfaceInterfaceImportsTab({
                       <option value='side-effect'>
                         Side effect (import 'specifier')
                       </option>
-                    </select>
+                    </Select>
                   </label>
 
                   <div class='flex flex-wrap items-center gap-2'>
