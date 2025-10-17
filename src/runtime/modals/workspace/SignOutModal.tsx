@@ -5,6 +5,7 @@ import {
   IntentTypes,
   JSX,
   Modal,
+  Select,
   useEffect,
   useState,
   WorkspaceManager,
@@ -148,14 +149,20 @@ export function SignOutModal({ workspaceMgr, onClose }: SignOutModalProps): JSX.
   const email = profile.Username ?? '';
   const joke = email.toLowerCase().endsWith('@fathym.com');
 
-  const [chosenVideo] = useState<VideoOption>(() => {
-    const index = Math.floor(Math.random() * SIGN_OUT_VIDEOS.length);
-    return SIGN_OUT_VIDEOS[index];
+  const [videoState, setVideoState] = useState(() => {
+    const videoIndex = Math.floor(Math.random() * SIGN_OUT_VIDEOS.length);
+    const initialVideo = SIGN_OUT_VIDEOS[videoIndex];
+    return {
+      videoIndex,
+      skipIndex: 0,
+      currentStart: initialVideo.skipTimes[0] ?? 0,
+    };
   });
+
+  const chosenVideo = SIGN_OUT_VIDEOS[videoState.videoIndex];
   const totalSkips = chosenVideo.skipTimes.length;
-  const [skipIndex, setSkipIndex] = useState(0);
-  const [currentStart, setCurrentStart] = useState(chosenVideo.skipTimes[0] ?? 0);
-  const videoSrc = `${chosenVideo.baseSrc}&start=${currentStart}`;
+  const remainingConfirmations = joke ? Math.max(1, (totalSkips || 1) - videoState.skipIndex) : 1;
+  const videoSrc = `${chosenVideo.baseSrc}&start=${videoState.currentStart}`;
 
   const track = (eventName: string, properties?: Record<string, unknown>) => {
     trackSignOutTelemetry(eventName, {
@@ -163,59 +170,98 @@ export function SignOutModal({ workspaceMgr, onClose }: SignOutModalProps): JSX.
       videoLabel: chosenVideo.label,
       jokeEnabled: joke,
       totalSkips,
+      skipIndex: videoState.skipIndex,
+      currentStart: videoState.currentStart,
+      remainingConfirmations,
       ...properties,
     });
   };
 
   useEffect(() => {
     track('SignOutModal.Opened', {
-      skipIndex: 0,
-      startSeconds: chosenVideo.skipTimes[0] ?? 0,
+      skipIndex: videoState.skipIndex,
+      startSeconds: videoState.currentStart,
+      remainingConfirmations,
     });
     // deno-lint-ignore-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleClose = () => {
     track('SignOutModal.Closed', {
-      skipIndex,
-      currentStart,
+      skipIndex: videoState.skipIndex,
+      currentStart: videoState.currentStart,
+      remainingConfirmations,
       ready,
     });
     onClose();
   };
 
   const handleConfirmSignOut = () => {
-    const nextIndex = skipIndex + 1;
+    const nextIndex = videoState.skipIndex + 1;
     const nextStart = chosenVideo.skipTimes[nextIndex];
     const willSignOut = !joke || nextStart === undefined;
 
     track('SignOutModal.ConfirmClick', {
-      skipIndex,
-      currentStart,
-      nextIndex: willSignOut ? skipIndex : nextIndex,
+      skipIndex: videoState.skipIndex,
+      currentStart: videoState.currentStart,
+      nextIndex: willSignOut ? videoState.skipIndex : nextIndex,
       nextStart: willSignOut ? null : nextStart,
       ready,
       willSignOut,
+      remainingBeforeClick: remainingConfirmations,
     });
 
     if (willSignOut) {
       track('SignOutModal.SignOutTriggered', {
-        skipIndex,
-        currentStart,
+        skipIndex: videoState.skipIndex,
+        currentStart: videoState.currentStart,
+        remainingConfirmations,
         ready,
       });
       signOut();
       return;
     }
 
-    setSkipIndex(nextIndex);
-    setCurrentStart(nextStart);
+    setVideoState((prev) => ({
+      ...prev,
+      skipIndex: nextIndex,
+      currentStart: nextStart ?? prev.currentStart,
+    }));
     setReady(false);
 
     track('SignOutModal.VideoJump', {
       skipIndex: nextIndex,
       startSeconds: nextStart,
+      remainingConfirmations: Math.max(1, (totalSkips || 1) - nextIndex),
     });
+  };
+
+  const handleVideoSelect = (
+    event: JSX.TargetedEvent<HTMLSelectElement, Event>,
+  ) => {
+    const nextId = (event.target as HTMLSelectElement).value;
+    const nextIndex = SIGN_OUT_VIDEOS.findIndex((video) => video.id === nextId);
+    if (nextIndex === -1 || nextIndex === videoState.videoIndex) return;
+
+    const nextVideo = SIGN_OUT_VIDEOS[nextIndex];
+    const nextStart = nextVideo.skipTimes[0] ?? 0;
+    const nextRemaining = joke ? Math.max(1, nextVideo.skipTimes.length || 1) : 1;
+
+    track('SignOutModal.VideoSelected', {
+      previousVideoId: chosenVideo.id,
+      nextVideoId: nextVideo.id,
+      previousSkipIndex: videoState.skipIndex,
+      previousStart: videoState.currentStart,
+      nextStart,
+      remainingConfirmations: nextRemaining,
+    });
+
+    setVideoState({
+      videoIndex: nextIndex,
+      skipIndex: 0,
+      currentStart: nextStart,
+    });
+    setReady(false);
   };
 
   return (
@@ -234,8 +280,8 @@ export function SignOutModal({ workspaceMgr, onClose }: SignOutModalProps): JSX.
             onLoad={() => {
               setReady(true);
               track('SignOutModal.VideoLoaded', {
-                skipIndex,
-                currentStart,
+                skipIndex: videoState.skipIndex,
+                currentStart: videoState.currentStart,
               });
             }}
           />
@@ -243,7 +289,8 @@ export function SignOutModal({ workspaceMgr, onClose }: SignOutModalProps): JSX.
 
         <div class='flex items-center justify-between'>
           <Badge intentType={IntentTypes.Info}>
-            Your session will end after confirmation
+            Your session will end after {remainingConfirmations} confirmation
+            {remainingConfirmations === 1 ? '' : 's'}
           </Badge>
 
           <Action
@@ -254,6 +301,19 @@ export function SignOutModal({ workspaceMgr, onClose }: SignOutModalProps): JSX.
           >
             Confirm Sign Out
           </Action>
+        </div>
+
+        <div class='space-y-1'>
+          <span class='text-sm font-semibold text-neutral-200'>
+            Pick your farewell performance
+          </span>
+          <Select value={chosenVideo.id} onChange={handleVideoSelect} class='w-full'>
+            {SIGN_OUT_VIDEOS.map((video) => (
+              <option key={video.id} value={video.id}>
+                {video.label}
+              </option>
+            ))}
+          </Select>
         </div>
       </div>
     </Modal>

@@ -68,9 +68,11 @@ const VALID_INVOCATION_TYPES = new Set<PageDataActionInvocationType>([
 
 type PageDataAccessMode = NonNullable<EaCInterfaceGeneratedDataSlice['AccessMode']>;
 type DataConnectionFeatures = NonNullable<EaCInterfaceGeneratedDataSlice['DataConnection']>;
-type DataConnectionHistoricSlice = NonNullable<NonNullable<
-  EaCInterfaceGeneratedDataSlice['DataConnection']
->['PrefetchHistoricSlice']>;
+type DataConnectionHistoricSlice = NonNullable<
+  NonNullable<
+    EaCInterfaceGeneratedDataSlice['DataConnection']
+  >['PrefetchHistoricSlice']
+>;
 type HistoricRange = NonNullable<DataConnectionHistoricSlice['Range']>;
 type HistoricFormat = NonNullable<
   NonNullable<EaCInterfaceGeneratedDataSlice['DataConnection']>['HistoricDownloadFormats']
@@ -163,9 +165,7 @@ function sanitizeAbsoluteRange(
     Start: start,
   };
 
-  const end = typeof source.End === 'string' && isValidIsoDate(source.End)
-    ? source.End
-    : undefined;
+  const end = typeof source.End === 'string' && isValidIsoDate(source.End) ? source.End : undefined;
   if (end) {
     absolute.End = end;
   }
@@ -191,9 +191,10 @@ function sanitizeHistoricRange(value: unknown): HistoricRange | undefined {
 
   const offsetSource = source.Offset;
   if (isPlainObject(offsetSource)) {
-    const offsetAmount = typeof offsetSource.Amount === 'number' && Number.isFinite(offsetSource.Amount)
-      ? Math.abs(offsetSource.Amount)
-      : undefined;
+    const offsetAmount =
+      typeof offsetSource.Amount === 'number' && Number.isFinite(offsetSource.Amount)
+        ? Math.abs(offsetSource.Amount)
+        : undefined;
     const offsetUnit = sanitizeTimeUnit(offsetSource.Unit);
     if (offsetAmount && offsetAmount !== 0 && offsetUnit) {
       range.Offset = {

@@ -8,8 +8,10 @@ import { SurfaceNodeCapabilityManager } from './capabilities/surface/SurfaceNode
 import { SurfaceWarmQueryNodeCapabilityManager } from './capabilities/surface-warmquery/SurfaceWarmQueryNodeCapabilityManager.tsx';
 import { SurfaceInterfaceNodeCapabilityManager } from './capabilities/surface-interface/SurfaceInterfaceNodeCapabilityManager.tsx';
 
-export default Pack().Capabilities(async (ioc) => {
-  const oiSvc = await ioc.Resolve<OpenIndustrialAPIClient>(ioc.Symbol('OpenIndustrialAPIClient'));
+export default Pack().Capabilities(async (ioc, accessRights) => {
+  const oiSvc = await ioc.Resolve<OpenIndustrialAPIClient>(
+    ioc.Symbol('OpenIndustrialAPIClient'),
+  );
 
   return {
     surface: [
@@ -17,7 +19,9 @@ export default Pack().Capabilities(async (ioc) => {
       new SurfaceAgentNodeCapabilityManager(oiSvc),
       new SurfaceConnectionNodeCapabilityManager(oiSvc),
       new SurfaceWarmQueryNodeCapabilityManager(oiSvc),
-      new SurfaceInterfaceNodeCapabilityManager(oiSvc),
+      ...(accessRights.includes('Workspace.Experimental')
+        ? [new SurfaceInterfaceNodeCapabilityManager(oiSvc)]
+        : []),
     ],
     workspace: [
       new SimulatorNodeCapabilityManager(oiSvc),

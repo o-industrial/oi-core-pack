@@ -7,7 +7,6 @@ import {
   CodeMirrorEditor,
   Input,
   IntentTypes,
-  WorkspaceManager,
   interfacePageDataToSchema,
   Modal,
   TabbedPanel,
@@ -16,14 +15,15 @@ import {
   useMemo,
   useRef,
   useState,
+  WorkspaceManager,
 } from '../../../.deps.ts';
 import type {
   EaCInterfaceCodeBlock,
   EaCInterfaceDataConnectionFeatures,
   EaCInterfaceDetails,
   EaCInterfaceGeneratedDataSlice,
-  EaCInterfacePageDataActionInvocationMode,
   EaCInterfacePageDataAccessMode,
+  EaCInterfacePageDataActionInvocationMode,
   EaCInterfacePageDataType,
   EverythingAsCodeOIWorkspace,
   JSX,
@@ -129,6 +129,8 @@ export function SurfaceInterfaceModal({
   const [previewNonce, setPreviewNonce] = useState(0);
 
   useEffect(() => {
+    if (!isOpen) return;
+
     setImports(resolvedDetails.Imports ?? []);
 
     const workspace = workspaceMgr.EaC.GetEaC?.() as
@@ -153,7 +155,7 @@ export function SurfaceInterfaceModal({
     setPageDescription(resolvedDetails.Page?.Description ?? '');
     setPageMessagesText(formatMessages(resolvedDetails.Page?.Messages));
     setImportsInvalid(false);
-  }, [resolvedDetails, settings, workspaceMgr, surfaceLookup, interfaceLookup]);
+  }, [isOpen, resolvedDetails, settings, workspaceMgr, surfaceLookup, interfaceLookup]);
 
   const generatedSlices = pageDataType.Generated;
   const generatedSliceEntries = useMemo(

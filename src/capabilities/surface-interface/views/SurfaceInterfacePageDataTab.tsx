@@ -1,18 +1,14 @@
-import {
-  Badge,
-  IntentTypes,
-  type JSX,
-  ToggleCheckbox,
-} from '../../../.deps.ts';
+import { Badge, IntentTypes, type JSX, ToggleCheckbox } from '../../../.deps.ts';
 import type {
   EaCInterfaceDataConnectionFeatures,
   EaCInterfaceGeneratedDataSlice,
+  EaCInterfaceHistoricAbsoluteRange,
   EaCInterfaceHistoricRange,
   EaCInterfaceHistoricSliceFormat,
   EaCInterfaceHistoricWindowMode,
   EaCInterfacePageDataAccessMode,
   EaCInterfacePageDataAction,
-  EaCInterfaceHistoricAbsoluteRange,
+  EaCInterfacePageDataActionInvocationMode,
   EaCInterfaceRelativeTimeOffset,
   JSONSchema7,
 } from '../../../.deps.ts';
@@ -107,15 +103,15 @@ function GeneratedSliceCard({
   const sliceAllowsHandler = accessMode !== 'client';
   const sliceAllowsClient = accessMode !== 'server';
   const isDataConnection = (slice.SourceCapability ?? '').startsWith('dataConnection:');
-  const capabilityLabel = slice.SourceCapability;
 
   const handleAccessModeSelect = (mode: EaCInterfacePageDataAccessMode) => {
     onAccessModeChange(sliceKey, mode);
   };
 
   const handleFeaturesUpdate = (
-    updater: (prev: EaCInterfaceDataConnectionFeatures | undefined) =>
-      EaCInterfaceDataConnectionFeatures | undefined,
+    updater: (
+      prev: EaCInterfaceDataConnectionFeatures | undefined,
+    ) => EaCInterfaceDataConnectionFeatures | undefined,
   ) => {
     const next = updater(slice.DataConnection);
     onDataConnectionChange(sliceKey, normalizeDataConnectionFeatures(next));
@@ -128,15 +124,8 @@ function GeneratedSliceCard({
           <p class='text-base font-semibold text-neutral-100'>
             {slice.Label ?? sliceKey}
           </p>
-          {capabilityLabel && (
-            <span class='rounded border border-teal-500/30 bg-teal-500/10 px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wide text-teal-200'>
-              {capabilityLabel}
-            </span>
-          )}
         </div>
-        {slice.Description && (
-          <p class='text-xs text-neutral-400'>{slice.Description}</p>
-        )}
+        {slice.Description && <p class='text-xs text-neutral-400'>{slice.Description}</p>}
         <div class='flex flex-wrap gap-2 text-[11px] uppercase tracking-wide text-neutral-500'>
           {hydrationSummary && <span>{hydrationSummary}</span>}
           {schemaSummary && <span>Fields: {schemaSummary}</span>}
@@ -292,8 +281,7 @@ function GeneratedSliceCard({
               })}
             </ul>
           </div>
-        )
-}
+        )}
       </div>
     </div>
   );
@@ -302,8 +290,9 @@ function GeneratedSliceCard({
 type DataConnectionSettingsProps = {
   features: EaCInterfaceDataConnectionFeatures | undefined;
   handleFeaturesUpdate: (
-    updater: (prev: EaCInterfaceDataConnectionFeatures | undefined) =>
-      EaCInterfaceDataConnectionFeatures | undefined,
+    updater: (
+      prev: EaCInterfaceDataConnectionFeatures | undefined,
+    ) => EaCInterfaceDataConnectionFeatures | undefined,
   ) => void;
 };
 
@@ -367,7 +356,9 @@ function DataConnectionSettings({
 
   const updatePrefetchSlice = (
     mode: EaCInterfaceHistoricWindowMode,
-    mutate: (slice: NonNullable<EaCInterfaceDataConnectionFeatures['PrefetchHistoricSlice']>) => void,
+    mutate: (
+      slice: NonNullable<EaCInterfaceDataConnectionFeatures['PrefetchHistoricSlice']>,
+    ) => void,
   ) => {
     handleFeaturesUpdate((prev) => {
       const next: EaCInterfaceDataConnectionFeatures = { ...(prev ?? {}) };
@@ -394,7 +385,9 @@ function DataConnectionSettings({
               next.AllowHistoricDownload = checked;
               if (!checked) {
                 delete next.HistoricDownloadFormats;
-              } else if (!next.HistoricDownloadFormats || next.HistoricDownloadFormats.length === 0) {
+              } else if (
+                !next.HistoricDownloadFormats || next.HistoricDownloadFormats.length === 0
+              ) {
                 next.HistoricDownloadFormats = ['json'];
               }
               return next;
@@ -419,7 +412,8 @@ function DataConnectionSettings({
                   type='checkbox'
                   class='h-4 w-4 accent-teal-500'
                   checked={formatSet.has(format)}
-                  onChange={(event) => updateHistoricFormats(format, event.currentTarget.checked)}
+                  onChange={(event) =>
+                    updateHistoricFormats(format, event.currentTarget.checked)}
                 />
                 <span class='text-neutral-200'>{format.toUpperCase()}</span>
               </label>
@@ -495,14 +489,19 @@ function DataConnectionSettings({
             {windowMode === 'relative' && (
               <div class='grid gap-3 text-xs text-neutral-200 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'>
                 <label class='flex flex-col gap-1'>
-                  <span class='text-[11px] uppercase tracking-wide text-neutral-500'>Range amount</span>
+                  <span class='text-[11px] uppercase tracking-wide text-neutral-500'>
+                    Range amount
+                  </span>
                   <input
                     type='number'
                     min={1}
                     class='h-8 rounded border border-neutral-700 bg-neutral-900 px-2 outline-none focus:border-teal-400'
                     value={prefetch?.Range?.Amount ?? 7}
                     onChange={(event) => {
-                      const amount = clampPositiveInteger(event.currentTarget.value, prefetch?.Range?.Amount ?? 7);
+                      const amount = clampPositiveInteger(
+                        event.currentTarget.value,
+                        prefetch?.Range?.Amount ?? 7,
+                      );
                       updatePrefetchSlice('relative', (slice) => {
                         slice.Enabled = true;
                         slice.Mode = 'relative';
@@ -516,7 +515,9 @@ function DataConnectionSettings({
                 </label>
 
                 <label class='flex flex-col gap-1'>
-                  <span class='text-[11px] uppercase tracking-wide text-neutral-500'>Range unit</span>
+                  <span class='text-[11px] uppercase tracking-wide text-neutral-500'>
+                    Range unit
+                  </span>
                   <select
                     class='h-8 rounded border border-neutral-700 bg-neutral-900 px-2 outline-none focus:border-teal-400'
                     value={prefetch?.Range?.Unit ?? 'days'}
@@ -538,7 +539,8 @@ function DataConnectionSettings({
                   </select>
                 </label>
                 <p class='md:col-span-2 text-[11px] text-neutral-500'>
-                  Fetch the most recent records using a rolling window (e.g. last 30 minutes or last 7 days).
+                  Fetch the most recent records using a rolling window (e.g. last 30 minutes or last
+                  7 days).
                 </p>
               </div>
             )}
@@ -546,7 +548,9 @@ function DataConnectionSettings({
             {windowMode === 'absolute' && (
               <div class='grid gap-3 text-xs text-neutral-200 md:grid-cols-[repeat(2,minmax(0,1fr))]'>
                 <label class='flex flex-col gap-1'>
-                  <span class='text-[11px] uppercase tracking-wide text-neutral-500'>Start date/time</span>
+                  <span class='text-[11px] uppercase tracking-wide text-neutral-500'>
+                    Start date/time
+                  </span>
                   <input
                     type='datetime-local'
                     class='h-8 rounded border border-neutral-700 bg-neutral-900 px-2 outline-none focus:border-teal-400'
@@ -565,7 +569,9 @@ function DataConnectionSettings({
                 </label>
 
                 <label class='flex flex-col gap-1'>
-                  <span class='text-[11px] uppercase tracking-wide text-neutral-500'>End date/time</span>
+                  <span class='text-[11px] uppercase tracking-wide text-neutral-500'>
+                    End date/time
+                  </span>
                   <input
                     type='datetime-local'
                     class='h-8 rounded border border-neutral-700 bg-neutral-900 px-2 outline-none focus:border-teal-400'
@@ -588,12 +594,14 @@ function DataConnectionSettings({
                       });
                     }}
                   />
-                  <span class='text-[10px] text-neutral-500'>Leave blank to fetch everything from the start onward.</span>
+                  <span class='text-[10px] text-neutral-500'>
+                    Leave blank to fetch everything from the start onward.
+                  </span>
                 </label>
 
                 <p class='md:col-span-2 text-[11px] text-neutral-500'>
-                  Fetch a fixed historical window using explicit timestamps (UTC). Useful for investigations or
-                  reproducible reports.
+                  Fetch a fixed historical window using explicit timestamps (UTC). Useful for
+                  investigations or reproducible reports.
                 </p>
               </div>
             )}
@@ -672,7 +680,9 @@ function normalizeDataConnectionFeatures(
 
   if (features.PrefetchHistoricSlice) {
     const slice = features.PrefetchHistoricSlice;
-    const normalizedSlice: NonNullable<EaCInterfaceDataConnectionFeatures['PrefetchHistoricSlice']> = {};
+    const normalizedSlice: NonNullable<
+      EaCInterfaceDataConnectionFeatures['PrefetchHistoricSlice']
+    > = {};
     if (typeof slice.Enabled === 'boolean') normalizedSlice.Enabled = slice.Enabled;
     if (slice.Format === 'json' || slice.Format === 'csv') normalizedSlice.Format = slice.Format;
 

@@ -40,7 +40,10 @@ export class SurfaceInterfaceNodeCapabilityManager
     const interfaceEntry = eac.Interfaces?.[node.ID];
     if (!interfaceEntry) return null;
 
-    const { surfaceLookup, settings } = this.resolveSurfaceSettings(node.ID, context);
+    const { surfaceLookup, settings } = this.resolveSurfaceSettings(
+      node.ID,
+      context,
+    );
 
     const interfaceDetails = ensureInterfaceDetails(
       interfaceEntry.Details as EaCInterfaceDetails | undefined,
@@ -159,7 +162,9 @@ export class SurfaceInterfaceNodeCapabilityManager
 
     const interfaceUpdate: Partial<EaCInterfaceAsCode> = {};
     if (Object.keys(interfacePatch).length > 0) {
-      interfaceUpdate.Details = interfacePatch as unknown as EaCInterfaceDetails | undefined;
+      interfaceUpdate.Details = interfacePatch as unknown as
+        | EaCInterfaceDetails
+        | undefined;
     }
 
     if (Object.keys(interfaceUpdate).length > 0) {
@@ -426,10 +431,11 @@ export class SurfaceInterfaceNodeCapabilityManager
     const generatedSlices: EaCInterfaceGeneratedDataSlice[] = pageDataSchema?.Generated
       ? Object.values(pageDataSchema.Generated)
       : [];
-    const hasEnabledSlice = generatedSlices.some((slice) => slice.Enabled !== false);
-    const hasCustomSchema = !!pageDataSchema?.Custom;
+    const hasEnabledSlice = generatedSlices.some(
+      (slice) => slice.Enabled !== false,
+    );
 
-    if (!pageDataSchema || (!hasEnabledSlice && !hasCustomSchema)) {
+    if (!pageDataSchema || !hasEnabledSlice) {
       errors.push({
         field: 'Details.PageDataType',
         message:
@@ -452,11 +458,9 @@ export class SurfaceInterfaceNodeCapabilityManager
 
     const page = details.Page;
     const hasPageContent = page &&
-      (
-        page.Code?.trim()?.length ||
+      (page.Code?.trim()?.length ||
         (page.Messages && page.Messages.length > 0) ||
-        (page.MessageGroups && page.MessageGroups.length > 0)
-      );
+        (page.MessageGroups && page.MessageGroups.length > 0));
 
     if (!hasPageContent) {
       errors.push({
