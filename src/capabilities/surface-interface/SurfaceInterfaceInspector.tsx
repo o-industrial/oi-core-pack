@@ -5,7 +5,7 @@ import { InspectorCommonProps } from '../../.deps.ts';
 import type { EaCInterfaceDetails, SurfaceInterfaceSettings } from '../../.deps.ts';
 import type { SurfaceInterfaceStats } from './SurfaceInterfaceStats.tsx';
 import { SurfaceInterfaceModal } from './views/SurfaceInterfaceModal.tsx';
-import { ensureInterfaceDetails, type InterfaceCodeBlock } from './interfaceDefaults.ts';
+import { ensureInterfaceDetails, type InterfaceCodeBlock } from './views/interfaceDefaults.ts';
 
 type SurfaceInterfaceInspectorProps = InspectorCommonProps<
   EaCInterfaceDetails & SurfaceInterfaceSettings,

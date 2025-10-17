@@ -7,12 +7,8 @@ import {
   interfacePageDataToSchema,
   JSONSchema7,
   SurfaceInterfaceSettings,
-} from '../../.deps.ts';
-import {
-  DEFAULT_PAGE_DATA_SLICE,
-  DEFAULT_PAGE_DATA_SLICE_KEY,
-  ensurePageDataType,
-} from './interfaceDefaults.ts';
+} from '../../../.deps.ts';
+import { DEFAULT_PAGE_DATA_SLICE, ensurePageDataType } from './interfaceDefaults.ts';
 
 type CapabilityKind = 'warmQuery' | 'dataConnection' | 'childInterface' | 'schema';
 
@@ -41,7 +37,7 @@ export function reconcileInterfacePageData(
   interfaceLookup?: string,
 ): EaCInterfacePageDataType {
   const next = ensurePageDataType(pageData);
-  const expectedKeys = new Set<string>([DEFAULT_PAGE_DATA_SLICE_KEY]);
+  const expectedKeys = new Set<string>();
   const context: ReconcileContext = {
     workspace,
     surfaceLookup,

@@ -33,8 +33,8 @@ import {
   clonePageDataType,
   ensureInterfaceDetails,
   ensurePageDataType,
-} from '../interfaceDefaults.ts';
-import { reconcileInterfacePageData } from '../pageDataHelpers.ts';
+} from './interfaceDefaults.ts';
+import { reconcileInterfacePageData } from './pageDataHelpers.ts';
 import { SurfaceInterfaceImportsTab } from './SurfaceInterfaceImportsTab.tsx';
 import { SurfaceInterfacePageDataTab } from './SurfaceInterfacePageDataTab.tsx';
 

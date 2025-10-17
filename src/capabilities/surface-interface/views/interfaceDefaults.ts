@@ -6,7 +6,7 @@ import {
   EaCInterfacePageDataAction,
   EaCInterfacePageDataType,
   JSONSchema7,
-} from '../../.deps.ts';
+} from '../../../.deps.ts';
 
 export type InterfaceCodeBlock = EaCInterfaceCodeBlock;
 
@@ -27,8 +27,6 @@ const DEFAULT_PAGE_DATA_SCHEMA_SHAPE = {
 
 const DEFAULT_PAGE_DATA_SCHEMA = DEFAULT_PAGE_DATA_SCHEMA_SHAPE as unknown as JSONSchema7;
 
-export const DEFAULT_PAGE_DATA_SLICE_KEY = 'base';
-
 export const DEFAULT_PAGE_DATA_SLICE: EaCInterfaceGeneratedDataSlice = {
   Label: 'Interface scaffolding',
   Description:
@@ -43,9 +41,7 @@ export const DEFAULT_PAGE_DATA_SLICE: EaCInterfaceGeneratedDataSlice = {
 };
 
 export const DEFAULT_PAGE_DATA_TYPE: EaCInterfacePageDataType = {
-  Generated: {
-    [DEFAULT_PAGE_DATA_SLICE_KEY]: DEFAULT_PAGE_DATA_SLICE,
-  },
+  Generated: {},
 };
 
 function deepClone<T>(value: T): T {
@@ -83,10 +79,6 @@ const VALID_ACCESS_MODES = new Set<PageDataAccessMode>(['server', 'client', 'bot
 const VALID_HISTORIC_FORMATS = new Set<HistoricFormat>(['json', 'csv']);
 const VALID_TIME_UNITS = new Set<TimeUnit>(['minutes', 'hours', 'days']);
 const VALID_WINDOW_MODES = new Set<DataConnectionHistoricSlice['Mode']>(['relative', 'absolute']);
-
-type SanitizeOptions = {
-  ensureDefaultSlice?: boolean;
-};
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -455,49 +447,35 @@ function buildGeneratedSlices(
 
 function sanitizePageDataType(
   value: EaCInterfacePageDataType | undefined,
-  options: SanitizeOptions = {},
-): EaCInterfacePageDataType | undefined {
+): EaCInterfacePageDataType {
   const source = isPlainObject(value) ? value : undefined;
   const generated = buildGeneratedSlices(source?.Generated);
 
-  if (options.ensureDefaultSlice && !generated[DEFAULT_PAGE_DATA_SLICE_KEY]) {
-    generated[DEFAULT_PAGE_DATA_SLICE_KEY] = sanitizeGeneratedSlice(
-      DEFAULT_PAGE_DATA_SLICE,
-    );
+  for (const [key, slice] of Object.entries(generated)) {
+    if (slice.SourceCapability === DEFAULT_PAGE_DATA_SLICE.SourceCapability) {
+      delete generated[key];
+    }
   }
 
-  if (
-    !source &&
-    !options.ensureDefaultSlice &&
-    Object.keys(generated).length === 0
-  ) {
-    return undefined;
-  }
-
-  const result: EaCInterfacePageDataType = {
+  return {
     Generated: generated,
   };
-
-  return result;
 }
 
 export function clonePageDataType(
   value: EaCInterfacePageDataType | undefined,
-): EaCInterfacePageDataType | undefined {
+): EaCInterfacePageDataType {
   return sanitizePageDataType(value);
 }
 
 export function ensurePageDataType(
   value: EaCInterfacePageDataType | undefined,
 ): EaCInterfacePageDataType {
-  return sanitizePageDataType(value, { ensureDefaultSlice: true }) ??
-    sanitizePageDataType(DEFAULT_PAGE_DATA_TYPE, {
-      ensureDefaultSlice: true,
-    })!;
+  return sanitizePageDataType(value);
 }
 
 export function createDefaultPageDataType(): EaCInterfacePageDataType {
-  return ensurePageDataType(undefined);
+  return { Generated: {} };
 }
 
 export function mergeCodeBlock(
