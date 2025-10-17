@@ -6,7 +6,10 @@ import {
   JSX,
   Modal,
   Select,
+  useCallback,
   useEffect,
+  useMemo,
+  useRef,
   useState,
   WorkspaceManager,
 } from '../../../.deps.ts';
@@ -22,7 +25,10 @@ type AnalyticsWindow = typeof window & {
   dataLayer?: Array<Record<string, unknown>>;
   gtag?: (...args: unknown[]) => void;
   appInsights?: {
-    trackEvent?: (event: { name: string }, properties?: Record<string, unknown>) => void;
+    trackEvent?: (
+      event: { name: string },
+      properties?: Record<string, unknown>,
+    ) => void;
   };
 };
 
@@ -56,7 +62,25 @@ const SIGN_OUT_VIDEOS: VideoOption[] = [
     id: 'michael_jackson_smooth_criminal',
     label: 'Michael Jackson - Smooth Criminal (Official Video)',
     baseSrc: 'https://www.youtube.com/embed/h_D3VFfhvs4?controls=0&autoplay=1&mute=0&playsinline=1',
-    skipTimes: [11, 23, 41, 55, 74, 90, 103, 118, 137, 144, 172, 243, 325, 346, 384, 413, 540],
+    skipTimes: [
+      11,
+      23,
+      41,
+      55,
+      74,
+      90,
+      103,
+      118,
+      137,
+      144,
+      172,
+      243,
+      325,
+      346,
+      384,
+      413,
+      540,
+    ],
   },
   {
     id: 'dead_or_alive_spin_me_round',
@@ -108,7 +132,10 @@ const SIGN_OUT_VIDEOS: VideoOption[] = [
   },
 ];
 
-function trackSignOutTelemetry(eventName: string, properties?: Record<string, unknown>): void {
+function trackSignOutTelemetry(
+  eventName: string,
+  properties?: Record<string, unknown>,
+): void {
   if (typeof window === 'undefined') return;
 
   const analyticsWindow = window as AnalyticsWindow;
@@ -143,11 +170,17 @@ export type SignOutModalProps = {
   onClose: () => void;
 };
 
-export function SignOutModal({ workspaceMgr, onClose }: SignOutModalProps): JSX.Element {
+export function SignOutModal({
+  workspaceMgr,
+  onClose,
+}: SignOutModalProps): JSX.Element {
   const [ready, setReady] = useState(false);
   const { profile, signOut } = workspaceMgr.UseAccountProfile();
   const email = profile.Username ?? '';
   const joke = email.toLowerCase().endsWith('@fathym.com');
+
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const autoAdvanceRef = useRef(false);
 
   const [videoState, setVideoState] = useState(() => {
     const videoIndex = Math.floor(Math.random() * SIGN_OUT_VIDEOS.length);
@@ -161,8 +194,137 @@ export function SignOutModal({ workspaceMgr, onClose }: SignOutModalProps): JSX.
 
   const chosenVideo = SIGN_OUT_VIDEOS[videoState.videoIndex];
   const totalSkips = chosenVideo.skipTimes.length;
-  const remainingConfirmations = joke ? Math.max(1, (totalSkips || 1) - videoState.skipIndex) : 1;
-  const videoSrc = `${chosenVideo.baseSrc}&start=${videoState.currentStart}`;
+  const stepsRemaining = Math.max(totalSkips - videoState.skipIndex, 1);
+  const remainingConfirmations = joke ? stepsRemaining : 1;
+  const videoSrc = useMemo(() => {
+    const src = chosenVideo.baseSrc;
+    const params = new URLSearchParams();
+    params.set('start', String(Math.max(videoState.currentStart ?? 0, 0)));
+    params.set('enablejsapi', '1');
+    if (typeof window !== 'undefined') {
+      params.set('origin', location.origin);
+    }
+    const joiner = src.includes('?') ? '&' : '?';
+    return `${src}${joiner}${params.toString()}`;
+  }, [chosenVideo, videoState.currentStart]);
+
+  const sendPlayerMessage = useCallback((payload: Record<string, unknown>) => {
+    const frame = iframeRef.current;
+    if (!frame?.contentWindow) return;
+    frame.contentWindow.postMessage(JSON.stringify(payload), '*');
+  }, []);
+
+  const sendPlayerCommand = useCallback(
+    (func: string, args: unknown[] = []) => {
+      sendPlayerMessage({ event: 'command', func, args });
+    },
+    [sendPlayerMessage],
+  );
+
+  const notifyPlayerReady = useCallback(() => {
+    sendPlayerMessage({ event: 'listening', id: 'oi-signout-player' });
+    sendPlayerCommand('addEventListener', ['onStateChange']);
+  }, [sendPlayerCommand, sendPlayerMessage]);
+
+  const switchToVideo = useCallback(
+    (
+      nextIndex: number,
+      eventName: string,
+      extra: Record<string, unknown> = {},
+    ) => {
+      if (nextIndex < 0 || nextIndex >= SIGN_OUT_VIDEOS.length) return;
+
+      const nextVideo = SIGN_OUT_VIDEOS[nextIndex];
+      const nextTotal = nextVideo.skipTimes.length;
+      const nextStart = nextVideo.skipTimes[0] ?? 0;
+      const nextStepsRemaining = Math.max(nextTotal, 1);
+      const nextRemaining = joke ? nextStepsRemaining : 1;
+
+      trackSignOutTelemetry(eventName, {
+        videoId: nextVideo.id,
+        videoLabel: nextVideo.label,
+        jokeEnabled: joke,
+        totalSkips: nextTotal,
+        skipIndex: 0,
+        currentStart: nextStart,
+        remainingConfirmations: nextRemaining,
+        previousVideoId: chosenVideo.id,
+        previousVideoLabel: chosenVideo.label,
+        ...extra,
+      });
+
+      autoAdvanceRef.current = true;
+      setVideoState({
+        videoIndex: nextIndex,
+        skipIndex: 0,
+        currentStart: nextStart,
+      });
+      setReady(false);
+    },
+    [chosenVideo.id, chosenVideo.label, joke],
+  );
+
+  const rotateToNextVideo = useCallback(
+    (eventName: string, extra: Record<string, unknown> = {}) => {
+      if (SIGN_OUT_VIDEOS.length <= 1) return;
+      if (autoAdvanceRef.current) return;
+
+      const nextIndex = (videoState.videoIndex + 1) % SIGN_OUT_VIDEOS.length;
+      switchToVideo(nextIndex, eventName, {
+        ...extra,
+        previousSkipIndex: videoState.skipIndex,
+        previousStart: videoState.currentStart,
+      });
+    },
+    [
+      switchToVideo,
+      videoState.currentStart,
+      videoState.skipIndex,
+      videoState.videoIndex,
+    ],
+  );
+
+  const processCurrentTime = useCallback(
+    (currentTime: number) => {
+      if (autoAdvanceRef.current) return;
+
+      setVideoState((prev) => {
+        const video = SIGN_OUT_VIDEOS[prev.videoIndex];
+        if (video.skipTimes.length === 0) return prev;
+
+        let nextIndex = prev.skipIndex;
+        while (
+          nextIndex + 1 < video.skipTimes.length &&
+          currentTime >= video.skipTimes[nextIndex + 1] - 0.5
+        ) {
+          nextIndex += 1;
+        }
+
+        if (nextIndex === prev.skipIndex) return prev;
+
+        const total = video.skipTimes.length;
+        const remaining = joke ? Math.max(total - nextIndex, 1) : 1;
+
+        trackSignOutTelemetry('SignOutModal.VideoProgress', {
+          videoId: video.id,
+          videoLabel: video.label,
+          jokeEnabled: joke,
+          totalSkips: total,
+          skipIndex: nextIndex,
+          currentStart: prev.currentStart,
+          remainingConfirmations: remaining,
+          currentTime,
+          trigger: 'auto',
+        });
+
+        return {
+          ...prev,
+          skipIndex: nextIndex,
+        };
+      });
+    },
+    [joke],
+  );
 
   const track = (eventName: string, properties?: Record<string, unknown>) => {
     trackSignOutTelemetry(eventName, {
@@ -186,6 +348,82 @@ export function SignOutModal({ workspaceMgr, onClose }: SignOutModalProps): JSX.
     // deno-lint-ignore-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleMessage = (event: MessageEvent) => {
+      const origin = event.origin ?? '';
+      if (
+        !origin.includes('youtube.com') &&
+        !origin.includes('youtube-nocookie.com') &&
+        !origin.includes('youtu.be')
+      ) {
+        return;
+      }
+
+      if (event.source !== iframeRef.current?.contentWindow) return;
+
+      let data: unknown;
+      if (typeof event.data === 'string') {
+        try {
+          data = JSON.parse(event.data);
+        } catch {
+          return;
+        }
+      } else {
+        data = event.data;
+      }
+
+      if (!data || typeof data !== 'object') return;
+
+      const payload = data as {
+        event?: string;
+        info?: { currentTime?: number; playerState?: number } | number;
+      };
+
+      if (payload.event === 'infoDelivery') {
+        const info = payload.info as
+          | { currentTime?: number; playerState?: number }
+          | undefined;
+        if (info && typeof info.currentTime === 'number') {
+          processCurrentTime(info.currentTime);
+        }
+        if (
+          info &&
+          typeof info.playerState === 'number' &&
+          info.playerState === 0
+        ) {
+          rotateToNextVideo('SignOutModal.VideoAutoAdvanced', {
+            trigger: 'playerState',
+          });
+        }
+      } else if (payload.event === 'onStateChange') {
+        const state = payload.info as number | undefined;
+        if (state === 0) {
+          rotateToNextVideo('SignOutModal.VideoAutoAdvanced', {
+            trigger: 'onStateChange',
+          });
+        }
+      }
+    };
+
+    addEventListener('message', handleMessage);
+    return () => removeEventListener('message', handleMessage);
+  }, [processCurrentTime, rotateToNextVideo]);
+
+  useEffect(() => {
+    if (!ready) return;
+    if (typeof window === 'undefined') return;
+
+    sendPlayerCommand('getCurrentTime');
+
+    const intervalId = setInterval(() => {
+      sendPlayerCommand('getCurrentTime');
+    }, 1000);
+
+    return () => clearInterval(intervalId);
+  }, [ready, sendPlayerCommand, videoState.videoIndex]);
+
   const handleClose = () => {
     track('SignOutModal.Closed', {
       skipIndex: videoState.skipIndex,
@@ -200,6 +438,7 @@ export function SignOutModal({ workspaceMgr, onClose }: SignOutModalProps): JSX.
     const nextIndex = videoState.skipIndex + 1;
     const nextStart = chosenVideo.skipTimes[nextIndex];
     const willSignOut = !joke || nextStart === undefined;
+    const nextRemaining = willSignOut ? 0 : joke ? Math.max(totalSkips - nextIndex, 1) : 1;
 
     track('SignOutModal.ConfirmClick', {
       skipIndex: videoState.skipIndex,
@@ -209,6 +448,7 @@ export function SignOutModal({ workspaceMgr, onClose }: SignOutModalProps): JSX.
       ready,
       willSignOut,
       remainingBeforeClick: remainingConfirmations,
+      remainingAfterClick: willSignOut ? 0 : nextRemaining,
     });
 
     if (willSignOut) {
@@ -222,6 +462,7 @@ export function SignOutModal({ workspaceMgr, onClose }: SignOutModalProps): JSX.
       return;
     }
 
+    autoAdvanceRef.current = true;
     setVideoState((prev) => ({
       ...prev,
       skipIndex: nextIndex,
@@ -232,7 +473,8 @@ export function SignOutModal({ workspaceMgr, onClose }: SignOutModalProps): JSX.
     track('SignOutModal.VideoJump', {
       skipIndex: nextIndex,
       startSeconds: nextStart,
-      remainingConfirmations: Math.max(1, (totalSkips || 1) - nextIndex),
+      remainingConfirmations: nextRemaining || 1,
+      trigger: 'confirm',
     });
   };
 
@@ -243,32 +485,33 @@ export function SignOutModal({ workspaceMgr, onClose }: SignOutModalProps): JSX.
     const nextIndex = SIGN_OUT_VIDEOS.findIndex((video) => video.id === nextId);
     if (nextIndex === -1 || nextIndex === videoState.videoIndex) return;
 
-    const nextVideo = SIGN_OUT_VIDEOS[nextIndex];
-    const nextStart = nextVideo.skipTimes[0] ?? 0;
-    const nextRemaining = joke ? Math.max(1, nextVideo.skipTimes.length || 1) : 1;
-
-    track('SignOutModal.VideoSelected', {
-      previousVideoId: chosenVideo.id,
-      nextVideoId: nextVideo.id,
+    switchToVideo(nextIndex, 'SignOutModal.VideoSelected', {
       previousSkipIndex: videoState.skipIndex,
       previousStart: videoState.currentStart,
-      nextStart,
-      remainingConfirmations: nextRemaining,
     });
-
-    setVideoState({
-      videoIndex: nextIndex,
-      skipIndex: 0,
-      currentStart: nextStart,
-    });
-    setReady(false);
   };
+
+  const select = (
+    <Select
+      value={chosenVideo.id}
+      onChange={handleVideoSelect}
+      disabled={!ready}
+    >
+      {SIGN_OUT_VIDEOS.map((video) => (
+        <option key={video.id} value={video.id}>
+          {video.label}
+        </option>
+      ))}
+    </Select>
+  );
 
   return (
     <Modal title='Sign Out' onClose={handleClose}>
       <div class='space-y-4'>
         <div class='w-full max-w-3xl mx-auto' style={{ aspectRatio: '16 / 9' }}>
           <iframe
+            ref={iframeRef}
+            key={`${chosenVideo.id}-${videoState.currentStart}`}
             class='w-full h-full rounded'
             style={{ width: '100%', height: '100%', minHeight: '350px' }}
             src={videoSrc}
@@ -278,10 +521,16 @@ export function SignOutModal({ workspaceMgr, onClose }: SignOutModalProps): JSX.
             referrerpolicy='strict-origin-when-cross-origin'
             allowFullScreen
             onLoad={() => {
+              autoAdvanceRef.current = false;
               setReady(true);
+              notifyPlayerReady();
+              sendPlayerCommand('seekTo', [videoState.currentStart ?? 0, true]);
+              sendPlayerCommand('playVideo');
+              sendPlayerCommand('getCurrentTime');
               track('SignOutModal.VideoLoaded', {
                 skipIndex: videoState.skipIndex,
                 currentStart: videoState.currentStart,
+                remainingConfirmations,
               });
             }}
           />
@@ -307,13 +556,7 @@ export function SignOutModal({ workspaceMgr, onClose }: SignOutModalProps): JSX.
           <span class='text-sm font-semibold text-neutral-200'>
             Pick your farewell performance
           </span>
-          <Select value={chosenVideo.id} onChange={handleVideoSelect}>
-            {SIGN_OUT_VIDEOS.map((video) => (
-              <option key={video.id} value={video.id}>
-                {video.label}
-              </option>
-            ))}
-          </Select>
+          {select}
         </div>
       </div>
     </Modal>
