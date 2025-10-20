@@ -6,8 +6,10 @@ import {
   IS_BROWSER,
   type JSX,
   ToggleCheckbox,
+  useCallback,
   useEffect,
   useMemo,
+  useState,
 } from '../../../.deps.ts';
 import type { EaCInterfaceGeneratedDataSlice } from '../../../.deps.ts';
 
@@ -47,7 +49,7 @@ type HandlerPlannerProps = {
   steps: HandlerStep[];
   onStepChange: (
     id: string,
-    updater: (step: HandlerStep) => HandlerStep
+    updater: (step: HandlerStep) => HandlerStep,
   ) => void;
 };
 type HandlerStepCardProps = {
@@ -77,7 +79,7 @@ export function SurfaceInterfaceHandlerTab({
 }: SurfaceInterfaceHandlerTabProps): JSX.Element {
   const basePlan = useMemo(
     () => buildBasePlanFromSlices(generatedSlices),
-    [generatedSlices]
+    [generatedSlices],
   );
 
   useEffect(() => {
@@ -89,35 +91,28 @@ export function SurfaceInterfaceHandlerTab({
 
   const handleStepChange = (
     stepId: string,
-    updater: (prev: HandlerStep) => HandlerStep
+    updater: (prev: HandlerStep) => HandlerStep,
   ) => {
-    const next = steps.map((step) =>
-      step.id === stepId ? updater(step) : step
-    );
+    const next = steps.map((step) => step.id === stepId ? updater(step) : step);
     onStepsChange(next);
   };
 
   return (
-    <div class="flex h-full min-h-0 flex-col gap-4">
-      <div class="grid h-full min-h-0 gap-4 lg:grid-cols-2">
-        <div class="flex min-h-0 flex-col gap-4 overflow-hidden">
-          <ImportsSummary imports={imports} />
-          <PlanSummary steps={steps} />
-        </div>
+    <div class='flex h-full min-h-0 flex-col gap-4 overflow-y-auto pb-2'>
+      <ImportsSummary imports={imports} />
 
-        <div class="flex min-h-0 flex-col gap-4 overflow-hidden">
-          <HandlerPlanner steps={steps} onStepChange={handleStepChange} />
+      <HandlerPlanner steps={steps} onStepChange={handleStepChange} />
 
-          <AdvancedHandlerEditor
-            handlerCode={handlerCode}
-            handlerDescription={handlerDescription}
-            handlerMessages={handlerMessages}
-            onHandlerCodeChange={onHandlerCodeChange}
-            onHandlerDescriptionChange={onHandlerDescriptionChange}
-            onHandlerMessagesChange={onHandlerMessagesChange}
-          />
-        </div>
-      </div>
+      <PlanSummary steps={steps} />
+
+      <AdvancedHandlerEditor
+        handlerCode={handlerCode}
+        handlerDescription={handlerDescription}
+        handlerMessages={handlerMessages}
+        onHandlerCodeChange={onHandlerCodeChange}
+        onHandlerDescriptionChange={onHandlerDescriptionChange}
+        onHandlerMessagesChange={onHandlerMessagesChange}
+      />
     </div>
   );
 }
@@ -125,72 +120,158 @@ function ImportsSummary({ imports }: ImportsSummaryProps): JSX.Element {
   const hasImports = imports.length > 0;
 
   return (
-    <section class="rounded-lg border border-neutral-800 bg-neutral-950 p-4 text-sm text-neutral-200">
-      <header class="flex items-center justify-between gap-3">
-        <div>
-          <h3 class="text-sm font-semibold text-neutral-100">
-            Handler Imports
-          </h3>
-          <p class="text-xs text-neutral-400">
-            Review the module scope provided to the handler. You can add or edit
-            imports on the Imports tab.
-          </p>
-        </div>
-        <Badge
-          intentType={hasImports ? IntentTypes.Secondary : IntentTypes.Info}
-        >
-          {imports.length} {imports.length === 1 ? 'import' : 'imports'}
-        </Badge>
-      </header>
+    <section class='rounded-lg border border-neutral-800 bg-neutral-950 text-sm text-neutral-200'>
+      <details open class='flex flex-col'>
+        <summary class='flex cursor-pointer items-center justify-between gap-3 px-4 py-3'>
+          <div class='space-y-1'>
+            <h3 class='text-sm font-semibold text-neutral-100'>
+              Handler imports
+            </h3>
+            <p class='text-xs text-neutral-400'>
+              Review the module scope provided to the handler. Manage shared imports on the Imports
+              tab.
+            </p>
+          </div>
+          <Badge intentType={hasImports ? IntentTypes.Secondary : IntentTypes.Info}>
+            {hasImports
+              ? `${imports.length} ${imports.length === 1 ? 'import' : 'imports'}`
+              : 'None configured'}
+          </Badge>
+        </summary>
 
-      <div class="mt-3 max-h-48 overflow-y-auto rounded border border-neutral-900 bg-neutral-950/90 p-3 text-xs text-neutral-300">
-        {hasImports ? (
-          <ul class="space-y-2">
-            {imports.map((line, index) => (
-              <li
-                key={`${index}-${line}`}
-                class="font-mono text-[11px] leading-relaxed text-neutral-300"
-              >
-                {line}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p class="text-xs text-neutral-500">
-            No additional imports configured yet. Generated handlers can still
-            call connected actions directly.
-          </p>
-        )}
-      </div>
+        <div class='flex flex-col gap-2 border-t border-neutral-800 p-4'>
+          {hasImports
+            ? (
+              <ul class='max-h-48 space-y-1 overflow-y-auto pr-1 text-[13px]'>
+                {imports.map((line, index) => (
+                  <li
+                    key={`${index}-${line}`}
+                    class='truncate rounded border border-neutral-800 bg-neutral-900/70 px-2 py-1 font-mono text-xs'
+                  >
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            )
+            : (
+              <p class='text-xs text-neutral-500'>
+                No additional imports configured yet. Generated handlers can still call connected
+                actions directly.
+              </p>
+            )}
+        </div>
+      </details>
     </section>
   );
 }
 
 function PlanSummary({ steps }: PlanSummaryProps): JSX.Element {
+  const hasSteps = steps.length > 0;
+
   return (
-    <section class="rounded-lg border border-neutral-800 bg-neutral-950 p-4 text-sm text-neutral-200">
-      <header class="space-y-1">
-        <h3 class="text-sm font-semibold text-neutral-100">
-          Configured handler actions
-        </h3>
-        <p class="text-xs text-neutral-400">
-          Actions shown here are enabled for server execution on the Page Data
-          tab. Update how each step behaves or remove the associated connection
-          to drop it from the handler.
-        </p>
-      </header>
-      <div class="mt-3 flex items-center gap-2 text-[11px] text-neutral-400">
-        <Badge
-          intentType={
-            steps.length > 0 ? IntentTypes.Primary : IntentTypes.Secondary
-          }
-        >
-          {steps.length} configured
-        </Badge>
-        <span>
-          Generated handler code refreshes automatically as you make changes.
-        </span>
-      </div>
+    <section class='rounded-lg border border-neutral-800 bg-neutral-950 text-sm text-neutral-200'>
+      <details open class='flex flex-col'>
+        <summary class='flex cursor-pointer items-center justify-between gap-3 px-4 py-3'>
+          <div class='space-y-1'>
+            <h3 class='text-sm font-semibold text-neutral-100'>
+              Configured handler actions
+            </h3>
+            <p class='text-xs text-neutral-400'>
+              Documentation snapshot of the actions currently available to the handler plan.
+            </p>
+          </div>
+          <Badge intentType={hasSteps ? IntentTypes.Primary : IntentTypes.Secondary}>
+            {hasSteps ? `${steps.length} configured` : 'None configured'}
+          </Badge>
+        </summary>
+
+        <div class='flex flex-col gap-3 border-t border-neutral-800 p-4'>
+          {hasSteps
+            ? (
+              <ul class='space-y-3'>
+                {steps.map((step, index) => {
+                  const trimmedNotes = step.notes.trim();
+                  return (
+                    <li
+                      key={step.id}
+                      class='space-y-3 rounded border border-neutral-800 bg-neutral-900/60 p-3 text-xs text-neutral-300'
+                    >
+                      <header class='flex flex-wrap items-baseline justify-between gap-2'>
+                        <div class='space-y-1'>
+                          <p class='text-sm font-semibold text-neutral-100'>
+                            {index + 1}. {step.sliceLabel} → {step.actionLabel}
+                          </p>
+                          <p class='font-mono text-[11px] text-neutral-500'>
+                            slice: {step.sliceKey} • action: {step.actionKey}
+                          </p>
+                        </div>
+                        <div class='flex flex-wrap items-center gap-2'>
+                          <Badge
+                            intentType={step.autoExecute
+                              ? IntentTypes.Primary
+                              : IntentTypes.Secondary}
+                          >
+                            {step.autoExecute ? 'Auto during load' : 'Manual trigger'}
+                          </Badge>
+                          {step.includeInResponse && (
+                            <Badge intentType={IntentTypes.Secondary}>
+                              Maps to `{step.resultName || 'result'}`
+                            </Badge>
+                          )}
+                        </div>
+                      </header>
+
+                      <dl class='grid gap-2 text-[11px] md:grid-cols-2'>
+                        <div>
+                          <dt class='uppercase tracking-wide text-neutral-500'>
+                            Invocation type
+                          </dt>
+                          <dd class='text-neutral-200'>
+                            {step.invocationType ?? 'default'}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt class='uppercase tracking-wide text-neutral-500'>
+                            Result key
+                          </dt>
+                          <dd class='text-neutral-200'>
+                            {step.includeInResponse && step.resultName.trim().length > 0
+                              ? step.resultName
+                              : 'Not mapped to response'}
+                          </dd>
+                        </div>
+                        <div class='md:col-span-2'>
+                          <dt class='uppercase tracking-wide text-neutral-500'>
+                            Input expression
+                          </dt>
+                          <dd class='font-mono text-[11px] text-neutral-200'>
+                            {step.inputExpression.trim() || 'undefined'}
+                          </dd>
+                        </div>
+                      </dl>
+
+                      {trimmedNotes.length > 0 && (
+                        <div class='rounded border border-neutral-800 bg-neutral-950/70 p-3 text-[11px] text-neutral-200'>
+                          {trimmedNotes.split(/\r?\n/).map((line, noteIndex) => (
+                            <p key={`${step.id}-note-${noteIndex}`} class='leading-relaxed'>
+                              {line}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )
+            : (
+              <div class='rounded border border-dashed border-neutral-800 bg-neutral-900/40 p-4 text-xs text-neutral-500'>
+                No handler-capable actions are configured. Enable server execution from the Page
+                Data tab to document them here.
+              </div>
+            )}
+        </div>
+      </details>
     </section>
   );
 }
@@ -200,42 +281,45 @@ function HandlerPlanner({
   onStepChange,
 }: HandlerPlannerProps): JSX.Element {
   return (
-    <section class="flex min-h-0 flex-col gap-3 rounded-lg border border-neutral-800 bg-neutral-950 p-4 text-sm text-neutral-200">
-      <header class="flex items-start justify-between gap-3">
-        <div>
-          <h3 class="text-sm font-semibold text-neutral-100">Handler flow</h3>
-          <p class="text-xs text-neutral-400">
-            Each step represents a server-capable action. Update result keys,
-            tweak inputs, or disable automatic execution as needed.
+    <section class='rounded-lg border border-neutral-800 bg-neutral-950 text-sm text-neutral-200'>
+      <details open class='flex flex-col'>
+        <summary class='flex cursor-pointer items-start justify-between gap-3 px-4 py-3'>
+          <div>
+            <h3 class='text-sm font-semibold text-neutral-100'>Handler flow</h3>
+            <p class='text-xs text-neutral-400'>
+              Adjust the orchestration order, runtime inputs, and response mapping for each
+              server-capable action.
+            </p>
+          </div>
+          <Badge intentType={IntentTypes.Secondary}>
+            {steps.length} {steps.length === 1 ? 'step' : 'steps'}
+          </Badge>
+        </summary>
+
+        <div class='flex flex-col gap-3 border-t border-neutral-800 p-4'>
+          {steps.length === 0
+            ? (
+              <div class='rounded border border-dashed border-neutral-800 bg-neutral-950/70 p-4 text-xs text-neutral-500'>
+                No handler-capable actions detected. Enable handler access from Page Data to
+                orchestrate backend logic.
+              </div>
+            )
+            : (
+              steps.map((step, index) => (
+                <HandlerStepCard
+                  key={step.id}
+                  step={step}
+                  stepIndex={index}
+                  onChange={(updater) => onStepChange(step.id, updater)}
+                />
+              ))
+            )}
+
+          <p class='text-[11px] text-neutral-500'>
+            Preview the generated handler source and export-ready modules on the Code tab.
           </p>
         </div>
-        <Badge intentType={IntentTypes.Secondary}>
-          {steps.length} {steps.length === 1 ? 'step' : 'steps'}
-        </Badge>
-      </header>
-
-      <div class="flex-1 min-h-0 space-y-3 overflow-y-auto pr-1">
-        {steps.length === 0 ? (
-          <div class="rounded border border-dashed border-neutral-800 bg-neutral-950/70 p-4 text-xs text-neutral-500">
-            No handler-capable actions detected. Enable handler access from Page
-            Data to orchestrate backend logic.
-          </div>
-        ) : (
-          steps.map((step, index) => (
-            <HandlerStepCard
-              key={step.id}
-              step={step}
-              stepIndex={index}
-              onChange={(updater) => onStepChange(step.id, updater)}
-            />
-          ))
-        )}
-      </div>
-
-      <p class="text-[11px] text-neutral-500">
-        Preview the generated handler source and export-ready modules on the
-        Code tab.
-      </p>
+      </details>
     </section>
   );
 }
@@ -246,77 +330,69 @@ function HandlerStepCard({
   onChange,
 }: HandlerStepCardProps): JSX.Element {
   return (
-    <div class="space-y-3 rounded border border-neutral-800 bg-neutral-950/80 p-3">
-      <div class="flex flex-wrap items-center justify-between gap-2">
+    <div class='space-y-3 rounded border border-neutral-800 bg-neutral-950/80 p-3'>
+      <div class='flex flex-wrap items-center justify-between gap-2'>
         <div>
-          <p class="text-sm font-semibold text-neutral-100">
+          <p class='text-sm font-semibold text-neutral-100'>
             Step {stepIndex + 1}: {step.actionLabel}
           </p>
-          <p class="text-xs text-neutral-400">
+          <p class='text-xs text-neutral-400'>
             Slice: {step.sliceLabel}
             {step.invocationType ? ` � ${step.invocationType}` : ''}
           </p>
         </div>
       </div>
 
-      <div class="grid gap-3 md:grid-cols-2">
+      <div class='grid gap-3 md:grid-cols-2'>
         <Input
-          label="Result key"
+          label='Result key'
           value={step.resultName}
-          placeholder="resultKey"
+          placeholder='resultKey'
           onInput={(event: JSX.TargetedEvent<HTMLInputElement, Event>) =>
-            onChange((s) => ({ ...s, resultName: event.currentTarget.value }))
-          }
+            onChange((s) => ({ ...s, resultName: event.currentTarget.value }))}
         />
         <Input
-          label="Input payload (JS expression)"
+          label='Input payload (JS expression)'
           value={step.inputExpression}
-          placeholder="undefined"
+          placeholder='undefined'
           onInput={(event: JSX.TargetedEvent<HTMLInputElement, Event>) =>
             onChange((s) => ({
               ...s,
               inputExpression: event.currentTarget.value,
-            }))
-          }
+            }))}
         />
       </div>
 
-      <textarea
-        class="h-20 w-full resize-none rounded border border-neutral-800 bg-neutral-950 p-2 text-xs text-neutral-300 outline-none focus:border-teal-400"
-        placeholder="Optional notes for collaborators or follow-up tasks."
-        value={step.notes}
-        onInput={(event: JSX.TargetedEvent<HTMLTextAreaElement, Event>) =>
-          onChange((s) => ({ ...s, notes: event.currentTarget.value }))
-        }
-      />
-
-      <div class="flex flex-wrap gap-4 text-xs text-neutral-200">
-        <label class="flex items-center gap-2">
+      <div class='flex flex-wrap gap-4 text-xs justify-end text-neutral-200'>
+        <label class='flex items-center gap-2'>
           <ToggleCheckbox
             checked={step.autoExecute}
-            onToggle={(checked) =>
-              onChange((s) => ({ ...s, autoExecute: checked }))
-            }
-            title="Toggle auto execution"
+            onToggle={(checked) => onChange((s) => ({ ...s, autoExecute: checked }))}
+            title='Toggle auto execution'
             checkedIntentType={IntentTypes.Primary}
             uncheckedIntentType={IntentTypes.Secondary}
           />
-          Run during{' '}
-          <span class="font-mono text-neutral-100">loadPageData</span>
+          Run during <span class='font-mono text-neutral-100'>loadPageData</span>
         </label>
-        <label class="flex items-center gap-2">
+        <label class='flex items-center gap-2'>
           <ToggleCheckbox
             checked={step.includeInResponse}
-            onToggle={(checked) =>
-              onChange((s) => ({ ...s, includeInResponse: checked }))
-            }
-            title="Toggle response projection"
+            onToggle={(checked) => onChange((s) => ({ ...s, includeInResponse: checked }))}
+            title='Toggle response projection'
             checkedIntentType={IntentTypes.Primary}
             uncheckedIntentType={IntentTypes.Secondary}
           />
           Attach to returned data
         </label>
       </div>
+
+      <textarea
+        class='h-20 w-full resize-none rounded border border-neutral-800 bg-neutral-950 p-2 text-xs text-neutral-300 outline-none focus:border-teal-400'
+        placeholder='Optional notes for collaborators or follow-up tasks.'
+        value={step.notes}
+        onInput={(event: JSX.TargetedEvent<HTMLTextAreaElement, Event>) =>
+          onChange((s) => ({ ...s, notes: event.currentTarget.value }))}
+      />
     </div>
   );
 }
@@ -329,38 +405,81 @@ function AdvancedHandlerEditor({
   onHandlerDescriptionChange,
   onHandlerMessagesChange,
 }: AdvancedHandlerEditorProps): JSX.Element {
+  const [localCode, setLocalCode] = useState(handlerCode);
+
+  useEffect(() => {
+    setLocalCode(handlerCode);
+  }, [handlerCode]);
+
+  useEffect(() => {
+    if (localCode === handlerCode) return;
+    const handle = setTimeout(() => onHandlerCodeChange(localCode), 150);
+    return () => clearTimeout(handle);
+  }, [localCode, handlerCode, onHandlerCodeChange]);
+
+  const handleCodeChange = useCallback((value: string) => {
+    setLocalCode((current) => (current === value ? current : value));
+  }, []);
+
+  const flushLocalCode = useCallback(() => {
+    if (localCode !== handlerCode) {
+      onHandlerCodeChange(localCode);
+    }
+  }, [localCode, handlerCode, onHandlerCodeChange]);
+
+  const handleDescriptionChange = useCallback(
+    (value: string) => {
+      if (value !== handlerDescription) {
+        onHandlerDescriptionChange(value);
+      }
+    },
+    [handlerDescription, onHandlerDescriptionChange],
+  );
+
+  const handleMessagesChange = useCallback(
+    (value: string) => {
+      if (value !== handlerMessages) {
+        onHandlerMessagesChange(value);
+      }
+    },
+    [handlerMessages, onHandlerMessagesChange],
+  );
+
   return (
-    <section class="rounded-lg border border-neutral-800 bg-neutral-950 text-sm text-neutral-200">
-      <details open class="rounded-lg">
-        <summary class="cursor-pointer px-4 py-2 text-xs font-semibold uppercase tracking-wide text-neutral-300">
+    <section class='rounded-lg border border-neutral-800 bg-neutral-950 text-sm text-neutral-200'>
+      <details open class='flex flex-col'>
+        <summary class='cursor-pointer px-4 py-3 text-sm font-semibold text-neutral-100'>
           Advanced handler source
         </summary>
-        <div class="flex flex-col gap-3 border-t border-neutral-800 p-4">
-          {IS_BROWSER ? (
-            <CodeMirrorEditor
-              fileContent={handlerCode}
-              onContentChange={onHandlerCodeChange}
-              placeholder="export async function loadPageData(...) { ... }"
-              class="flex-1 min-h-[320px] [&>.cm-editor]:rounded [&>.cm-editor]:border [&>.cm-editor]:border-neutral-800 [&>.cm-editor]:bg-neutral-950"
-            />
-          ) : (
-            <pre>{handlerCode}</pre>
-          )}
+        <div class='flex flex-col gap-3 border-t border-neutral-800 p-4'>
+          {IS_BROWSER
+            ? (
+              <CodeMirrorEditor
+                fileContent={localCode}
+                onContentChange={handleCodeChange}
+                placeholder='export async function loadPageData(...) { ... }'
+                class='flex-1 min-h-[320px] [&>.cm-editor]:rounded [&>.cm-editor]:border [&>.cm-editor]:border-neutral-800 [&>.cm-editor]:bg-neutral-950'
+                onBlur={flushLocalCode}
+              />
+            )
+            : (
+              <div class='rounded border border-dashed border-neutral-800 bg-neutral-900/40 p-3 text-xs text-neutral-500'>
+                Code editor available in browser runtime only.
+              </div>
+            )}
           <textarea
-            class="h-16 w-full resize-none rounded border border-neutral-700 bg-neutral-950 p-2 text-sm text-neutral-200 outline-none focus:border-teal-400"
-            placeholder="Optional description for this code block"
+            class='h-16 w-full resize-none rounded border border-neutral-700 bg-neutral-950 p-2 text-sm text-neutral-200 outline-none focus:border-teal-400'
+            placeholder='Optional description for this code block'
             value={handlerDescription}
             onInput={(event: JSX.TargetedEvent<HTMLTextAreaElement, Event>) =>
-              onHandlerDescriptionChange(event.currentTarget.value)
-            }
+              handleDescriptionChange(event.currentTarget.value)}
           />
           <textarea
-            class="h-24 w-full resize-none rounded border border-neutral-800 bg-neutral-950 p-2 text-xs text-neutral-300 outline-none focus:border-teal-400"
-            placeholder="Guidance messages (one per line) to share with AI collaborators"
+            class='h-24 w-full resize-none rounded border border-neutral-800 bg-neutral-950 p-2 text-xs text-neutral-300 outline-none focus:border-teal-400'
+            placeholder='Guidance messages (one per line) to share with AI collaborators'
             value={handlerMessages}
             onInput={(event: JSX.TargetedEvent<HTMLTextAreaElement, Event>) =>
-              onHandlerMessagesChange(event.currentTarget.value)
-            }
+              handleMessagesChange(event.currentTarget.value)}
           />
         </div>
       </details>
@@ -368,7 +487,7 @@ function AdvancedHandlerEditor({
   );
 }
 function buildBasePlanFromSlices(
-  generatedSlices: Array<[string, EaCInterfaceGeneratedDataSlice]>
+  generatedSlices: Array<[string, EaCInterfaceGeneratedDataSlice]>,
 ): SurfaceInterfaceHandlerPlanStep[] {
   const steps: SurfaceInterfaceHandlerPlanStep[] = [];
 
@@ -407,7 +526,7 @@ function buildBasePlanFromSlices(
 
 function reconcileHandlerPlan(
   basePlan: SurfaceInterfaceHandlerPlanStep[],
-  currentPlan: SurfaceInterfaceHandlerPlanStep[]
+  currentPlan: SurfaceInterfaceHandlerPlanStep[],
 ): SurfaceInterfaceHandlerPlanStep[] {
   const currentMap = new Map(currentPlan.map((step) => [step.id, step]));
   return basePlan.map((base) => {
@@ -426,7 +545,7 @@ function reconcileHandlerPlan(
 
 function arePlansEqual(
   first: SurfaceInterfaceHandlerPlanStep[],
-  second: SurfaceInterfaceHandlerPlanStep[]
+  second: SurfaceInterfaceHandlerPlanStep[],
 ): boolean {
   if (first.length !== second.length) return false;
   for (let index = 0; index < first.length; index += 1) {
@@ -447,7 +566,7 @@ function arePlansEqual(
 }
 
 export function generateHandlerStub(
-  steps: SurfaceInterfaceHandlerPlanStep[]
+  steps: SurfaceInterfaceHandlerPlanStep[],
 ): string {
   const executableSteps = steps.filter((step) => step.autoExecute);
 
@@ -475,13 +594,13 @@ export function generateHandlerStub(
       '    }',
       '    return undefined;',
       '  };',
-      ''
+      '',
     );
   } else {
     lines.push(
       '',
       '  // Define handler steps with the planner or author your own logic below.',
-      ''
+      '',
     );
   }
 
@@ -500,23 +619,29 @@ export function generateHandlerStub(
       const inputExpression = step.inputExpression.trim() || 'undefined';
       const tempVar = `result${index + 1}`;
       lines.push(
-        `  const ${tempVar} = await callAction(${JSON.stringify(
-          step.sliceKey
-        )}, ${JSON.stringify(step.actionKey)}, ${inputExpression});`
+        `  const ${tempVar} = await callAction(${
+          JSON.stringify(
+            step.sliceKey,
+          )
+        }, ${JSON.stringify(step.actionKey)}, ${inputExpression});`,
       );
 
       if (step.includeInResponse && step.resultName.trim().length > 0) {
         lines.push(
-          `  data[${JSON.stringify(
-            step.resultName.trim()
-          )}] = ${tempVar} ?? null;`
+          `  data[${
+            JSON.stringify(
+              step.resultName.trim(),
+            )
+          }] = ${tempVar} ?? null;`,
         );
       }
     } else {
       lines.push(
-        `  // Available helper: callAction(${JSON.stringify(
-          step.sliceKey
-        )}, ${JSON.stringify(step.actionKey)}, input)`
+        `  // Available helper: callAction(${
+          JSON.stringify(
+            step.sliceKey,
+          )
+        }, ${JSON.stringify(step.actionKey)}, input)`,
       );
     }
 
@@ -529,7 +654,7 @@ export function generateHandlerStub(
 }
 
 export function buildGeneratedDescription(
-  steps: SurfaceInterfaceHandlerPlanStep[]
+  steps: SurfaceInterfaceHandlerPlanStep[],
 ): string {
   if (steps.length === 0) {
     return 'Author server-side logic that composes interface actions and returns page data.';
@@ -545,13 +670,11 @@ export function buildGeneratedDescription(
 }
 
 export function buildGeneratedMessages(
-  steps: SurfaceInterfaceHandlerPlanStep[]
+  steps: SurfaceInterfaceHandlerPlanStep[],
 ): string {
   if (steps.length === 0) return '';
   const messages = steps.map((step, index) => {
-    const prefix = `Step ${index + 1}: ${step.sliceLabel} -> ${
-      step.actionLabel
-    }`;
+    const prefix = `Step ${index + 1}: ${step.sliceLabel} -> ${step.actionLabel}`;
     if (step.autoExecute && step.includeInResponse) {
       return `${prefix} (maps result to \`${step.resultName || 'result'}\`).`;
     }
