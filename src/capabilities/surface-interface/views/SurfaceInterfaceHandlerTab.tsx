@@ -9,6 +9,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
 } from '../../../.deps.ts';
 import type { EaCInterfaceGeneratedDataSlice } from '../../../.deps.ts';
 
@@ -416,13 +417,19 @@ function AdvancedHandlerEditor({
   onHandlerDescriptionChange,
   onHandlerMessagesChange,
 }: AdvancedHandlerEditorProps): JSX.Element {
+  const latestHandlerCodeRef = useRef(handlerCode);
+  useEffect(() => {
+    latestHandlerCodeRef.current = handlerCode;
+  }, [handlerCode]);
+
   const handleCodeChange = useCallback((value: string) => {
-    if (value === handlerCode) return;
+    if (value === latestHandlerCodeRef.current) return;
+    latestHandlerCodeRef.current = value;
     console.debug('[SurfaceInterfaceHandlerTab] CodeMirror content change', {
       length: value.length,
     });
     onHandlerCodeChange(value);
-  }, [handlerCode, onHandlerCodeChange]);
+  }, [onHandlerCodeChange]);
 
   const handleDescriptionChange = useCallback(
     (value: string) => {

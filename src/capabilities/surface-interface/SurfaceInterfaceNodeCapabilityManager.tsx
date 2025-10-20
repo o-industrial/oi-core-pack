@@ -20,7 +20,10 @@ import { ComponentType, FunctionComponent, memo, NullableArrayOrObject } from '.
 import SurfaceInterfaceNodeRenderer from './SurfaceInterfaceNodeRenderer.tsx';
 import { SurfaceInterfaceInspector } from './SurfaceInterfaceInspector.tsx';
 import { SurfaceInterfaceNodeDetails } from './SurfaceInterfaceNodeData.ts';
-import { createDefaultInterfaceDetails, ensureInterfaceDetails } from './views/interfaceDefaults.ts';
+import {
+  createDefaultInterfaceDetails,
+  ensureInterfaceDetails,
+} from './views/interfaceDefaults.ts';
 
 const INTERFACE_PRESET_THEME = 'oi-default';
 

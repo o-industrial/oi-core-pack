@@ -226,8 +226,9 @@ function toPascalCase(value: string): string {
 function copyToClipboard(text: string): void {
   if (!text.trim().length) return;
   const nav = (globalThis as { navigator?: Navigator }).navigator;
-  const writer = nav?.clipboard?.writeText;
-  if (typeof writer === 'function') {
-    writer.call(nav.clipboard, text).catch(() => {});
+  const clipboard = nav?.clipboard;
+  const writer = clipboard?.writeText;
+  if (typeof writer === 'function' && clipboard) {
+    writer.call(clipboard, text).catch(() => {});
   }
 }

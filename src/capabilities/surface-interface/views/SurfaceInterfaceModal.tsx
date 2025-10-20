@@ -26,6 +26,7 @@ import type {
   EaCInterfacePageDataActionInvocationMode,
   EaCInterfacePageDataType,
   EverythingAsCodeOIWorkspace,
+  FlowGraphEdge,
   JSX,
   SurfaceInterfaceSettings,
 } from '../../../.deps.ts';
@@ -87,6 +88,34 @@ export function SurfaceInterfaceModal({
     [details, interfaceLookup],
   );
 
+  const [graphRevision, setGraphRevision] = useState(0);
+
+  useEffect(() => {
+    const graphManager = workspaceMgr?.Graph;
+    if (!graphManager || typeof graphManager.OnGraphChanged !== 'function') {
+      return;
+    }
+
+    const unsubscribe = graphManager.OnGraphChanged(() => {
+      setGraphRevision((value: number) => value + 1);
+    });
+    return unsubscribe;
+  }, [workspaceMgr]);
+
+  const derivedLookups = useMemo(
+    () =>
+      deriveInterfaceLookupsFromGraph(
+        workspaceMgr.Graph.GetGraph(),
+        interfaceLookup,
+      ),
+    [workspaceMgr, interfaceLookup, graphRevision],
+  );
+
+  const effectiveSettings = useMemo(
+    () => mergeInterfaceSettingsWithLookups(settings, derivedLookups),
+    [settings, derivedLookups],
+  );
+
   const [activeTab, setActiveTab] = useState<SurfaceInterfaceTabKey>(TAB_IMPORTS);
 
   const [imports, setImports] = useState(resolvedDetails.Imports ?? []);
@@ -97,7 +126,7 @@ export function SurfaceInterfaceModal({
       | undefined;
     return reconcileInterfacePageData(
       ensurePageDataType(resolvedDetails.PageDataType),
-      settings,
+      effectiveSettings,
       workspace,
       surfaceLookup,
       interfaceLookup,
@@ -155,7 +184,7 @@ export function SurfaceInterfaceModal({
       | undefined;
     const reconciled = reconcileInterfacePageData(
       ensurePageDataType(resolvedDetails.PageDataType),
-      settings,
+      effectiveSettings,
       workspace,
       surfaceLookup,
       interfaceLookup,
@@ -187,7 +216,14 @@ export function SurfaceInterfaceModal({
     if (!handlerDirtyRef.current) {
       handlerDirtyRef.current = false;
     }
-  }, [isOpen, resolvedDetails, settings, workspaceMgr, surfaceLookup, interfaceLookup]);
+  }, [
+    isOpen,
+    resolvedDetails,
+    effectiveSettings,
+    workspaceMgr,
+    surfaceLookup,
+    interfaceLookup,
+  ]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -903,6 +939,109 @@ function InterfacePreviewTab({
       </div>
     </div>
   );
+}
+
+type InterfaceGraphLookups = {
+  schemaLookups: string[];
+  warmQueryLookups: string[];
+  dataConnectionLookups: string[];
+  childInterfaceLookups: string[];
+};
+
+function deriveInterfaceLookupsFromGraph(
+  graph: { Edges?: FlowGraphEdge[] } | undefined,
+  interfaceLookup: string,
+): InterfaceGraphLookups {
+  if (!graph?.Edges?.length) {
+    return {
+      schemaLookups: [],
+      warmQueryLookups: [],
+      dataConnectionLookups: [],
+      childInterfaceLookups: [],
+    };
+  }
+
+  const schema = new Set<string>();
+  const warmQueries = new Set<string>();
+  const connections = new Set<string>();
+  const children = new Set<string>();
+
+  for (const edge of graph.Edges) {
+    if (!edge || edge.Target !== interfaceLookup) continue;
+    const source = edge.Source?.trim();
+    if (!source) continue;
+
+    switch (edge.Label) {
+      case 'schema':
+        schema.add(source);
+        break;
+      case 'data':
+        warmQueries.add(source);
+        break;
+      case 'connection':
+        connections.add(source);
+        break;
+      case 'child':
+        children.add(source);
+        break;
+      default:
+        break;
+    }
+  }
+
+  return {
+    schemaLookups: Array.from(schema),
+    warmQueryLookups: Array.from(warmQueries),
+    dataConnectionLookups: Array.from(connections),
+    childInterfaceLookups: Array.from(children),
+  };
+}
+
+function mergeInterfaceSettingsWithLookups(
+  baseSettings: SurfaceInterfaceSettings | undefined,
+  lookups: InterfaceGraphLookups,
+): SurfaceInterfaceSettings {
+  const merged: SurfaceInterfaceSettings = { ...(baseSettings ?? {}) };
+
+  merged.SchemaLookups = mergeLookupLists(
+    baseSettings?.SchemaLookups,
+    lookups.schemaLookups,
+  );
+  merged.WarmQueryLookups = mergeLookupLists(
+    baseSettings?.WarmQueryLookups,
+    lookups.warmQueryLookups,
+  );
+  merged.DataConnectionLookups = mergeLookupLists(
+    baseSettings?.DataConnectionLookups,
+    lookups.dataConnectionLookups,
+  );
+  merged.ChildInterfaceLookups = mergeLookupLists(
+    baseSettings?.ChildInterfaceLookups,
+    lookups.childInterfaceLookups,
+  );
+
+  return merged;
+}
+
+function mergeLookupLists(
+  existing?: string[],
+  additions?: string[],
+): string[] | undefined {
+  const normalizedExisting = (existing ?? [])
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value));
+  const normalizedAdditions = (additions ?? [])
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value));
+
+  if (normalizedAdditions.length === 0) {
+    return existing?.length ? normalizedExisting : existing;
+  }
+
+  const merged = new Set<string>(normalizedExisting);
+  for (const entry of normalizedAdditions) merged.add(entry);
+
+  return merged.size > 0 ? Array.from(merged) : undefined;
 }
 
 function buildInterfaceDetailsPatch(

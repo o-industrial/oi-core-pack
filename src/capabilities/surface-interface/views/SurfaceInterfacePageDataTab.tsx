@@ -120,11 +120,11 @@ function GeneratedSliceCard({
   return (
     <div class='rounded-lg border border-neutral-800 bg-neutral-950 px-4 py-4 text-sm text-neutral-100'>
       <div class='space-y-2'>
-      <div class='flex flex-wrap items-center gap-2'>
-        <p class='text-base font-semibold text-neutral-100'>
-          {slice.Label ?? sliceKey}
-        </p>
-      </div>
+        <div class='flex flex-wrap items-center gap-2'>
+          <p class='text-base font-semibold text-neutral-100'>
+            {slice.Label ?? sliceKey}
+          </p>
+        </div>
         {slice.Description && <p class='text-xs text-neutral-400'>{slice.Description}</p>}
         <div class='flex flex-wrap gap-2 text-[11px] uppercase tracking-wide text-neutral-500'>
           {hydrationSummary && <span>{hydrationSummary}</span>}

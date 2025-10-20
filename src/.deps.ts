@@ -1,4 +1,4 @@
-import type { FunctionalComponent } from 'npm:preact@10.20.1';
+import type { FunctionalComponent as _FunctionalComponent } from 'npm:preact@10.20.1';
 export type { ComponentType, FunctionComponent, JSX } from 'npm:preact@10.20.1';
 
 export { memo } from 'npm:preact@10.20.1/compat';
@@ -162,7 +162,4 @@ export {
 
 export type { JSONSchema7 } from 'npm:jsonschema7@0.8.0';
 
-export {
-  CodeMirrorEditor,
-  type CodeMirrorEditorProps,
-} from 'jsr:@fathym/code-editor@0.0.35';
+export { CodeMirrorEditor, type CodeMirrorEditorProps } from 'jsr:@fathym/code-editor@0.0.35';

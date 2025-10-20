@@ -1,6 +1,7 @@
 import {
   Action,
   ActionStyleTypes,
+  IS_BROWSER,
   JSX,
   LoadingIcon,
   Modal,
@@ -9,40 +10,16 @@ import {
   WorkspaceManager,
 } from '../../../.deps.ts';
 
-type CalzHighlight = {
+type FoundationHighlight = {
   title: string;
   description: string;
   accent: string;
   icon: JSX.Element;
 };
 
-const calzHighlights: CalzHighlight[] = [
+const foundationHighlights: FoundationHighlight[] = [
   {
-    title: '0. Prereqs',
-    description:
-      'Register Azure resource providers, sync available regions, and validate Azure access so the workspace cloud can be provisioned safely.',
-    accent: 'from-sky-500/70 via-cyan-400/70 to-emerald-400/70',
-    icon: (
-      <svg viewBox='0 0 24 24' fill='none' class='h-6 w-6'>
-        <path
-          d='M5 6h14M5 12h14M5 18h6'
-          stroke='currentColor'
-          stroke-width='1.6'
-          stroke-linecap='round'
-          stroke-linejoin='round'
-        />
-        <path
-          d='m13 17 2 2 4-4'
-          stroke='currentColor'
-          stroke-width='1.6'
-          stroke-linecap='round'
-          stroke-linejoin='round'
-        />
-      </svg>
-    ),
-  },
-  {
-    title: '1. Base Landing Zone',
+    title: 'Base Foundation',
     description:
       'Shape the landing zone resource group and lay down networking, Key Vault, and policy scaffolding tuned for private operations.',
     accent: 'from-indigo-500/70 via-sky-500/70 to-cyan-400/70',
@@ -59,7 +36,7 @@ const calzHighlights: CalzHighlight[] = [
     ),
   },
   {
-    title: '2. Secure Operations',
+    title: 'Secure Operations',
     description:
       'Wire diagnostics, Log Analytics, and secret management so engineering teams inherit a healthy runway from day zero.',
     accent: 'from-fuchsia-500/70 via-violet-500/70 to-indigo-400/70',
@@ -154,26 +131,21 @@ const preconnectHighlights: PreconnectHighlight[] = [
   },
 ];
 
-const stepLabels: Array<{ index: 0 | 1; label: string }> = [
-  { index: 0, label: 'Prereqs' },
-  { index: 1, label: 'Base Foundation' },
-];
-
-export type PrivateCALZModalProps = {
+export type PrivateCloudFoundationModalProps = {
   workspaceMgr: WorkspaceManager;
   onClose: () => void;
 };
 
-export function PrivateCALZModal({
+export function PrivateCloudFoundationModal({
   workspaceMgr,
   onClose,
-}: PrivateCALZModalProps): JSX.Element {
+}: PrivateCloudFoundationModalProps): JSX.Element {
   const eac = workspaceMgr.UseEaC();
   const workspaceCloud = (eac?.Clouds || {})['Workspace'];
-  const [step, setStep] = useState<0 | 1>(0);
   const [locations, setLocations] = useState<{ Name: string }[]>([]);
   const [loadingLocs, setLoadingLocs] = useState(false);
-  const [providersBusy, setProvidersBusy] = useState(false);
+  const [foundationView, setFoundationView] = useState<'provision' | 'manage'>('provision');
+  const isLocalPreview = IS_BROWSER && globalThis.location?.hostname === 'localhost';
 
   // Step 1: Base inputs
   const [region, setRegion] = useState('');
@@ -196,8 +168,18 @@ export function PrivateCALZModal({
         .filter((l) => l.Name);
       setLocations(mapped);
       if (!region && mapped.length > 0) setRegion(mapped[0].Name);
+      if (mapped.length === 0 && isLocalPreview) {
+        const fallback = [{ Name: 'westus3' }, { Name: 'centralus' }, { Name: 'eastus2' }];
+        setLocations(fallback);
+        if (!region) setRegion(fallback[0].Name);
+      }
     } catch (err) {
       console.error('Failed to load locations', err);
+      if (isLocalPreview) {
+        const fallback = [{ Name: 'westus3' }, { Name: 'centralus' }, { Name: 'eastus2' }];
+        setLocations(fallback);
+        if (!region) setRegion(fallback[0].Name);
+      }
     } finally {
       setLoadingLocs(false);
     }
@@ -207,33 +189,12 @@ export function PrivateCALZModal({
     if (workspaceCloud?.Details) loadLocations();
   }, [!!workspaceCloud?.Details]);
 
-  const ensureProviders = async () => {
-    try {
-      setProvidersBusy(true);
-      const defs = {
-        'Microsoft.Resources': { Types: [] },
-        'Microsoft.Network': { Types: [] },
-        'Microsoft.KeyVault': { Types: [] },
-        'Microsoft.OperationalInsights': { Types: [] },
-        'Microsoft.App': { Types: [] },
-        'Microsoft.Storage': { Types: [] },
-        'Microsoft.Devices': { Types: [] },
-        'Microsoft.Kusto': { Types: [] },
-      };
-      await fetch('/workspace/api/azure/providers', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(defs),
-      });
-    } finally {
-      setProvidersBusy(false);
-    }
-  };
-
   const submitBase = async () => {
     try {
       setBaseBusy(true);
       setBaseErr(undefined);
+      setBaseDone(false);
+      setFoundationView('manage');
       const res = await fetch('/workspace/api/o-industrial/calz/base', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -242,15 +203,16 @@ export function PrivateCALZModal({
       const data = await res.json();
       if (!data?.status) throw new Error('No status returned');
       setBaseDone(true);
-      setStep(1);
     } catch (err) {
       setBaseErr((err as Error).message);
+      setFoundationView('provision');
     } finally {
       setBaseBusy(false);
     }
   };
 
   const hasWorkspaceCloud = !!workspaceCloud?.Details;
+  const isManagingFoundation = foundationView === 'manage';
   const heroGlow = hasWorkspaceCloud
     ? 'from-emerald-400/40 via-teal-300/30 to-sky-400/40'
     : 'from-amber-400/40 via-orange-400/40 to-pink-400/40';
@@ -258,17 +220,74 @@ export function PrivateCALZModal({
     ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200'
     : 'border-amber-400/40 bg-amber-500/10 text-amber-200';
   const heroTitle = hasWorkspaceCloud
-    ? 'Manage your private CALZ foundation'
+    ? isManagingFoundation
+      ? 'Manage your private cloud foundation'
+      : 'Provision your private cloud foundation'
     : 'Connect a workspace cloud to begin';
   const heroDescription = hasWorkspaceCloud
-    ? 'Provision the landing zone, reinforce governance, and validate secrets and observability so every workload inherits a compliant baseline.'
-    : 'Link a workspace cloud first. Once connected, this guide unlocks private CALZ automation tailored to your environment.';
+    ? isManagingFoundation
+      ? 'Watch the landing zone baseline come online, track hardening tasks, and keep security operations aligned as workloads move in.'
+      : 'Lay down the landing zone resource group, networking, and governance guardrails to back every workload from the start.'
+    : 'Link a workspace cloud first. Once connected, this guide unlocks private foundation automation tailored to your environment.';
   const heroPillText = hasWorkspaceCloud
-    ? step === 1 ? 'Base Foundation' : 'Prereqs'
+    ? isManagingFoundation ? 'Foundation Management' : 'Provision Foundation'
     : 'First Step';
+  const managementStatusClass = baseDone
+    ? 'text-emerald-300'
+    : baseBusy
+    ? 'text-sky-300'
+    : 'text-slate-400';
+  const managementStatusText = baseBusy
+    ? 'Provisioning...'
+    : baseDone
+    ? 'Foundation ready'
+    : 'Queued';
+  const managementStatus = (ready: string, progress: string, queued: string) =>
+    baseDone ? ready : baseBusy ? progress : queued;
+  const managementCards = [
+    {
+      title: 'Azure Key Vault',
+      status: managementStatus(
+        'Ready for secrets',
+        'Provisioning vault resources...',
+        'Waiting for foundation start',
+      ),
+      description:
+        'Import certificates, set access policies, and confirm rotation cadence for shared secrets.',
+    },
+    {
+      title: 'Log Analytics Workspace',
+      status: managementStatus(
+        'Connected to RG',
+        'Linking diagnostic settings...',
+        'Awaiting base resources',
+      ),
+      description:
+        'Map resource diagnostic settings and define retention so operations insights stay actionable.',
+    },
+    {
+      title: 'Monitor & Alerts',
+      status: managementStatus(
+        'Baseline rules queued',
+        'Syncing default alerts...',
+        'Activate after foundation deploy',
+      ),
+      description: 'Review default metric alerts and wire them into your on-call tooling.',
+    },
+    {
+      title: 'Policy & RBAC',
+      status: managementStatus(
+        'Assignments staged',
+        'Applying governance guardrails...',
+        'Compile requirements',
+      ),
+      description:
+        'Confirm role assignments and Azure Policy definitions align to your compliance baseline.',
+    },
+  ];
 
   return (
-    <Modal title='Private Open Industrial CALZ' onClose={onClose}>
+    <Modal title='Private Cloud Foundation' onClose={onClose}>
       <div class='space-y-10 text-sm text-slate-200'>
         <section class='relative overflow-hidden rounded-3xl border border-slate-700/60 bg-gradient-to-br from-slate-900/60 via-slate-900/30 to-slate-900/60 p-8 shadow-2xl'>
           <div class='relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between'>
@@ -312,7 +331,7 @@ export function PrivateCALZModal({
         </section>
 
         <section class='grid gap-6 md:grid-cols-3'>
-          {calzHighlights.map((item) => (
+          {foundationHighlights.map((item) => (
             <div
               key={item.title}
               class='group relative overflow-hidden rounded-3xl border border-slate-700/50 bg-slate-900/70 p-6 shadow-xl transition-transform duration-300 hover:-translate-y-1 hover:border-slate-500/60'
@@ -344,7 +363,7 @@ export function PrivateCALZModal({
               <h4 class='text-base font-semibold text-amber-100'>Workspace cloud required</h4>
               <p class='mt-2 text-sm text-amber-100/80'>
                 No workspace cloud is configured yet. Connect Azure under Environment -{'>'}{' '}
-                Cloud Connections to unlock private CALZ automation.
+                Cloud Connections to unlock private foundation automation.
               </p>
               <p class='mt-3 text-sm text-amber-100/90'>
                 While that&apos;s provisioning, capture the readiness details below so Key Vault,
@@ -392,164 +411,182 @@ export function PrivateCALZModal({
                   {workspaceCloud?.Details?.Type || 'Azure'}
                 </p>
               </div>
-              <div class='rounded-2xl border border-slate-700/60 bg-slate-900/60 px-4 py-3 text-xs text-slate-300'>
-                <div>Regions loaded: {locations.length || 0}</div>
-                <div class='mt-1'>
-                  Providers ready: {providersBusy ? 'Working...' : 'Ensure before provisioning'}
-                </div>
-              </div>
-            </div>
-
-            <div class='flex flex-wrap items-center gap-3 text-xs font-semibold'>
-              {stepLabels.map((item, idx) => (
-                <span class='flex items-center gap-2' key={item.index}>
-                  <span class={item.index === step ? 'text-sky-300' : 'text-slate-500'}>
-                    {item.index}. {item.label}
-                  </span>
-                  {idx < stepLabels.length - 1 && <span class='text-slate-600'>{'>'}</span>}
-                </span>
-              ))}
-            </div>
-
-            {step === 0 && (
-              <div class='space-y-4 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-5'>
-                <p class='text-sm text-slate-300'>
-                  Run these readiness checks so Azure is primed for the landing zone rollout.
-                </p>
-                <div class='flex flex-wrap gap-2'>
-                  <Action
-                    styleType={ActionStyleTypes.Outline}
-                    onClick={ensureProviders}
-                    disabled={providersBusy}
-                  >
-                    {providersBusy ? 'Registering providers...' : 'Ensure Providers'}
-                  </Action>
-                  <Action
-                    styleType={ActionStyleTypes.Outline}
+              <div class='rounded-2xl border border-slate-700/60 bg-slate-900/60 px-4 py-3 text-xs text-slate-300 space-y-2'>
+                <div class='flex items-center justify-between gap-4'>
+                  <span class='font-semibold text-slate-200'>Azure regions</span>
+                  <button
+                    type='button'
+                    class='text-xs font-semibold text-sky-300 hover:text-sky-200 disabled:text-slate-500'
                     onClick={loadLocations}
                     disabled={loadingLocs}
                   >
-                    {loadingLocs ? 'Loading regions...' : 'Load Regions'}
-                  </Action>
+                    {loadingLocs ? 'Refreshing…' : 'Refresh'}
+                  </button>
                 </div>
-                <div class='text-sm text-slate-300'>
+                <div>
                   {loadingLocs
                     ? (
                       <span class='inline-flex items-center gap-2'>
-                        <LoadingIcon class='h-4 w-4 animate-spin text-sky-300' /> Getting regions...
+                        <LoadingIcon class='h-4 w-4 animate-spin text-sky-300' />{' '}
+                        Loading available regions...
                       </span>
                     )
                     : locations.length > 0
-                    ? <span>Regions ready: {locations.length}</span>
-                    : <span>No regions loaded yet.</span>}
-                </div>
-                <div class='pt-2'>
-                  <Action
-                    onClick={() => setStep(1)}
-                    disabled={loadingLocs || providersBusy}
-                  >
-                    Continue to Base
-                  </Action>
+                    ? `${locations.length} regions available`
+                    : 'No regions returned yet.'}
                 </div>
               </div>
-            )}
+            </div>
 
-            {step === 1 && (
-              <div class='space-y-6 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-5'>
-                <div class='space-y-4'>
-                  <div>
-                    <label class='mb-1 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-400'>
-                      Resource Group Name
-                    </label>
-                    <input
-                      class='w-full rounded-lg border border-slate-700/60 bg-slate-900/60 px-3 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-400/60'
-                      value={rgName}
-                      onInput={(e) => setRgName((e.target as HTMLInputElement).value)}
-                    />
+            {foundationView === 'provision'
+              ? (
+                <div class='grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]'>
+                  <div class='space-y-4'>
+                    <h5 class='text-lg font-semibold text-white'>Define the foundation scope</h5>
+                    <p class='text-sm text-slate-300 leading-relaxed'>
+                      Choose the resource group and default region. These anchor the landing zone
+                      templates the automation will apply for your private cloud foundation.
+                    </p>
+                    <p class='text-xs text-slate-400 leading-relaxed'>
+                      Adjust these inputs before you start provisioning. Once provisioning begins
+                      the modal shifts into the foundation management view.
+                    </p>
                   </div>
-                  <div>
-                    <label class='mb-1 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-400'>
-                      Region
-                    </label>
-                    <select
-                      class='w-full rounded-lg border border-slate-700/60 bg-slate-900/60 px-3 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-400/60'
-                      value={region}
-                      onChange={(e) => setRegion((e.target as HTMLSelectElement).value)}
-                    >
-                      {locations.map((l) => (
-                        <option value={l.Name} key={l.Name}>
-                          {l.Name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  {baseErr && <div class='text-xs text-rose-400'>{baseErr}</div>}
-                  <div class='flex flex-wrap items-center gap-2'>
-                    <Action
-                      styleType={ActionStyleTypes.Outline}
-                      onClick={() => setStep(0)}
-                    >
-                      Back
-                    </Action>
-                    <Action onClick={submitBase} disabled={baseBusy || !region || !rgName}>
-                      {baseBusy ? 'Provisioning...' : 'Provision Base'}
-                    </Action>
-                    {baseDone && (
-                      <span class='text-xs text-emerald-300'>
-                        Landing zone applied. Review the services below to finish hardening.
+
+                  <div class='space-y-4 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-5'>
+                    <div class='grid gap-4'>
+                      <div>
+                        <label class='mb-1 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-400'>
+                          Resource Group Name
+                        </label>
+                        <input
+                          type='text'
+                          class='w-full rounded-lg border border-slate-700/60 bg-slate-900/60 px-3 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-400/60'
+                          value={rgName}
+                          onInput={(e) => setRgName((e.target as HTMLInputElement).value)}
+                        />
+                      </div>
+                      <div>
+                        <label class='mb-1 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-400'>
+                          Region
+                        </label>
+                        <select
+                          class='w-full rounded-lg border border-slate-700/60 bg-slate-900/60 px-3 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-400/60'
+                          value={region}
+                          disabled={loadingLocs || locations.length === 0}
+                          onChange={(e) => setRegion((e.target as HTMLSelectElement).value)}
+                        >
+                          {locations.map((l) => (
+                            <option value={l.Name} key={l.Name}>
+                              {l.Name}
+                            </option>
+                          ))}
+                        </select>
+                        {!loadingLocs && locations.length === 0 && (
+                          <div class='mt-1 text-xs text-amber-300'>
+                            No regions returned. Refresh after your subscription permissions are
+                            confirmed.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {baseErr && <div class='text-xs text-rose-400'>{baseErr}</div>}
+                    <div class='flex flex-wrap items-center gap-3'>
+                      <Action
+                        onClick={submitBase}
+                        disabled={baseBusy || !region || !rgName || loadingLocs}
+                      >
+                        {baseBusy ? 'Provisioning foundation...' : 'Start provisioning'}
+                      </Action>
+                      {isLocalPreview && (
+                        <Action
+                          styleType={ActionStyleTypes.Outline}
+                          onClick={() => {
+                            setBaseBusy(false);
+                            setBaseDone(false);
+                            setFoundationView('manage');
+                          }}
+                        >
+                          Preview management view
+                        </Action>
+                      )}
+                      <span class='text-xs text-slate-400'>
+                        The management dashboard appears once provisioning kicks off.
                       </span>
+                    </div>
+                  </div>
+                </div>
+              )
+              : (
+                <div class='space-y-5'>
+                  <div class='space-y-3 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-5'>
+                    <div class='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+                      <div>
+                        <h5 class='text-lg font-semibold text-white'>Foundation status</h5>
+                        <p class='text-sm text-slate-300'>
+                          {rgName} - {region || 'Region pending'}
+                        </p>
+                      </div>
+                      <span class={`text-xs font-semibold ${managementStatusClass}`}>
+                        {managementStatusText}
+                      </span>
+                    </div>
+                    <p class='text-sm text-slate-300 leading-relaxed'>
+                      Keep this view open while automation runs. We will extend it with live
+                      activity and hand-offs for security operations next.
+                    </p>
+                    {!baseBusy && (
+                      <div class='flex flex-wrap items-center gap-2'>
+                        <Action
+                          styleType={ActionStyleTypes.Outline}
+                          onClick={() => setFoundationView('provision')}
+                        >
+                          Adjust foundation inputs
+                        </Action>
+                        {isLocalPreview && (
+                          <>
+                            <Action
+                              styleType={ActionStyleTypes.Outline}
+                              onClick={() => setBaseDone(false)}
+                            >
+                              Show queued state
+                            </Action>
+                            <Action
+                              styleType={ActionStyleTypes.Outline}
+                              onClick={() => setBaseDone(true)}
+                            >
+                              Show ready state
+                            </Action>
+                          </>
+                        )}
+                      </div>
                     )}
                   </div>
-                </div>
-
-                <div class='grid gap-4 md:grid-cols-2'>
-                  {[
-                    {
-                      title: 'Azure Key Vault',
-                      status: baseDone ? 'Ready for secrets' : 'Pending provisioning',
-                      description:
-                        'Import certificates, set access policies, and confirm rotation cadence for shared secrets.',
-                    },
-                    {
-                      title: 'Log Analytics Workspace',
-                      status: baseDone ? 'Connected to RG' : 'Awaiting base resources',
-                      description:
-                        'Map resource diagnostic settings and define retention so operations insights stay actionable.',
-                    },
-                    {
-                      title: 'Monitor & Alerts',
-                      status: baseDone ? 'Baseline rules queued' : 'Activate after base deploy',
-                      description:
-                        'Review default metric alerts and wire them into your on-call tooling.',
-                    },
-                    {
-                      title: 'Policy & RBAC',
-                      status: baseDone ? 'Assignments staged' : 'Compile requirements',
-                      description:
-                        'Confirm role assignments and Azure Policy definitions align to your compliance baseline.',
-                    },
-                  ].map((item) => (
-                    <div
-                      key={item.title}
-                      class='rounded-2xl border border-slate-700/60 bg-slate-900/70 p-4'
-                    >
-                      <div class='flex items-center justify-between gap-3 text-sm'>
-                        <h5 class='font-semibold text-white'>{item.title}</h5>
-                        <span class={`text-xs ${baseDone ? 'text-emerald-300' : 'text-slate-400'}`}>
-                          {item.status}
-                        </span>
+                  <div class='grid gap-4 md:grid-cols-2'>
+                    {managementCards.map((item) => (
+                      <div
+                        key={item.title}
+                        class='rounded-2xl border border-slate-700/60 bg-slate-900/70 p-4'
+                      >
+                        <div class='flex items-center justify-between gap-3 text-sm'>
+                          <h5 class='font-semibold text-white'>{item.title}</h5>
+                          <span class={`text-xs ${managementStatusClass}`}>
+                            {item.status}
+                          </span>
+                        </div>
+                        <p class='mt-2 text-xs text-slate-400 leading-relaxed'>
+                          {item.description}
+                        </p>
                       </div>
-                      <p class='mt-2 text-xs text-slate-400 leading-relaxed'>{item.description}</p>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             <div class='rounded-2xl border border-slate-700/60 bg-slate-900/60 p-4 text-slate-300'>
               Want it faster? Email{' '}
               <a
-                href='mailto:support@fathym.com?subject=Private%20CALZ%20Setup'
+                href='mailto:support@fathym.com?subject=Private%20Cloud%20Foundation%20Setup'
                 class='font-semibold text-sky-300 hover:text-sky-200'
               >
                 support@fathym.com
@@ -563,7 +600,7 @@ export function PrivateCALZModal({
   );
 }
 
-PrivateCALZModal.Modal = (
+PrivateCloudFoundationModal.Modal = (
   workspaceMgr: WorkspaceManager,
 ): {
   Modal: JSX.Element;
@@ -577,7 +614,7 @@ PrivateCALZModal.Modal = (
     Modal: (
       <>
         {shown && (
-          <PrivateCALZModal
+          <PrivateCloudFoundationModal
             workspaceMgr={workspaceMgr}
             onClose={() => setShow(false)}
           />
@@ -590,4 +627,4 @@ PrivateCALZModal.Modal = (
   };
 };
 
-export default PrivateCALZModal;
+export default PrivateCloudFoundationModal;

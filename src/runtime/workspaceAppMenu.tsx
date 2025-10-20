@@ -14,7 +14,7 @@ import CurrentLicenseModal from './modals/billing/CurrentLicenseModal.tsx';
 import CloudConnectionsModal from './modals/environment/CloudConnectionsModal.tsx';
 import ManageIoTModal from './modals/environment/ManageIoTModal.tsx';
 import OEMIntegrationsModal from './modals/environment/OEMIntegrationsModal.tsx';
-import PrivateCALZModal from './modals/environment/PrivateCALZModal.tsx';
+import PrivateCloudFoundationModal from './modals/environment/PrivateCloudFoundationModal.tsx';
 import { AccountProfileModal } from './modals/workspace/AccountProfileModal.tsx';
 import { ManageWorkspacesModal } from './modals/workspace/ManageWorkspacesModal.tsx';
 import { SimulatorLibraryModal } from './modals/workspace/SimulatorLibraryModal.tsx';
@@ -37,7 +37,7 @@ export type WorkspaceAppMenuHandles = {
   showTeamMgmt: () => void;
   showWarmQuery: () => void;
   showWkspSets: () => void;
-  showPrivateCalz: () => void;
+  showPrivateFoundation: () => void;
 };
 
 export function createWorkspaceAppMenu(
@@ -60,7 +60,8 @@ export function createWorkspaceAppMenu(
   const { Modal: cloudConnsModal, Show: showCloudConns } = CloudConnectionsModal.Modal(
     workspaceMgr,
   );
-  const { Modal: privateCalzModal, Show: showPrivateCalz } = PrivateCALZModal.Modal(workspaceMgr);
+  const { Modal: privateFoundationModal, Show: showPrivateFoundation } = PrivateCloudFoundationModal
+    .Modal(workspaceMgr);
   const { Modal: manageIotModal, Show: showManageIot } = ManageIoTModal.Modal(workspaceMgr);
   const { Modal: oemIntegrationsModal, Show: showOemIntegrations } = OEMIntegrationsModal.Modal(
     workspaceMgr,
@@ -74,7 +75,7 @@ export function createWorkspaceAppMenu(
       {teamMgmtModal}
       {wkspSetsModal}
       {cloudConnsModal}
-      {privateCalzModal}
+      {privateFoundationModal}
       {manageIotModal}
       {oemIntegrationsModal}
       {warmQueryModal}
@@ -110,7 +111,7 @@ export function createWorkspaceAppMenu(
         showCloudConns();
         break;
       case 'env.calz':
-        showPrivateCalz();
+        showPrivateFoundation();
         break;
       case 'env.iot':
         showManageIot();
@@ -143,7 +144,7 @@ export function createWorkspaceAppMenu(
     showTeamMgmt,
     showWarmQuery,
     showWkspSets,
-    showPrivateCalz,
+    showPrivateFoundation,
   };
 }
 export function getWorkspaceRuntimeMenus(
@@ -206,7 +207,7 @@ export function getWorkspaceRuntimeMenus(
             {
               type: 'item' as const,
               id: 'env.calz',
-              label: 'Manage Private CALZ',
+              label: 'Private Cloud Foundation',
               iconSrc: icons.privateCloud,
             },
             {
