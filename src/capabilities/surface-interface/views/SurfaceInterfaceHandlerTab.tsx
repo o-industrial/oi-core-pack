@@ -9,7 +9,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useState,
 } from '../../../.deps.ts';
 import type { EaCInterfaceGeneratedDataSlice } from '../../../.deps.ts';
 
@@ -78,7 +77,7 @@ export function SurfaceInterfaceHandlerTab({
   onHandlerMessagesChange,
 }: SurfaceInterfaceHandlerTabProps): JSX.Element {
   useEffect(() => {
-    debug('handlerCode prop updated', {
+    console.debug('[SurfaceInterfaceHandlerTab] handlerCode prop updated', {
       length: handlerCode.length,
       snippet: handlerCode.slice(0, 80),
     });
@@ -92,6 +91,10 @@ export function SurfaceInterfaceHandlerTab({
   useEffect(() => {
     const reconciled = reconcileHandlerPlan(basePlan, steps);
     if (!arePlansEqual(reconciled, steps)) {
+      console.debug('[SurfaceInterfaceHandlerTab] plan reconciliation', {
+        previousLength: steps.length,
+        nextLength: reconciled.length,
+      });
       onStepsChange(reconciled);
     }
   }, [basePlan, steps, onStepsChange]);
@@ -101,7 +104,7 @@ export function SurfaceInterfaceHandlerTab({
     updater: (prev: HandlerStep) => HandlerStep,
   ) => {
     const next = steps.map((step) => step.id === stepId ? updater(step) : step);
-    debug('handler step updated', { stepId });
+    console.debug('[SurfaceInterfaceHandlerTab] handler step updated', { stepId });
     onStepsChange(next);
   };
 
@@ -413,38 +416,13 @@ function AdvancedHandlerEditor({
   onHandlerDescriptionChange,
   onHandlerMessagesChange,
 }: AdvancedHandlerEditorProps): JSX.Element {
-  const [localCode, setLocalCode] = useState(handlerCode);
-
-  useEffect(() => {
-    debug('sync local code from props', {
-      length: handlerCode.length,
-      snippet: handlerCode.slice(0, 80),
-    });
-    setLocalCode(handlerCode);
-  }, [handlerCode]);
-
-  useEffect(() => {
-    if (localCode === handlerCode) return;
-    const handle = setTimeout(() => onHandlerCodeChange(localCode), 150);
-    debug('debounced handler code dispatch scheduled', {
-      length: localCode.length,
-    });
-    return () => clearTimeout(handle);
-  }, [localCode, handlerCode, onHandlerCodeChange]);
-
   const handleCodeChange = useCallback((value: string) => {
-    debug('CodeMirror content change', {
+    if (value === handlerCode) return;
+    console.debug('[SurfaceInterfaceHandlerTab] CodeMirror content change', {
       length: value.length,
     });
-    setLocalCode((current) => (current === value ? current : value));
-  }, []);
-
-  const flushLocalCode = useCallback(() => {
-    if (localCode !== handlerCode) {
-      debug('flushing local code buffer');
-      onHandlerCodeChange(localCode);
-    }
-  }, [localCode, handlerCode, onHandlerCodeChange]);
+    onHandlerCodeChange(value);
+  }, [handlerCode, onHandlerCodeChange]);
 
   const handleDescriptionChange = useCallback(
     (value: string) => {
@@ -474,11 +452,10 @@ function AdvancedHandlerEditor({
           {IS_BROWSER
             ? (
               <CodeMirrorEditor
-                fileContent={localCode}
-                // onContentChange={handleCodeChange}
+                fileContent={handlerCode}
+                onContentChange={handleCodeChange}
                 placeholder='export async function loadPageData(...) { ... }'
                 class='flex-1 min-h-[320px] [&>.cm-editor]:rounded [&>.cm-editor]:border [&>.cm-editor]:border-neutral-800 [&>.cm-editor]:bg-neutral-950'
-                onBlur={flushLocalCode}
               />
             )
             : (
@@ -717,16 +694,4 @@ function toCamelCase(value: string): string {
       )
       .join('') || value
   );
-}
-
-const isDebugEnabled = typeof globalThis !== 'undefined' &&
-  (
-    (globalThis as { __OI_DEBUG__?: boolean }).__OI_DEBUG__ === true ||
-    ((globalThis as { location?: { hostname?: string } }).location?.hostname ??
-        '') === 'localhost'
-  );
-
-function debug(...args: unknown[]): void {
-  if (!isDebugEnabled || typeof console?.debug !== 'function') return;
-  console.debug('[SurfaceInterfaceHandlerTab]', ...args);
 }

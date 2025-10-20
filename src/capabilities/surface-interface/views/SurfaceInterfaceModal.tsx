@@ -121,6 +121,7 @@ export function SurfaceInterfaceModal({
     description: (resolvedDetails.PageHandler?.Description ?? '').trim(),
     messages: formatMessages(resolvedDetails.PageHandler?.Messages).trim(),
   });
+  const handlerDirtyRef = useRef(false);
 
   const [pageCode, setPageCode] = useState(resolvedDetails.Page?.Code ?? '');
   const [pageDescription, setPageDescription] = useState(
@@ -161,23 +162,53 @@ export function SurfaceInterfaceModal({
     );
     setPageDataType(reconciled);
 
-    setHandlerCode(resolvedDetails.PageHandler?.Code ?? '');
-    setHandlerDescription(resolvedDetails.PageHandler?.Description ?? '');
-    setHandlerMessagesText(
-      formatMessages(resolvedDetails.PageHandler?.Messages),
-    );
-    setHandlerPlan([]);
-    lastGeneratedHandlerRef.current = {
-      code: (resolvedDetails.PageHandler?.Code ?? '').trim(),
-      description: (resolvedDetails.PageHandler?.Description ?? '').trim(),
-      messages: formatMessages(resolvedDetails.PageHandler?.Messages).trim(),
-    };
+    const incomingHandlerCode = resolvedDetails.PageHandler?.Code ?? '';
+    if (!handlerDirtyRef.current) {
+      setHandlerCode(incomingHandlerCode);
+      lastGeneratedHandlerRef.current.code = incomingHandlerCode.trim();
+    }
+
+    const incomingHandlerDescription = resolvedDetails.PageHandler?.Description ?? '';
+    if (!handlerDirtyRef.current) {
+      setHandlerDescription(incomingHandlerDescription);
+      lastGeneratedHandlerRef.current.description = incomingHandlerDescription.trim();
+    }
+
+    const incomingHandlerMessages = formatMessages(resolvedDetails.PageHandler?.Messages);
+    if (!handlerDirtyRef.current) {
+      setHandlerMessagesText(incomingHandlerMessages);
+      lastGeneratedHandlerRef.current.messages = incomingHandlerMessages.trim();
+    }
 
     setPageCode(resolvedDetails.Page?.Code ?? '');
     setPageDescription(resolvedDetails.Page?.Description ?? '');
     setPageMessagesText(formatMessages(resolvedDetails.Page?.Messages));
     setImportsInvalid(false);
+    if (!handlerDirtyRef.current) {
+      handlerDirtyRef.current = false;
+    }
   }, [isOpen, resolvedDetails, settings, workspaceMgr, surfaceLookup, interfaceLookup]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      handlerDirtyRef.current = false;
+    }
+  }, [isOpen]);
+
+  const handleHandlerCodeChange = useCallback((next: string) => {
+    handlerDirtyRef.current = true;
+    setHandlerCode(next);
+  }, []);
+
+  const handleHandlerDescriptionChange = useCallback((next: string) => {
+    handlerDirtyRef.current = true;
+    setHandlerDescription(next);
+  }, []);
+
+  const handleHandlerMessagesChange = useCallback((next: string) => {
+    handlerDirtyRef.current = true;
+    setHandlerMessagesText(next);
+  }, []);
 
   const generatedSlices = pageDataType.Generated;
   const generatedSliceEntries = useMemo(
@@ -369,6 +400,7 @@ export function SurfaceInterfaceModal({
       (currentCode.length === 0 || currentCode === lastGeneratedHandlerRef.current.code)
     ) {
       setHandlerCode(stub);
+      handlerDirtyRef.current = false;
       lastGeneratedHandlerRef.current.code = trimmedStub;
     } else {
       lastGeneratedHandlerRef.current.code = currentCode;
@@ -384,6 +416,7 @@ export function SurfaceInterfaceModal({
       )
     ) {
       setHandlerDescription(description);
+      handlerDirtyRef.current = false;
       lastGeneratedHandlerRef.current.description = trimmedDescription;
     } else {
       lastGeneratedHandlerRef.current.description = currentDescription;
@@ -399,6 +432,7 @@ export function SurfaceInterfaceModal({
       )
     ) {
       setHandlerMessagesText(messages);
+      handlerDirtyRef.current = false;
       lastGeneratedHandlerRef.current.messages = trimmedMessages;
     } else {
       lastGeneratedHandlerRef.current.messages = currentMessages;
@@ -504,9 +538,9 @@ export function SurfaceInterfaceModal({
           handlerMessages={handlerMessagesText}
           steps={handlerPlan}
           onStepsChange={setHandlerPlan}
-          onHandlerCodeChange={setHandlerCode}
-          onHandlerDescriptionChange={setHandlerDescription}
-          onHandlerMessagesChange={setHandlerMessagesText}
+          onHandlerCodeChange={handleHandlerCodeChange}
+          onHandlerDescriptionChange={handleHandlerDescriptionChange}
+          onHandlerMessagesChange={handleHandlerMessagesChange}
         />
       ),
     },
