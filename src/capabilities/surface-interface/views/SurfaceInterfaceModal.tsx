@@ -35,6 +35,14 @@ import {
   ensurePageDataType,
 } from './interfaceDefaults.ts';
 import { reconcileInterfacePageData } from './pageDataHelpers.ts';
+import {
+  buildGeneratedDescription,
+  buildGeneratedMessages,
+  generateHandlerStub,
+  type SurfaceInterfaceHandlerPlanStep,
+  SurfaceInterfaceHandlerTab,
+} from './SurfaceInterfaceHandlerTab.tsx';
+import { SurfaceInterfaceGeneratedCodeTab } from './SurfaceInterfaceGeneratedCodeTab.tsx';
 import { SurfaceInterfaceImportsTab } from './SurfaceInterfaceImportsTab.tsx';
 import { SurfaceInterfacePageDataTab } from './SurfaceInterfacePageDataTab.tsx';
 
@@ -54,13 +62,15 @@ type SurfaceInterfaceTabKey =
   | 'data'
   | 'handler'
   | 'page'
-  | 'preview';
+  | 'preview'
+  | 'code';
 
 const TAB_IMPORTS: SurfaceInterfaceTabKey = 'imports';
 const TAB_DATA: SurfaceInterfaceTabKey = 'data';
 const TAB_HANDLER: SurfaceInterfaceTabKey = 'handler';
 const TAB_PAGE: SurfaceInterfaceTabKey = 'page';
 const TAB_PREVIEW: SurfaceInterfaceTabKey = 'preview';
+const TAB_CODE: SurfaceInterfaceTabKey = 'code';
 
 export function SurfaceInterfaceModal({
   isOpen,
@@ -105,6 +115,12 @@ export function SurfaceInterfaceModal({
   const [handlerMessageGroups] = useState(
     resolvedDetails.PageHandler?.MessageGroups ?? [],
   );
+  const [handlerPlan, setHandlerPlan] = useState<SurfaceInterfaceHandlerPlanStep[]>([]);
+  const lastGeneratedHandlerRef = useRef({
+    code: (resolvedDetails.PageHandler?.Code ?? '').trim(),
+    description: (resolvedDetails.PageHandler?.Description ?? '').trim(),
+    messages: formatMessages(resolvedDetails.PageHandler?.Messages).trim(),
+  });
 
   const [pageCode, setPageCode] = useState(resolvedDetails.Page?.Code ?? '');
   const [pageDescription, setPageDescription] = useState(
@@ -150,6 +166,12 @@ export function SurfaceInterfaceModal({
     setHandlerMessagesText(
       formatMessages(resolvedDetails.PageHandler?.Messages),
     );
+    setHandlerPlan([]);
+    lastGeneratedHandlerRef.current = {
+      code: (resolvedDetails.PageHandler?.Code ?? '').trim(),
+      description: (resolvedDetails.PageHandler?.Description ?? '').trim(),
+      messages: formatMessages(resolvedDetails.PageHandler?.Messages).trim(),
+    };
 
     setPageCode(resolvedDetails.Page?.Code ?? '');
     setPageDescription(resolvedDetails.Page?.Description ?? '');
@@ -333,6 +355,65 @@ export function SurfaceInterfaceModal({
     });
   };
 
+  useEffect(() => {
+    if (activeTab !== TAB_CODE) return;
+
+    const stub = generateHandlerStub(handlerPlan);
+    const description = buildGeneratedDescription(handlerPlan);
+    const messages = buildGeneratedMessages(handlerPlan);
+
+    const trimmedStub = stub.trim();
+    const currentCode = handlerCode.trim();
+    if (
+      trimmedStub.length > 0 &&
+      (currentCode.length === 0 || currentCode === lastGeneratedHandlerRef.current.code)
+    ) {
+      setHandlerCode(stub);
+      lastGeneratedHandlerRef.current.code = trimmedStub;
+    } else {
+      lastGeneratedHandlerRef.current.code = currentCode;
+    }
+
+    const trimmedDescription = description.trim();
+    const currentDescription = handlerDescription.trim();
+    if (
+      trimmedDescription.length > 0 &&
+      (
+        currentDescription.length === 0 ||
+        currentDescription === lastGeneratedHandlerRef.current.description
+      )
+    ) {
+      setHandlerDescription(description);
+      lastGeneratedHandlerRef.current.description = trimmedDescription;
+    } else {
+      lastGeneratedHandlerRef.current.description = currentDescription;
+    }
+
+    const trimmedMessages = messages.trim();
+    const currentMessages = handlerMessagesText.trim();
+    if (
+      trimmedMessages.length > 0 &&
+      (
+        currentMessages.length === 0 ||
+        currentMessages === lastGeneratedHandlerRef.current.messages
+      )
+    ) {
+      setHandlerMessagesText(messages);
+      lastGeneratedHandlerRef.current.messages = trimmedMessages;
+    } else {
+      lastGeneratedHandlerRef.current.messages = currentMessages;
+    }
+  }, [
+    activeTab,
+    handlerPlan,
+    handlerCode,
+    handlerDescription,
+    handlerMessagesText,
+    setHandlerCode,
+    setHandlerDescription,
+    setHandlerMessagesText,
+  ]);
+
   const extraInputs = useMemo(
     () => ({
       interfaceLookup,
@@ -415,17 +496,18 @@ export function SurfaceInterfaceModal({
       key: TAB_HANDLER,
       label: 'Handler',
       content: (
-        <div class='flex h-full min-h-0 flex-col'>
-          <CodeEditorPanel
-            code={handlerCode}
-            description={handlerDescription}
-            messages={handlerMessagesText}
-            onCodeChange={setHandlerCode}
-            onDescriptionChange={setHandlerDescription}
-            onMessagesChange={setHandlerMessagesText}
-            placeholder='export async function loadPageData(...) { ... }'
-          />
-        </div>
+        <SurfaceInterfaceHandlerTab
+          imports={imports}
+          generatedSlices={generatedSliceEntries}
+          handlerCode={handlerCode}
+          handlerDescription={handlerDescription}
+          handlerMessages={handlerMessagesText}
+          steps={handlerPlan}
+          onStepsChange={setHandlerPlan}
+          onHandlerCodeChange={setHandlerCode}
+          onHandlerDescriptionChange={setHandlerDescription}
+          onHandlerMessagesChange={setHandlerMessagesText}
+        />
       ),
     },
     {
@@ -459,6 +541,23 @@ export function SurfaceInterfaceModal({
         />
       ),
     },
+    {
+      key: TAB_CODE,
+      label: 'Code',
+      content: (
+        <SurfaceInterfaceGeneratedCodeTab
+          interfaceLookup={interfaceLookup}
+          imports={imports}
+          handlerPlan={handlerPlan}
+          handlerCode={handlerCode}
+          handlerDescription={handlerDescription}
+          handlerMessages={handlerMessagesText}
+          pageCode={pageCode}
+          pageDescription={pageDescription}
+          pageMessages={pageMessagesText}
+        />
+      ),
+    },
   ];
 
   return (
@@ -488,7 +587,8 @@ export function SurfaceInterfaceModal({
                 key === TAB_DATA ||
                 key === TAB_HANDLER ||
                 key === TAB_PAGE ||
-                key === TAB_PREVIEW
+                key === TAB_PREVIEW ||
+                key === TAB_CODE
               ) {
                 setActiveTab(key as SurfaceInterfaceTabKey);
               }

@@ -162,20 +162,7 @@ export {
 
 export type { JSONSchema7 } from 'npm:jsonschema7@0.8.0';
 
-import type { CodeMirrorEditorProps as FathymCodeMirrorEditorProps } from 'jsr:@fathym/code-editor@0.0.35';
-
-const FallbackCodeMirrorEditor: FunctionalComponent<
-  FathymCodeMirrorEditorProps
-> = () => null;
-
-let CodeMirrorEditor: FunctionalComponent<FathymCodeMirrorEditorProps> = FallbackCodeMirrorEditor;
-
-if (IS_BROWSER) {
-  const mod = await import('jsr:@fathym/code-editor@0.0.35');
-  CodeMirrorEditor = mod.CodeMirrorEditor as FunctionalComponent<FathymCodeMirrorEditorProps>;
-}
-
-type ExtractCodeMirrorProps = FathymCodeMirrorEditorProps;
-
-export { CodeMirrorEditor };
-export type { ExtractCodeMirrorProps as CodeMirrorEditorProps };
+export {
+  CodeMirrorEditor,
+  type CodeMirrorEditorProps,
+} from 'jsr:@fathym/code-editor@0.0.35';
