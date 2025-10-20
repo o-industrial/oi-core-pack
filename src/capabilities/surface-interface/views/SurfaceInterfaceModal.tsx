@@ -150,6 +150,11 @@ export function SurfaceInterfaceModal({
     description: (resolvedDetails.PageHandler?.Description ?? '').trim(),
     messages: formatMessages(resolvedDetails.PageHandler?.Messages).trim(),
   });
+  const lastSyncedHandlerRef = useRef({
+    code: (resolvedDetails.PageHandler?.Code ?? '').trim(),
+    description: (resolvedDetails.PageHandler?.Description ?? '').trim(),
+    messages: formatMessages(resolvedDetails.PageHandler?.Messages).trim(),
+  });
   const handlerDirtyRef = useRef(false);
 
   const [pageCode, setPageCode] = useState(resolvedDetails.Page?.Code ?? '');
@@ -193,20 +198,35 @@ export function SurfaceInterfaceModal({
 
     const incomingHandlerCode = resolvedDetails.PageHandler?.Code ?? '';
     if (!handlerDirtyRef.current) {
-      setHandlerCode(incomingHandlerCode);
-      lastGeneratedHandlerRef.current.code = incomingHandlerCode.trim();
+      const trimmedCode = incomingHandlerCode.trim();
+      const shouldUpdate = trimmedCode !== lastSyncedHandlerRef.current.code;
+      lastSyncedHandlerRef.current.code = trimmedCode;
+      if (shouldUpdate) {
+        setHandlerCode(incomingHandlerCode);
+        lastGeneratedHandlerRef.current.code = trimmedCode;
+      }
     }
 
     const incomingHandlerDescription = resolvedDetails.PageHandler?.Description ?? '';
     if (!handlerDirtyRef.current) {
-      setHandlerDescription(incomingHandlerDescription);
-      lastGeneratedHandlerRef.current.description = incomingHandlerDescription.trim();
+      const trimmedDescription = incomingHandlerDescription.trim();
+      const shouldUpdate = trimmedDescription !== lastSyncedHandlerRef.current.description;
+      lastSyncedHandlerRef.current.description = trimmedDescription;
+      if (shouldUpdate) {
+        setHandlerDescription(incomingHandlerDescription);
+        lastGeneratedHandlerRef.current.description = trimmedDescription;
+      }
     }
 
     const incomingHandlerMessages = formatMessages(resolvedDetails.PageHandler?.Messages);
     if (!handlerDirtyRef.current) {
-      setHandlerMessagesText(incomingHandlerMessages);
-      lastGeneratedHandlerRef.current.messages = incomingHandlerMessages.trim();
+      const trimmedMessages = incomingHandlerMessages.trim();
+      const shouldUpdate = trimmedMessages !== lastSyncedHandlerRef.current.messages;
+      lastSyncedHandlerRef.current.messages = trimmedMessages;
+      if (shouldUpdate) {
+        setHandlerMessagesText(incomingHandlerMessages);
+        lastGeneratedHandlerRef.current.messages = trimmedMessages;
+      }
     }
 
     setPageCode(resolvedDetails.Page?.Code ?? '');
@@ -577,6 +597,7 @@ export function SurfaceInterfaceModal({
           onHandlerCodeChange={handleHandlerCodeChange}
           onHandlerDescriptionChange={handleHandlerDescriptionChange}
           onHandlerMessagesChange={handleHandlerMessagesChange}
+          onDataConnectionChange={handleDataConnectionFeaturesChange}
         />
       ),
     },
@@ -619,6 +640,7 @@ export function SurfaceInterfaceModal({
           interfaceLookup={interfaceLookup}
           imports={imports}
           handlerPlan={handlerPlan}
+          generatedSlices={generatedSliceEntries}
           handlerCode={handlerCode}
           handlerDescription={handlerDescription}
           handlerMessages={handlerMessagesText}

@@ -144,7 +144,7 @@ export function PrivateCloudFoundationModal({
   const workspaceCloud = (eac?.Clouds || {})['Workspace'];
   const [locations, setLocations] = useState<{ Name: string }[]>([]);
   const [loadingLocs, setLoadingLocs] = useState(false);
-  const [foundationView, setFoundationView] = useState<'provision' | 'manage'>('provision');
+  const [foundationView, setFoundationView] = useState<'plan' | 'manage'>('plan');
   const isLocalPreview = IS_BROWSER && globalThis.location?.hostname === 'localhost';
 
   // Step 1: Base inputs
@@ -205,7 +205,7 @@ export function PrivateCloudFoundationModal({
       setBaseDone(true);
     } catch (err) {
       setBaseErr((err as Error).message);
-      setFoundationView('provision');
+      setFoundationView('plan');
     } finally {
       setBaseBusy(false);
     }
@@ -222,15 +222,15 @@ export function PrivateCloudFoundationModal({
   const heroTitle = hasWorkspaceCloud
     ? isManagingFoundation
       ? 'Manage your private cloud foundation'
-      : 'Provision your private cloud foundation'
+      : 'Design your private cloud foundation'
     : 'Connect a workspace cloud to begin';
   const heroDescription = hasWorkspaceCloud
     ? isManagingFoundation
       ? 'Watch the landing zone baseline come online, track hardening tasks, and keep security operations aligned as workloads move in.'
-      : 'Lay down the landing zone resource group, networking, and governance guardrails to back every workload from the start.'
+      : 'Lay down the landing zone resource group, networking, and governance guardrails to back every workload from the start while the review below keeps the blueprint transparent.'
     : 'Link a workspace cloud first. Once connected, this guide unlocks private foundation automation tailored to your environment.';
   const heroPillText = hasWorkspaceCloud
-    ? isManagingFoundation ? 'Foundation Management' : 'Provision Foundation'
+    ? isManagingFoundation ? 'Foundation Management' : 'Plan Foundation'
     : 'First Step';
   const managementStatusClass = baseDone
     ? 'text-emerald-300'
@@ -244,6 +244,36 @@ export function PrivateCloudFoundationModal({
     : 'Queued';
   const managementStatus = (ready: string, progress: string, queued: string) =>
     baseDone ? ready : baseBusy ? progress : queued;
+  const blueprintCards = [
+    {
+      title: 'Landing zone resource group',
+      summary: `${rgName || 'Resource group TBD'} · ${region || 'Region pending'}`,
+      why:
+        'Scopes the private foundation, centralizing policy, secrets, and networking assets for downstream workloads.',
+    },
+    {
+      title: 'Virtual network & subnets',
+      summary: 'Creates isolated network fabric with workload-ready subnets and routing defaults.',
+      why:
+        'Gives every environment a secure, traffic-controlled runway before applications arrive.',
+    },
+    {
+      title: 'Azure Key Vault',
+      summary: 'Deploys a managed vault aligned to the landing zone naming.',
+      why: 'Keeps secrets, certificates, and identity wiring standardized from day zero.',
+    },
+    {
+      title: 'Log Analytics & Monitor',
+      summary: 'Provisions Log Analytics workspace plus baseline metric/log forwarding.',
+      why: 'Delivers observability guardrails so operations teams inherit actionable telemetry.',
+    },
+    {
+      title: 'Policy & RBAC guardrails',
+      summary: 'Applies baseline Azure Policy assignments and role definitions tied to the zone.',
+      why:
+        'Ensures governance and compliance requirements are enforced automatically as apps land.',
+    },
+  ];
   const managementCards = [
     {
       title: 'Azure Key Vault',
@@ -438,8 +468,8 @@ export function PrivateCloudFoundationModal({
               </div>
             </div>
 
-            {foundationView === 'provision'
-              ? (
+            {foundationView === 'plan' && (
+              <div class='space-y-6'>
                 <div class='grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]'>
                   <div class='space-y-4'>
                     <h5 class='text-lg font-semibold text-white'>Define the foundation scope</h5>
@@ -448,8 +478,8 @@ export function PrivateCloudFoundationModal({
                       templates the automation will apply for your private cloud foundation.
                     </p>
                     <p class='text-xs text-slate-400 leading-relaxed'>
-                      Adjust these inputs before you start provisioning. Once provisioning begins
-                      the modal shifts into the foundation management view.
+                      Adjust these inputs anytime before you start provisioning. The live review
+                      below mirrors every change so stakeholders can see exactly what will deploy.
                     </p>
                   </div>
 
@@ -511,77 +541,114 @@ export function PrivateCloudFoundationModal({
                         </Action>
                       )}
                       <span class='text-xs text-slate-400'>
-                        The management dashboard appears once provisioning kicks off.
+                        Clicking start provisioning moves you to the management dashboard.
                       </span>
                     </div>
                   </div>
                 </div>
-              )
-              : (
-                <div class='space-y-5'>
-                  <div class='space-y-3 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-5'>
-                    <div class='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
-                      <div>
-                        <h5 class='text-lg font-semibold text-white'>Foundation status</h5>
-                        <p class='text-sm text-slate-300'>
-                          {rgName} - {region || 'Region pending'}
-                        </p>
-                      </div>
-                      <span class={`text-xs font-semibold ${managementStatusClass}`}>
-                        {managementStatusText}
-                      </span>
-                    </div>
+
+                <div class='space-y-4 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-5'>
+                  <div class='space-y-3'>
+                    <h5 class='text-lg font-semibold text-white'>Review your deployment plan</h5>
                     <p class='text-sm text-slate-300 leading-relaxed'>
-                      Keep this view open while automation runs. We will extend it with live
-                      activity and hand-offs for security operations next.
+                      Confirm the resources and guardrails that will deploy with this foundation.
                     </p>
-                    {!baseBusy && (
-                      <div class='flex flex-wrap items-center gap-2'>
-                        <Action
-                          styleType={ActionStyleTypes.Outline}
-                          onClick={() => setFoundationView('provision')}
-                        >
-                          Adjust foundation inputs
-                        </Action>
-                        {isLocalPreview && (
-                          <>
-                            <Action
-                              styleType={ActionStyleTypes.Outline}
-                              onClick={() => setBaseDone(false)}
-                            >
-                              Show queued state
-                            </Action>
-                            <Action
-                              styleType={ActionStyleTypes.Outline}
-                              onClick={() => setBaseDone(true)}
-                            >
-                              Show ready state
-                            </Action>
-                          </>
-                        )}
+                    <div class='grid gap-3 sm:grid-cols-2'>
+                      <div class='rounded-xl border border-slate-700/60 bg-slate-900/60 p-3 text-xs text-slate-300'>
+                        <div class='font-semibold text-slate-100'>Resource group</div>
+                        <div class='mt-1'>
+                          {rgName || 'Not set'}
+                        </div>
                       </div>
-                    )}
+                      <div class='rounded-xl border border-slate-700/60 bg-slate-900/60 p-3 text-xs text-slate-300'>
+                        <div class='font-semibold text-slate-100'>Region</div>
+                        <div class='mt-1'>
+                          {region || 'Select a region'}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                   <div class='grid gap-4 md:grid-cols-2'>
-                    {managementCards.map((item) => (
+                    {blueprintCards.map((item) => (
                       <div
                         key={item.title}
                         class='rounded-2xl border border-slate-700/60 bg-slate-900/70 p-4'
                       >
-                        <div class='flex items-center justify-between gap-3 text-sm'>
-                          <h5 class='font-semibold text-white'>{item.title}</h5>
-                          <span class={`text-xs ${managementStatusClass}`}>
-                            {item.status}
-                          </span>
-                        </div>
-                        <p class='mt-2 text-xs text-slate-400 leading-relaxed'>
-                          {item.description}
-                        </p>
+                        <div class='text-sm font-semibold text-white'>{item.title}</div>
+                        <div class='mt-1 text-xs text-slate-300'>{item.summary}</div>
+                        <p class='mt-2 text-xs text-slate-400 leading-relaxed'>{item.why}</p>
                       </div>
                     ))}
                   </div>
                 </div>
-              )}
+              </div>
+            )}
+
+            {foundationView === 'manage' && (
+              <div class='space-y-5'>
+                <div class='space-y-3 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-5'>
+                  <div class='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+                    <div>
+                      <h5 class='text-lg font-semibold text-white'>Foundation status</h5>
+                      <p class='text-sm text-slate-300'>
+                        {rgName} - {region || 'Region pending'}
+                      </p>
+                    </div>
+                    <span class={`text-xs font-semibold ${managementStatusClass}`}>
+                      {managementStatusText}
+                    </span>
+                  </div>
+                  <p class='text-sm text-slate-300 leading-relaxed'>
+                    Keep this view open while automation runs. We will extend it with live activity
+                    and hand-offs for security operations next.
+                  </p>
+                  {!baseBusy && (
+                    <div class='flex flex-wrap items-center gap-2'>
+                      <Action
+                        styleType={ActionStyleTypes.Outline}
+                        onClick={() => setFoundationView('plan')}
+                      >
+                        Adjust foundation inputs
+                      </Action>
+                      {isLocalPreview && (
+                        <>
+                          <Action
+                            styleType={ActionStyleTypes.Outline}
+                            onClick={() => setBaseDone(false)}
+                          >
+                            Show queued state
+                          </Action>
+                          <Action
+                            styleType={ActionStyleTypes.Outline}
+                            onClick={() => setBaseDone(true)}
+                          >
+                            Show ready state
+                          </Action>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div class='grid gap-4 md:grid-cols-2'>
+                  {managementCards.map((item) => (
+                    <div
+                      key={item.title}
+                      class='rounded-2xl border border-slate-700/60 bg-slate-900/70 p-4'
+                    >
+                      <div class='flex items-center justify-between gap-3 text-sm'>
+                        <h5 class='font-semibold text-white'>{item.title}</h5>
+                        <span class={`text-xs ${managementStatusClass}`}>
+                          {item.status}
+                        </span>
+                      </div>
+                      <p class='mt-2 text-xs text-slate-400 leading-relaxed'>
+                        {item.description}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div class='rounded-2xl border border-slate-700/60 bg-slate-900/60 p-4 text-slate-300'>
               Want it faster? Email{' '}

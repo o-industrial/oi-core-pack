@@ -5,13 +5,21 @@ import {
   IntentTypes,
   IS_BROWSER,
   type JSX,
+  Select,
   ToggleCheckbox,
   useCallback,
   useEffect,
   useMemo,
   useRef,
 } from '../../../.deps.ts';
-import type { EaCInterfaceGeneratedDataSlice } from '../../../.deps.ts';
+import type {
+  EaCInterfaceDataConnectionFeatures,
+  EaCInterfaceGeneratedDataSlice,
+  EaCInterfaceHistoricRange,
+  EaCInterfaceHistoricSliceFormat,
+  EaCInterfaceHistoricWindowMode,
+} from '../../../.deps.ts';
+import { normalizeDataConnectionFeatures } from './SurfaceInterfacePageDataTab.tsx';
 
 export type SurfaceInterfaceHandlerPlanStep = {
   id: string;
@@ -41,21 +49,35 @@ type SurfaceInterfaceHandlerTabProps = {
   onHandlerCodeChange: (next: string) => void;
   onHandlerDescriptionChange: (next: string) => void;
   onHandlerMessagesChange: (next: string) => void;
+  onDataConnectionChange: (
+    key: string,
+    features: EaCInterfaceDataConnectionFeatures | undefined,
+  ) => void;
 };
 
 type ImportsSummaryProps = { imports: string[] };
 type PlanSummaryProps = { steps: HandlerStep[] };
 type HandlerPlannerProps = {
   steps: HandlerStep[];
+  slicesByKey: Map<string, EaCInterfaceGeneratedDataSlice>;
   onStepChange: (
     id: string,
     updater: (step: HandlerStep) => HandlerStep,
+  ) => void;
+  onDataConnectionChange: (
+    key: string,
+    features: EaCInterfaceDataConnectionFeatures | undefined,
   ) => void;
 };
 type HandlerStepCardProps = {
   step: HandlerStep;
   stepIndex: number;
   onChange: (updater: (step: HandlerStep) => HandlerStep) => void;
+  slice?: EaCInterfaceGeneratedDataSlice;
+  onDataConnectionChange: (
+    key: string,
+    features: EaCInterfaceDataConnectionFeatures | undefined,
+  ) => void;
 };
 type AdvancedHandlerEditorProps = {
   handlerCode: string;
@@ -76,6 +98,7 @@ export function SurfaceInterfaceHandlerTab({
   onHandlerCodeChange,
   onHandlerDescriptionChange,
   onHandlerMessagesChange,
+  onDataConnectionChange,
 }: SurfaceInterfaceHandlerTabProps): JSX.Element {
   useEffect(() => {
     console.debug('[SurfaceInterfaceHandlerTab] handlerCode prop updated', {
@@ -86,6 +109,10 @@ export function SurfaceInterfaceHandlerTab({
 
   const basePlan = useMemo(
     () => buildBasePlanFromSlices(generatedSlices),
+    [generatedSlices],
+  );
+  const slicesByKey = useMemo(
+    () => new Map<string, EaCInterfaceGeneratedDataSlice>(generatedSlices),
     [generatedSlices],
   );
 
@@ -113,7 +140,12 @@ export function SurfaceInterfaceHandlerTab({
     <div class='flex h-full min-h-0 flex-col gap-4 overflow-y-auto pb-2'>
       <ImportsSummary imports={imports} />
 
-      <HandlerPlanner steps={steps} onStepChange={handleStepChange} />
+      <HandlerPlanner
+        steps={steps}
+        slicesByKey={slicesByKey}
+        onStepChange={handleStepChange}
+        onDataConnectionChange={onDataConnectionChange}
+      />
 
       <PlanSummary steps={steps} />
 
@@ -290,7 +322,9 @@ function PlanSummary({ steps }: PlanSummaryProps): JSX.Element {
 
 function HandlerPlanner({
   steps,
+  slicesByKey,
   onStepChange,
+  onDataConnectionChange,
 }: HandlerPlannerProps): JSX.Element {
   return (
     <section class='rounded-lg border border-neutral-800 bg-neutral-950 text-sm text-neutral-200'>
@@ -317,14 +351,19 @@ function HandlerPlanner({
               </div>
             )
             : (
-              steps.map((step, index) => (
-                <HandlerStepCard
-                  key={step.id}
-                  step={step}
-                  stepIndex={index}
-                  onChange={(updater) => onStepChange(step.id, updater)}
-                />
-              ))
+              steps.map((step, index) => {
+                const slice = slicesByKey.get(step.sliceKey);
+                return (
+                  <HandlerStepCard
+                    key={step.id}
+                    step={step}
+                    stepIndex={index}
+                    slice={slice}
+                    onChange={(updater) => onStepChange(step.id, updater)}
+                    onDataConnectionChange={onDataConnectionChange}
+                  />
+                );
+              })
             )}
 
           <p class='text-[11px] text-neutral-500'>
@@ -339,8 +378,56 @@ function HandlerPlanner({
 function HandlerStepCard({
   step,
   stepIndex,
+  slice,
   onChange,
+  onDataConnectionChange,
 }: HandlerStepCardProps): JSX.Element {
+  const isDataConnection = (slice?.SourceCapability ?? '').startsWith('dataConnection:');
+  const features = slice?.DataConnection;
+  const allowedFormats = Array.from(
+    new Set(
+      (features?.HistoricDownloadFormats ?? []).filter(
+        (format): format is EaCInterfaceHistoricSliceFormat =>
+          format === 'json' || format === 'csv',
+      ),
+    ),
+  );
+  const availableFormats: EaCInterfaceHistoricSliceFormat[] = allowedFormats.length > 0
+    ? allowedFormats
+    : ['json'];
+  const autoExecuteLabel = isDataConnection ? 'Prefetch during' : 'Run during';
+
+  const applyDataConnectionUpdate = (
+    updater: (
+      prev: EaCInterfaceDataConnectionFeatures | undefined,
+    ) => EaCInterfaceDataConnectionFeatures | undefined,
+  ) => {
+    const clone = cloneDataConnectionFeatures(features);
+    const next = updater(clone);
+    const normalized = normalizeDataConnectionFeatures(next);
+    onDataConnectionChange(step.sliceKey, normalized);
+  };
+
+  const ensurePrefetchEnabled = (enabled: boolean) => {
+    if (!isDataConnection) return;
+    applyDataConnectionUpdate((prev) => {
+      const next: EaCInterfaceDataConnectionFeatures = { ...(prev ?? {}) };
+      const baseSlice = createPrefetchSlice(
+        prev?.PrefetchHistoricSlice?.Mode ?? 'relative',
+        prev?.PrefetchHistoricSlice,
+        availableFormats,
+      );
+      baseSlice.Enabled = enabled;
+      next.PrefetchHistoricSlice = baseSlice;
+      return next;
+    });
+  };
+
+  const handleAutoExecuteToggle = (checked: boolean) => {
+    onChange((s) => ({ ...s, autoExecute: checked }));
+    ensurePrefetchEnabled(checked);
+  };
+
   return (
     <div class='space-y-3 rounded border border-neutral-800 bg-neutral-950/80 p-3'>
       <div class='flex flex-wrap items-center justify-between gap-2'>
@@ -379,12 +466,12 @@ function HandlerStepCard({
         <label class='flex items-center gap-2'>
           <ToggleCheckbox
             checked={step.autoExecute}
-            onToggle={(checked) => onChange((s) => ({ ...s, autoExecute: checked }))}
-            title='Toggle auto execution'
+            onToggle={handleAutoExecuteToggle}
+            title={isDataConnection ? 'Toggle data prefetch' : 'Toggle auto execution'}
             checkedIntentType={IntentTypes.Primary}
             uncheckedIntentType={IntentTypes.Secondary}
           />
-          Run during <span class='font-mono text-neutral-100'>loadPageData</span>
+          {autoExecuteLabel} <span class='font-mono text-neutral-100'>loadPageData</span>
         </label>
         <label class='flex items-center gap-2'>
           <ToggleCheckbox
@@ -398,6 +485,14 @@ function HandlerStepCard({
         </label>
       </div>
 
+      {isDataConnection && step.autoExecute && slice && (
+        <DataConnectionPrefetchSettings
+          sliceKey={step.sliceKey}
+          slice={slice}
+          onFeaturesChange={onDataConnectionChange}
+        />
+      )}
+
       <textarea
         class='h-20 w-full resize-none rounded border border-neutral-800 bg-neutral-950 p-2 text-xs text-neutral-300 outline-none focus:border-teal-400'
         placeholder='Optional notes for collaborators or follow-up tasks.'
@@ -407,6 +502,310 @@ function HandlerStepCard({
       />
     </div>
   );
+}
+
+type DataConnectionPrefetchSettingsProps = {
+  sliceKey: string;
+  slice: EaCInterfaceGeneratedDataSlice;
+  onFeaturesChange: (
+    key: string,
+    features: EaCInterfaceDataConnectionFeatures | undefined,
+  ) => void;
+};
+
+function DataConnectionPrefetchSettings({
+  sliceKey,
+  slice,
+  onFeaturesChange,
+}: DataConnectionPrefetchSettingsProps): JSX.Element {
+  const features = slice.DataConnection;
+  const allowedFormats = Array.from(
+    new Set(
+      (features?.HistoricDownloadFormats ?? []).filter(
+        (format): format is EaCInterfaceHistoricSliceFormat =>
+          format === 'json' || format === 'csv',
+      ),
+    ),
+  );
+  const availableFormats: EaCInterfaceHistoricSliceFormat[] = allowedFormats.length > 0
+    ? allowedFormats
+    : ['json'];
+  const prefetch = features?.PrefetchHistoricSlice;
+  const defaultMode: EaCInterfaceHistoricWindowMode = prefetch?.Mode ?? 'relative';
+  const effectivePrefetch = prefetch ??
+    createPrefetchSlice(defaultMode, undefined, availableFormats);
+
+  const handleFeaturesUpdate = (
+    updater: (
+      current: EaCInterfaceDataConnectionFeatures | undefined,
+    ) => EaCInterfaceDataConnectionFeatures | undefined,
+  ) => {
+    const clone = cloneDataConnectionFeatures(features);
+    const next = updater(clone);
+    const normalized = normalizeDataConnectionFeatures(next);
+    onFeaturesChange(sliceKey, normalized);
+  };
+
+  const updatePrefetchSlice = (
+    mode: EaCInterfaceHistoricWindowMode,
+    mutate: (
+      slice: NonNullable<EaCInterfaceDataConnectionFeatures['PrefetchHistoricSlice']>,
+    ) => void,
+  ) => {
+    handleFeaturesUpdate((prev) => {
+      const next: EaCInterfaceDataConnectionFeatures = { ...(prev ?? {}) };
+      const baseSlice = createPrefetchSlice(
+        mode,
+        prev?.PrefetchHistoricSlice,
+        availableFormats,
+      );
+      mutate(baseSlice);
+      baseSlice.Enabled = true;
+      next.PrefetchHistoricSlice = baseSlice;
+      return next;
+    });
+  };
+
+  return (
+    <div class='space-y-3 rounded border border-neutral-800 bg-neutral-950/70 p-3 text-[11px] text-neutral-300'>
+      <p class='text-[11px] uppercase tracking-wide text-neutral-500'>Prefetch window</p>
+      <p class='text-[11px] text-neutral-500'>
+        Fine-tune the historic slice fetched before the handler returns.
+      </p>
+
+      <div class='space-y-3 rounded border border-neutral-800 bg-neutral-950/60 p-3'>
+        <div class='flex flex-wrap items-center gap-2 text-xs text-neutral-300'>
+          <span class='text-[11px] uppercase tracking-wide text-neutral-500'>Window type</span>
+          {(['relative', 'absolute'] as EaCInterfaceHistoricWindowMode[]).map((mode) => (
+            <button
+              key={mode}
+              type='button'
+              class={`rounded border px-2 py-1 transition ${
+                effectivePrefetch.Mode === mode
+                  ? 'border-teal-400 bg-teal-500/10 text-teal-200'
+                  : 'border-neutral-700 bg-neutral-900 text-neutral-300 hover:border-neutral-500'
+              }`}
+              onClick={() => {
+                updatePrefetchSlice(mode, (slice) => {
+                  slice.Mode = mode;
+                });
+              }}
+            >
+              {mode === 'relative' ? 'Recent records' : 'Specific dates'}
+            </button>
+          ))}
+        </div>
+
+        <div class='flex flex-wrap gap-3 text-xs text-neutral-200'>
+          <label class='flex flex-col gap-1'>
+            <span class='text-[11px] uppercase tracking-wide text-neutral-500'>Format</span>
+            <Select
+              value={resolvePrefetchFormat(effectivePrefetch.Format, availableFormats)}
+              onChange={(event) => {
+                const value = event.currentTarget.value as EaCInterfaceHistoricSliceFormat;
+                updatePrefetchSlice(effectivePrefetch.Mode ?? 'relative', (slice) => {
+                  slice.Format = value;
+                });
+              }}
+            >
+              {availableFormats.map((format) => (
+                <option key={format} value={format}>
+                  {format.toUpperCase()}
+                </option>
+              ))}
+            </Select>
+          </label>
+        </div>
+
+        {effectivePrefetch.Mode !== 'absolute' && (
+          <div class='grid gap-3 text-xs text-neutral-200 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'>
+            <label class='flex flex-col gap-1'>
+              <span class='text-[11px] uppercase tracking-wide text-neutral-500'>
+                Range amount
+              </span>
+              <input
+                type='number'
+                min={1}
+                class='h-8 rounded border border-neutral-700 bg-neutral-900 px-2 outline-none focus:border-teal-400'
+                value={effectivePrefetch.Range?.Amount ?? 7}
+                onChange={(event) => {
+                  const amount = clampPositiveInteger(
+                    event.currentTarget.value,
+                    effectivePrefetch.Range?.Amount ?? 7,
+                  );
+                  updatePrefetchSlice('relative', (slice) => {
+                    slice.Mode = 'relative';
+                    slice.Range = {
+                      Amount: amount,
+                      Unit: slice.Range?.Unit ?? 'days',
+                    };
+                  });
+                }}
+              />
+            </label>
+
+            <label class='flex flex-col gap-1'>
+              <span class='text-[11px] uppercase tracking-wide text-neutral-500'>Range unit</span>
+              <Select
+                value={effectivePrefetch.Range?.Unit ?? 'days'}
+                onChange={(event) => {
+                  const unit = event.currentTarget.value as EaCInterfaceHistoricRange['Unit'];
+                  updatePrefetchSlice('relative', (slice) => {
+                    slice.Mode = 'relative';
+                    slice.Range = {
+                      Amount: slice.Range?.Amount ?? 7,
+                      Unit: unit,
+                    };
+                  });
+                }}
+              >
+                <option value='minutes'>Minutes</option>
+                <option value='hours'>Hours</option>
+                <option value='days'>Days</option>
+              </Select>
+            </label>
+            <p class='md:col-span-2 text-[11px] text-neutral-500'>
+              Pull a rolling window of events relative to the request time (e.g. last 30 minutes or
+              last 7 days).
+            </p>
+          </div>
+        )}
+
+        {effectivePrefetch.Mode === 'absolute' && (
+          <div class='grid gap-3 text-xs text-neutral-200 md:grid-cols-[repeat(2,minmax(0,1fr))]'>
+            <label class='flex flex-col gap-1'>
+              <span class='text-[11px] uppercase tracking-wide text-neutral-500'>
+                Start date/time
+              </span>
+              <input
+                type='datetime-local'
+                class='h-8 rounded border border-neutral-700 bg-neutral-900 px-2 outline-none focus:border-teal-400'
+                value={isoToLocalInput(effectivePrefetch.AbsoluteRange?.Start)}
+                onChange={(event) => {
+                  const iso = localInputToIso(event.currentTarget.value);
+                  if (!iso) return;
+                  updatePrefetchSlice('absolute', (slice) => {
+                    slice.Mode = 'absolute';
+                    const current = slice.AbsoluteRange ?? { Start: iso };
+                    slice.AbsoluteRange = { ...current, Start: iso };
+                  });
+                }}
+              />
+            </label>
+
+            <label class='flex flex-col gap-1'>
+              <span class='text-[11px] uppercase tracking-wide text-neutral-500'>
+                End date/time
+              </span>
+              <input
+                type='datetime-local'
+                class='h-8 rounded border border-neutral-700 bg-neutral-900 px-2 outline-none focus:border-teal-400'
+                value={isoToLocalInput(effectivePrefetch.AbsoluteRange?.End)}
+                onChange={(event) => {
+                  const value = event.currentTarget.value;
+                  updatePrefetchSlice('absolute', (slice) => {
+                    slice.Mode = 'absolute';
+                    if (!value) {
+                      if (slice.AbsoluteRange) delete slice.AbsoluteRange.End;
+                      return;
+                    }
+                    const iso = localInputToIso(value);
+                    if (!iso) return;
+                    const current = slice.AbsoluteRange ?? { Start: new Date().toISOString() };
+                    slice.AbsoluteRange = { ...current, End: iso };
+                  });
+                }}
+              />
+              <span class='text-[10px] text-neutral-500'>
+                Leave blank to fetch from the start timestamp onward.
+              </span>
+            </label>
+            <p class='md:col-span-2 text-[11px] text-neutral-500'>
+              Use fixed timestamps to prefetch a reproducible historic window (UTC timestamps).
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function cloneDataConnectionFeatures(
+  features: EaCInterfaceDataConnectionFeatures | undefined,
+): EaCInterfaceDataConnectionFeatures | undefined {
+  return features
+    ? JSON.parse(JSON.stringify(features)) as EaCInterfaceDataConnectionFeatures
+    : undefined;
+}
+
+function resolvePrefetchFormat(
+  current: string | undefined,
+  available: EaCInterfaceHistoricSliceFormat[],
+): EaCInterfaceHistoricSliceFormat {
+  const sanitized = available.filter((format) => format === 'json' || format === 'csv');
+  const fallback = sanitized[0] ?? 'json';
+  if (current && sanitized.includes(current as EaCInterfaceHistoricSliceFormat)) {
+    return current as EaCInterfaceHistoricSliceFormat;
+  }
+  return fallback;
+}
+
+function createPrefetchSlice(
+  mode: EaCInterfaceHistoricWindowMode,
+  existing: NonNullable<EaCInterfaceDataConnectionFeatures['PrefetchHistoricSlice']> | undefined,
+  availableFormats: EaCInterfaceHistoricSliceFormat[],
+): NonNullable<EaCInterfaceDataConnectionFeatures['PrefetchHistoricSlice']> {
+  const slice: NonNullable<EaCInterfaceDataConnectionFeatures['PrefetchHistoricSlice']> = {
+    Enabled: existing?.Enabled ?? true,
+    Format: resolvePrefetchFormat(existing?.Format, availableFormats),
+    Mode: mode,
+  };
+
+  if (mode === 'absolute') {
+    const absolute = existing?.AbsoluteRange;
+    slice.AbsoluteRange = absolute && isValidIsoDate(absolute.Start)
+      ? { ...absolute }
+      : { Start: new Date().toISOString() };
+    delete slice.Range;
+  } else {
+    const range = existing?.Range;
+    slice.Range = range && typeof range.Amount === 'number' && range.Amount > 0
+      ? { ...range }
+      : { Amount: 7, Unit: 'days' };
+    delete slice.AbsoluteRange;
+  }
+
+  return slice;
+}
+
+function clampPositiveInteger(value: string, fallback: number): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return Math.round(parsed);
+}
+
+function isoToLocalInput(iso?: string): string {
+  if (!iso || !isValidIsoDate(iso)) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function localInputToIso(value: string): string | undefined {
+  if (!value) return undefined;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return date.toISOString();
+}
+
+function isValidIsoDate(value: string | undefined): boolean {
+  if (!value) return false;
+  return Number.isFinite(Date.parse(value));
 }
 
 function AdvancedHandlerEditor({
@@ -568,17 +967,27 @@ function arePlansEqual(
   return true;
 }
 
+type HandlerStubOptions = {
+  returnType?: string;
+};
+
 export function generateHandlerStub(
   steps: SurfaceInterfaceHandlerPlanStep[],
+  options: HandlerStubOptions = {},
 ): string {
+  const returnType = options.returnType ?? 'Record<string, unknown>';
   const executableSteps = steps.filter((step) => step.autoExecute);
 
   const lines: string[] = [
+    '/**',
+    ' * loadPageData orchestrates interface actions on the server.',
+    ' * Keep the export name stable so dynamic loaders can locate it.',
+    ' */',
     'export async function loadPageData(',
     '  req: Request,',
     '  ctx: Record<string, unknown>,',
-    '): Promise<Record<string, unknown>> {',
-    '  const data: Record<string, unknown> = {};',
+    `): Promise<${returnType}> {`,
+    `  const data: ${returnType} = {};`,
   ];
 
   if (executableSteps.length > 0) {

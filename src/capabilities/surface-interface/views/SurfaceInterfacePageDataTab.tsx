@@ -1,11 +1,10 @@
-import { Badge, IntentTypes, type JSX, Select, ToggleCheckbox } from '../../../.deps.ts';
+import { Badge, IntentTypes, type JSX } from '../../../.deps.ts';
 import type {
   EaCInterfaceDataConnectionFeatures,
   EaCInterfaceGeneratedDataSlice,
   EaCInterfaceHistoricAbsoluteRange,
   EaCInterfaceHistoricRange,
   EaCInterfaceHistoricSliceFormat,
-  EaCInterfaceHistoricWindowMode,
   EaCInterfacePageDataAccessMode,
   EaCInterfacePageDataAction,
   EaCInterfacePageDataActionInvocationMode,
@@ -302,9 +301,6 @@ function DataConnectionSettings({
 }: DataConnectionSettingsProps): JSX.Element {
   const allowHistoric = features?.AllowHistoricDownload ?? false;
   const formatSet = new Set(features?.HistoricDownloadFormats ?? []);
-  const prefetch = features?.PrefetchHistoricSlice;
-  const prefetchEnabled = prefetch?.Enabled ?? false;
-  const windowMode: EaCInterfaceHistoricWindowMode = prefetch?.Mode ?? 'relative';
 
   const updateHistoricFormats = (format: EaCInterfaceHistoricSliceFormat, checked: boolean) => {
     handleFeaturesUpdate((prev) => {
@@ -319,52 +315,6 @@ function DataConnectionSettings({
       if (next.HistoricDownloadFormats.length === 0) {
         delete next.HistoricDownloadFormats;
       }
-      return next;
-    });
-  };
-
-  const createPrefetchSlice = (
-    mode: EaCInterfaceHistoricWindowMode,
-    existing?: NonNullable<EaCInterfaceDataConnectionFeatures['PrefetchHistoricSlice']>,
-  ): NonNullable<EaCInterfaceDataConnectionFeatures['PrefetchHistoricSlice']> => {
-    const slice: NonNullable<EaCInterfaceDataConnectionFeatures['PrefetchHistoricSlice']> = {
-      Enabled: existing?.Enabled ?? true,
-      Format: existing?.Format ?? 'json',
-      Mode: mode,
-    };
-
-    if (mode === 'absolute') {
-      const existingAbsolute = existing?.AbsoluteRange;
-      slice.AbsoluteRange = existingAbsolute && isValidAbsoluteRange(existingAbsolute)
-        ? { ...existingAbsolute }
-        : { Start: new Date().toISOString() };
-    } else {
-      const existingRange = existing?.Range;
-      slice.Range = existingRange && isValidRange(existingRange)
-        ? { ...existingRange }
-        : { Amount: 7, Unit: 'days' };
-    }
-
-    if (mode === 'absolute') {
-      delete slice.Range;
-    } else {
-      delete slice.AbsoluteRange;
-    }
-
-    return slice;
-  };
-
-  const updatePrefetchSlice = (
-    mode: EaCInterfaceHistoricWindowMode,
-    mutate: (
-      slice: NonNullable<EaCInterfaceDataConnectionFeatures['PrefetchHistoricSlice']>,
-    ) => void,
-  ) => {
-    handleFeaturesUpdate((prev) => {
-      const next: EaCInterfaceDataConnectionFeatures = { ...(prev ?? {}) };
-      const baseSlice = createPrefetchSlice(mode, prev?.PrefetchHistoricSlice);
-      mutate(baseSlice);
-      next.PrefetchHistoricSlice = baseSlice;
       return next;
     });
   };
@@ -421,193 +371,6 @@ function DataConnectionSettings({
           </div>
         </div>
       )}
-
-      <div class='space-y-2 text-neutral-300'>
-        <div class='flex items-center justify-between'>
-          <p class='text-[11px] uppercase tracking-wide text-neutral-500'>Prefetch window</p>
-          <ToggleCheckbox
-            checked={prefetchEnabled}
-            onToggle={(checked) => {
-              updatePrefetchSlice(windowMode, (slice) => {
-                slice.Enabled = checked;
-              });
-            }}
-            title='Toggle prefetch window'
-            checkedIntentType={IntentTypes.Primary}
-            uncheckedIntentType={IntentTypes.Secondary}
-          />
-        </div>
-        <p class='text-[11px] text-neutral-500'>
-          Prefetch a historic slice on load. Useful when the page needs initial historical context.
-        </p>
-
-        {prefetchEnabled && (
-          <div class='space-y-3 rounded border border-neutral-800 bg-neutral-950/60 p-3'>
-            <div class='flex flex-wrap items-center gap-2 text-xs text-neutral-300'>
-              <span class='text-[11px] uppercase tracking-wide text-neutral-500'>Window type</span>
-              {(['relative', 'absolute'] as EaCInterfaceHistoricWindowMode[]).map((mode) => (
-                <button
-                  key={mode}
-                  type='button'
-                  class={`rounded border px-2 py-1 transition ${
-                    windowMode === mode
-                      ? 'border-teal-400 bg-teal-500/10 text-teal-200'
-                      : 'border-neutral-700 bg-neutral-900 text-neutral-300 hover:border-neutral-500'
-                  }`}
-                  onClick={() => {
-                    updatePrefetchSlice(mode, (slice) => {
-                      slice.Enabled = slice.Enabled ?? true;
-                      slice.Mode = mode;
-                    });
-                  }}
-                >
-                  {mode === 'relative' ? 'Recent records' : 'Specific dates'}
-                </button>
-              ))}
-            </div>
-
-            <div class='flex flex-wrap gap-3 text-xs text-neutral-200'>
-              <label class='flex flex-col gap-1'>
-                <span class='text-[11px] uppercase tracking-wide text-neutral-500'>Format</span>
-                <Select
-                  // class='h-8 rounded border border-neutral-700 bg-neutral-900 px-2 outline-none focus:border-teal-400'
-                  value={prefetch?.Format ?? 'json'}
-                  onChange={(event) => {
-                    const value = event.currentTarget.value as EaCInterfaceHistoricSliceFormat;
-                    updatePrefetchSlice(windowMode, (slice) => {
-                      slice.Enabled = true;
-                      slice.Format = value;
-                    });
-                  }}
-                >
-                  <option value='json'>JSON</option>
-                  <option value='csv'>CSV</option>
-                </Select>
-              </label>
-            </div>
-
-            {windowMode === 'relative' && (
-              <div class='grid gap-3 text-xs text-neutral-200 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'>
-                <label class='flex flex-col gap-1'>
-                  <span class='text-[11px] uppercase tracking-wide text-neutral-500'>
-                    Range amount
-                  </span>
-                  <input
-                    type='number'
-                    min={1}
-                    class='h-8 rounded border border-neutral-700 bg-neutral-900 px-2 outline-none focus:border-teal-400'
-                    value={prefetch?.Range?.Amount ?? 7}
-                    onChange={(event) => {
-                      const amount = clampPositiveInteger(
-                        event.currentTarget.value,
-                        prefetch?.Range?.Amount ?? 7,
-                      );
-                      updatePrefetchSlice('relative', (slice) => {
-                        slice.Enabled = true;
-                        slice.Mode = 'relative';
-                        slice.Range = {
-                          Amount: amount,
-                          Unit: slice.Range?.Unit ?? 'days',
-                        };
-                      });
-                    }}
-                  />
-                </label>
-
-                <label class='flex flex-col gap-1'>
-                  <span class='text-[11px] uppercase tracking-wide text-neutral-500'>
-                    Range unit
-                  </span>
-                  <Select
-                    // class='h-8 rounded border border-neutral-700 bg-neutral-900 px-2 outline-none focus:border-teal-400'
-                    value={prefetch?.Range?.Unit ?? 'days'}
-                    onChange={(event) => {
-                      const unit = event.currentTarget.value as EaCInterfaceHistoricRange['Unit'];
-                      updatePrefetchSlice('relative', (slice) => {
-                        slice.Enabled = true;
-                        slice.Mode = 'relative';
-                        slice.Range = {
-                          Amount: slice.Range?.Amount ?? 7,
-                          Unit: unit,
-                        };
-                      });
-                    }}
-                  >
-                    <option value='minutes'>Minutes</option>
-                    <option value='hours'>Hours</option>
-                    <option value='days'>Days</option>
-                  </Select>
-                </label>
-                <p class='md:col-span-2 text-[11px] text-neutral-500'>
-                  Fetch the most recent records using a rolling window (e.g. last 30 minutes or last
-                  7 days).
-                </p>
-              </div>
-            )}
-
-            {windowMode === 'absolute' && (
-              <div class='grid gap-3 text-xs text-neutral-200 md:grid-cols-[repeat(2,minmax(0,1fr))]'>
-                <label class='flex flex-col gap-1'>
-                  <span class='text-[11px] uppercase tracking-wide text-neutral-500'>
-                    Start date/time
-                  </span>
-                  <input
-                    type='datetime-local'
-                    class='h-8 rounded border border-neutral-700 bg-neutral-900 px-2 outline-none focus:border-teal-400'
-                    value={isoToLocalInput(prefetch?.AbsoluteRange?.Start)}
-                    onChange={(event) => {
-                      const iso = localInputToIso(event.currentTarget.value);
-                      if (!iso) return;
-                      updatePrefetchSlice('absolute', (slice) => {
-                        slice.Enabled = true;
-                        slice.Mode = 'absolute';
-                        const current = slice.AbsoluteRange ?? { Start: iso };
-                        slice.AbsoluteRange = { ...current, Start: iso };
-                      });
-                    }}
-                  />
-                </label>
-
-                <label class='flex flex-col gap-1'>
-                  <span class='text-[11px] uppercase tracking-wide text-neutral-500'>
-                    End date/time
-                  </span>
-                  <input
-                    type='datetime-local'
-                    class='h-8 rounded border border-neutral-700 bg-neutral-900 px-2 outline-none focus:border-teal-400'
-                    value={isoToLocalInput(prefetch?.AbsoluteRange?.End)}
-                    onChange={(event) => {
-                      const value = event.currentTarget.value;
-                      updatePrefetchSlice('absolute', (slice) => {
-                        slice.Enabled = true;
-                        slice.Mode = 'absolute';
-                        if (!value) {
-                          if (slice.AbsoluteRange) {
-                            delete slice.AbsoluteRange.End;
-                          }
-                          return;
-                        }
-                        const iso = localInputToIso(value);
-                        if (!iso) return;
-                        const current = slice.AbsoluteRange ?? { Start: new Date().toISOString() };
-                        slice.AbsoluteRange = { ...current, End: iso };
-                      });
-                    }}
-                  />
-                  <span class='text-[10px] text-neutral-500'>
-                    Leave blank to fetch everything from the start onward.
-                  </span>
-                </label>
-
-                <p class='md:col-span-2 text-[11px] text-neutral-500'>
-                  Fetch a fixed historical window using explicit timestamps (UTC). Useful for
-                  investigations or reproducible reports.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
@@ -656,7 +419,7 @@ function summarizeSchema(schema: JSONSchema7 | undefined): string {
   return 'schema';
 }
 
-function normalizeDataConnectionFeatures(
+export function normalizeDataConnectionFeatures(
   features: EaCInterfaceDataConnectionFeatures | undefined,
 ): EaCInterfaceDataConnectionFeatures | undefined {
   if (!features) return undefined;
@@ -757,35 +520,10 @@ function isValidOffset(offset: EaCInterfaceRelativeTimeOffset): boolean {
   );
 }
 
-function clampPositiveInteger(value: string, fallback: number): number {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
-  return Math.round(parsed);
-}
-
 function isValidAbsoluteRange(range: EaCInterfaceHistoricAbsoluteRange): boolean {
   if (!range || !isValidIsoDate(range.Start)) return false;
   if (range.End !== undefined && !isValidIsoDate(range.End)) return false;
   return true;
-}
-
-function isoToLocalInput(iso?: string): string {
-  if (!iso || !isValidIsoDate(iso)) return '';
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '';
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
-}
-
-function localInputToIso(value: string): string | undefined {
-  if (!value) return undefined;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return undefined;
-  return date.toISOString();
 }
 
 function isValidIsoDate(value: string | undefined): boolean {
