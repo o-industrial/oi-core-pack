@@ -338,6 +338,14 @@ export function SurfaceInterfaceModal({
       interfaceLookup,
       surfaceLookup,
       enterpriseLookup,
+      UserName: profile.Name,
+      UserUsername: profile.Username,
+      UserFirstName: userFirstName,
+      UserProfile: {
+        Username: profile.Username,
+        Name: profile.Name,
+        FirstName: userFirstName,
+      },
       imports,
       pageData: {
         summary: {
@@ -375,6 +383,9 @@ export function SurfaceInterfaceModal({
       interfaceLookup,
       surfaceLookup,
       enterpriseLookup,
+      profile.Name,
+      profile.Username,
+      userFirstName,
       imports,
       pageDataType,
       generatedSliceEntries,

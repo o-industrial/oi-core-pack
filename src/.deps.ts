@@ -54,8 +54,8 @@ export type {
   SurfaceInterfaceSettings,
   SurfaceSchemaSettings,
   SurfaceWarmQuerySettings,
-} from 'jsr:@o-industrial/common@0.0.502/eac';
-// } from '../../../o-industrial/open-industrial-reference-architecture/src/eac/.exports.ts';
+//} from 'jsr:@o-industrial/common@0.0.502/eac';
+ } from '../../../o-industrial/open-industrial-reference-architecture/src/eac/.exports.ts';
 
 export { merge, type NullableArrayOrObject } from 'jsr:@fathym/common@0.2.274';
 export { z } from 'jsr:@fathym/common@0.2.274/third-party/zod';
@@ -118,8 +118,8 @@ export {
   SimulatorCard,
   SimulatorPackCard,
   WorkspaceNodeRendererBase,
-} from 'jsr:@o-industrial/atomic@0.0.64/organisms';
-// } from '../../open-industrial-atomic/src/organisms/.exports.ts';
+//} from 'jsr:@o-industrial/atomic@0.0.64/organisms';
+ } from '../../open-industrial-atomic/src/organisms/.exports.ts';
 
 export { type NodeEventRouter, type NodePreset } from 'jsr:@o-industrial/common@0.0.502/flow';
 
