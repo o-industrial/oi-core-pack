@@ -60,7 +60,6 @@ export const SurfaceWarmQueryModal: FunctionalComponent<
   const [errors, setErrors] = useState('');
   const eac = workspace.UseEaC();
   const { profile } = workspace.UseAccountProfile();
-  console.log("KBTEST: core " + JSON.stringify(profile));
   const userFirstName = useMemo(() => {
     const name = profile.Name?.trim();
     if (name) {
@@ -68,7 +67,11 @@ export const SurfaceWarmQueryModal: FunctionalComponent<
       if (first) return first;
     }
     const username = profile.Username?.trim();
-    return username ?? '';
+    if (username) {
+      const [localPart] = username.split('@');
+      return localPart || username;
+    }
+    return '';
   }, [profile.Name, profile.Username]);
   const [defaultDeviceIds, setDefaultDeviceIds] = useState<string[]>([]);
 
@@ -455,12 +458,12 @@ export const SurfaceWarmQueryModal: FunctionalComponent<
             extraInputs={{
               ...aziExtraInputs,
               CurrentQuery: query,
-              UserName: profile.Name,
+              UserName: profile.Name || profile.Username || "",
               UserUsername: profile.Username,
               UserFirstName: userFirstName,
               UserProfile: {
-                Username: profile.Username,
-                Name: profile.Name,
+                Username: profile.Username || "",
+                Name: profile.Name || profile.Username || "",
                 FirstName: userFirstName,
               },
             }}
