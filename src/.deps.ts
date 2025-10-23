@@ -54,8 +54,8 @@ export type {
   SurfaceInterfaceSettings,
   SurfaceSchemaSettings,
   SurfaceWarmQuerySettings,
-//} from 'jsr:@o-industrial/common@0.0.502/eac';
- } from '../../../o-industrial/open-industrial-reference-architecture/src/eac/.exports.ts';
+} from 'jsr:@o-industrial/common@0.0.505/eac';
+ //} from '../../../o-industrial/open-industrial-reference-architecture/src/eac/.exports.ts';
 
 export { merge, type NullableArrayOrObject } from 'jsr:@fathym/common@0.2.274';
 export { z } from 'jsr:@fathym/common@0.2.274/third-party/zod';
@@ -81,7 +81,7 @@ export {
   NodeStatTile,
   Select,
   ToggleCheckbox,
-} from 'jsr:@o-industrial/atomic@0.0.64/atoms';
+} from 'jsr:@o-industrial/atomic@0.0.69/atoms';
 // } from '../../open-industrial-atomic/src/atoms/.exports.ts';
 
 export {
@@ -95,7 +95,7 @@ export {
   type MenuRoot,
   Modal,
   TabbedPanel,
-} from 'jsr:@o-industrial/atomic@0.0.64/molecules';
+} from 'jsr:@o-industrial/atomic@0.0.69/molecules';
 // } from '../../open-industrial-atomic/src/molecules/.exports.ts';
 
 export {
@@ -108,7 +108,7 @@ export {
   SettingsIcon,
   TriggerMatchIcon,
   UndoIcon,
-} from 'jsr:@o-industrial/atomic@0.0.64/icons';
+} from 'jsr:@o-industrial/atomic@0.0.69/icons';
 
 export {
   AziPanel,
@@ -118,27 +118,27 @@ export {
   SimulatorCard,
   SimulatorPackCard,
   WorkspaceNodeRendererBase,
-//} from 'jsr:@o-industrial/atomic@0.0.64/organisms';
- } from '../../open-industrial-atomic/src/organisms/.exports.ts';
+} from 'jsr:@o-industrial/atomic@0.0.69/organisms';
+// } from '../../open-industrial-atomic/src/organisms/.exports.ts';
 
-export { type NodeEventRouter, type NodePreset } from 'jsr:@o-industrial/common@0.0.502/flow';
+export { type NodeEventRouter, type NodePreset } from 'jsr:@o-industrial/common@0.0.505/flow';
 
-export { interfacePageDataToSchema, shaHash } from 'jsr:@o-industrial/common@0.0.502/utils/client';
+export { interfacePageDataToSchema, shaHash } from 'jsr:@o-industrial/common@0.0.505/utils/client';
 
-export { OpenIndustrialAPIClient } from 'jsr:@o-industrial/common@0.0.502/api';
+export { OpenIndustrialAPIClient } from 'jsr:@o-industrial/common@0.0.505/api';
 
 export {
   type AzureDataExplorerOutput,
   IntentTypes,
   RuntimeStatsSchema,
-} from 'jsr:@o-industrial/common@0.0.502/types';
+} from 'jsr:@o-industrial/common@0.0.505/types';
 export type {
   AccountProfile,
   IngestOption,
   TeamMembership,
-} from 'jsr:@o-industrial/common@0.0.502/types';
+} from 'jsr:@o-industrial/common@0.0.505/types';
 
-export { Pack, PackModuleBuilder } from 'jsr:@o-industrial/common@0.0.502/fluent/packs';
+export { Pack, PackModuleBuilder } from 'jsr:@o-industrial/common@0.0.505/fluent/packs';
 
 export type {
   AziState,
@@ -153,12 +153,12 @@ export type {
   InspectorCommonProps,
   SimulatorDefinition,
   SimulatorPackDefinition,
-} from 'jsr:@o-industrial/common@0.0.502/flow';
+} from 'jsr:@o-industrial/common@0.0.505/flow';
 export {
   EaCNodeCapabilityManager,
   SurfaceEventRouter,
   WorkspaceManager,
-} from 'jsr:@o-industrial/common@0.0.502/flow';
+} from 'jsr:@o-industrial/common@0.0.505/flow';
 
 export type { JSONSchema7 } from 'npm:jsonschema7@0.8.0';
 
