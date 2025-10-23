@@ -53,12 +53,28 @@ export const SurfaceWarmQueryModal: FunctionalComponent<
   const userEditedRef = useRef(false);
   const autoAppliedQueryRef = useRef<string | null>(null);
   const [query, setQuery] = useState(initialQuery);
+  const [queryHistory, setQueryHistory] = useState<string[]>(() => [initialQuery]);
+  const [historyIndex, setHistoryIndex] = useState(0);
   type QueryResultRow = Record<string, unknown>;
   const [queryResults, setQueryResults] = useState<QueryResultRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTabKey, setActiveTabKey] = useState('query');
   const [errors, setErrors] = useState('');
   const eac = workspace.UseEaC();
+  const { profile } = workspace.UseAccountProfile();
+  const userFirstName = useMemo(() => {
+    const name = profile.Name?.trim();
+    if (name) {
+      const [first] = name.split(/\s+/);
+      if (first) return first;
+    }
+    const username = profile.Username?.trim();
+    if (username) {
+      const [localPart] = username.split('@');
+      return localPart || username;
+    }
+    return '';
+  }, [profile.Name, profile.Username]);
   const [defaultDeviceIds, setDefaultDeviceIds] = useState<string[]>([]);
 
   const isRunDisabled = !query || isLoading;
@@ -88,6 +104,38 @@ export const SurfaceWarmQueryModal: FunctionalComponent<
     }, 300);
   };
 
+  const pushQueryToHistory = (entry: string) => {
+    setQueryHistory((prev) => {
+      const normalized = entry ?? '';
+      if (!prev.length) {
+        setHistoryIndex(0);
+        return [normalized];
+      }
+
+      const lastIndex = prev.length - 1;
+      if (prev[lastIndex] === normalized) {
+        setHistoryIndex(lastIndex);
+        return prev;
+      }
+
+      const nextHistory = [...prev, normalized];
+      setHistoryIndex(nextHistory.length - 1);
+      return nextHistory;
+    });
+  };
+
+  const goToHistoryIndex = (index: number) => {
+    if (index < 0 || index >= queryHistory.length) {
+      return;
+    }
+    const nextQuery = queryHistory[index];
+    setHistoryIndex(index);
+    userEditedRef.current = true;
+    autoAppliedQueryRef.current = null;
+    setQuery(nextQuery);
+    persistQuery(nextQuery);
+  };
+
   // Persist any programmatic query changes (e.g., Azi suggestions)
   // so they are saved even when no user input event fires.
   useEffect(() => {
@@ -105,6 +153,7 @@ export const SurfaceWarmQueryModal: FunctionalComponent<
     }
 
     streamBaselineDataQueryRef.current = next;
+    pushQueryToHistory(next);
     setQuery(next);
     userEditedRef.current = true;
     autoAppliedQueryRef.current = null;
@@ -320,6 +369,35 @@ export const SurfaceWarmQueryModal: FunctionalComponent<
   const coerceQueryValue = (val: string | { currentTarget?: { value?: string } }): string =>
     typeof val === 'string' ? val : val?.currentTarget?.value ?? '';
 
+  const historyLength = queryHistory.length;
+  const canStepBackward = historyIndex > 0;
+  const canStepForward = historyIndex >= 0 && historyIndex < historyLength - 1;
+
+  const handleHistoryNavigate = (direction: 'first' | 'prev' | 'next' | 'last') => {
+    switch (direction) {
+      case 'first':
+        if (canStepBackward) {
+          goToHistoryIndex(0);
+        }
+        break;
+      case 'prev':
+        if (canStepBackward) {
+          goToHistoryIndex(historyIndex - 1);
+        }
+        break;
+      case 'next':
+        if (canStepForward) {
+          goToHistoryIndex(historyIndex + 1);
+        }
+        break;
+      case 'last':
+        if (canStepForward) {
+          goToHistoryIndex(historyLength - 1);
+        }
+        break;
+    }
+  };
+
   const tabData = [
     {
       key: 'query',
@@ -344,6 +422,14 @@ export const SurfaceWarmQueryModal: FunctionalComponent<
             setQuery(next);
             persistQuery(next);
           }}
+          onQueryBlur={(val) => {
+            const next = coerceQueryValue(val as any);
+            pushQueryToHistory(next);
+            persistQuery(next);
+          }}
+          historyIndex={historyIndex}
+          historyLength={historyLength}
+          onHistoryNavigate={handleHistoryNavigate}
           errors={errors}
           isLoading={isLoading}
         />
@@ -444,6 +530,14 @@ export const SurfaceWarmQueryModal: FunctionalComponent<
             extraInputs={{
               ...aziExtraInputs,
               CurrentQuery: query,
+              UserName: profile.Name || profile.Username || "",
+              UserUsername: profile.Username,
+              UserFirstName: userFirstName,
+              UserProfile: {
+                Username: profile.Username || "",
+                Name: profile.Name || profile.Username || "",
+                FirstName: userFirstName,
+              },
             }}
           />
         </div>
