@@ -1,9 +1,13 @@
 import type { FunctionalComponent, JSX } from 'npm:preact@10.20.1';
-import { useEffect, useRef } from '../../../.deps.ts';
+import { Action, ActionStyleTypes, useEffect, useRef } from '../../../.deps.ts';
 
 interface SurfaceWarmQueryModalQueryProps {
   query: string;
   onQueryChange: (name: string) => void;
+  onQueryBlur?: (value: string) => void;
+  historyIndex?: number;
+  historyLength?: number;
+  onHistoryNavigate?: (direction: 'first' | 'prev' | 'next' | 'last') => void;
   errors: string;
   isLoading?: boolean;
 }
@@ -11,6 +15,10 @@ interface SurfaceWarmQueryModalQueryProps {
 export const SurfaceWarmQueryModalQuery: FunctionalComponent<SurfaceWarmQueryModalQueryProps> = ({
   query,
   onQueryChange,
+  onQueryBlur,
+  historyIndex,
+  historyLength,
+  onHistoryNavigate,
   errors,
   isLoading = false,
 }) => {
@@ -31,6 +39,63 @@ export const SurfaceWarmQueryModalQuery: FunctionalComponent<SurfaceWarmQueryMod
     const inputValue = typeof e === 'string' ? e : e.currentTarget.value;
     onQueryChange(inputValue);
   };
+
+  const historyEnabled = typeof onHistoryNavigate === 'function';
+  const safeLength = Math.max(0, historyLength ?? 0);
+  const safeIndex = typeof historyIndex === 'number'
+    ? historyIndex
+    : (safeLength > 0 ? safeLength - 1 : -1);
+  const showHistoryControls = safeLength > 1;
+  const canGoBackward = historyEnabled && safeIndex > 0;
+  const canGoForward = historyEnabled && safeIndex >= 0 && safeIndex < safeLength - 1;
+  const safeDisplayIndex = safeIndex >= 0 ? safeIndex + 1 : 0;
+  const displayIndex = Math.max(safeDisplayIndex, 1);
+  const displayTotal = Math.max(safeLength, 1);
+
+  type HistoryDirection = 'first' | 'prev' | 'next' | 'last';
+
+  const HistoryIcon = ({ direction }: { direction: HistoryDirection }) => {
+    const baseProps = {
+      xmlns: 'http://www.w3.org/2000/svg',
+      viewBox: '0 0 20 20',
+      fill: 'currentColor',
+      class: 'h-4 w-4',
+    };
+    if (direction === 'first') {
+      return (
+        <svg {...baseProps}>
+          <path d='M9.78 5.22a.75.75 0 0 0-1.06 0L3.47 10.47a.75.75 0 0 0 0 1.06l5.25 5.25a.75.75 0 0 0 1.06-1.06L5.06 11l4.72-4.72a.75.75 0 0 0 0-1.06z' />
+          <path d='M16.28 5.22a.75.75 0 0 0-1.06 0L9.97 10.47a.75.75 0 0 0 0 1.06l5.25 5.25a.75.75 0 1 0 1.06-1.06L11.56 11l4.72-4.72a.75.75 0 0 0 0-1.06z' />
+        </svg>
+      );
+    }
+    if (direction === 'prev') {
+      return (
+        <svg {...baseProps}>
+          <path d='M12.78 5.22a.75.75 0 0 0-1.06 0L6.47 10.47a.75.75 0 0 0 0 1.06l5.25 5.25a.75.75 0 1 0 1.06-1.06L8.56 11l4.72-4.72a.75.75 0 0 0 0-1.06z' />
+        </svg>
+      );
+    }
+    if (direction === 'next') {
+      return (
+        <svg {...baseProps}>
+          <path d='M7.22 5.22a.75.75 0 0 1 1.06 0L13.53 10.47a.75.75 0 0 1 0 1.06l-5.25 5.25a.75.75 0 1 1-1.06-1.06L11.44 11 7.22 6.78a.75.75 0 0 1 0-1.56z' />
+        </svg>
+      );
+    }
+    return (
+      <svg {...baseProps}>
+        <path d='M3.72 5.22a.75.75 0 0 1 1.06 0L10.03 10.47a.75.75 0 0 1 0 1.06l-5.25 5.25a.75.75 0 0 1-1.06-1.06L8.44 11 3.72 6.28a.75.75 0 0 1 0-1.06z' />
+        <path d='M10.22 5.22a.75.75 0 0 1 1.06 0l5.25 5.25a.75.75 0 0 1 0 1.06l-5.25 5.25a.75.75 0 0 1-1.06-1.06L14.44 11l-4.72-4.72a.75.75 0 0 1 0-1.06z' />
+      </svg>
+    );
+  };
+
+  const handleNavigate = (direction: HistoryDirection) => {
+    onHistoryNavigate?.(direction);
+  };
+
+  const positionLabel = `Showing draft query ${displayIndex} of ${displayTotal} (revisions available to this modal instance ONLY)`;
 
   const hasErrors = !!errors && errors.trim().length > 0;
 
@@ -95,12 +160,57 @@ export const SurfaceWarmQueryModalQuery: FunctionalComponent<SurfaceWarmQueryMod
           name='query'
           value={query}
           onInput={(e) => handleQueryChange(e)}
+          onBlur={(e) => onQueryBlur?.(e.currentTarget.value)}
           required
           maxLength={5000}
           placeholder='Query (max 5000)'
           class='text-xs w-full bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 placeholder-neutral-500 dark:placeholder-neutral-400 p-4 rounded-sm border border-neutral-300 dark:border-neutral-700 focus:outline-none focus:ring-2 focus:ring-neon-blue-500 resize-none invalid:border-red-500 invalid:focus:ring-red-500'
           style={{ height: '190px' }}
         />
+
+        {showHistoryControls && (
+          <div class='mt-3 flex items-center justify-between text-xs text-neutral-400'>
+            <span class='italic'>{positionLabel}</span>
+            <div class='flex items-center gap-2'>
+              <Action
+                type='button'
+                styleType={ActionStyleTypes.Icon}
+                onClick={() => handleNavigate('first')}
+                disabled={!canGoBackward}
+                title='First query'
+              >
+                <HistoryIcon direction='first' />
+              </Action>
+              <Action
+                type='button'
+                styleType={ActionStyleTypes.Icon}
+                onClick={() => handleNavigate('prev')}
+                disabled={!canGoBackward}
+                title='Previous query'
+              >
+                <HistoryIcon direction='prev' />
+              </Action>
+              <Action
+                type='button'
+                styleType={ActionStyleTypes.Icon}
+                onClick={() => handleNavigate('next')}
+                disabled={!canGoForward}
+                title='Next query'
+              >
+                <HistoryIcon direction='next' />
+              </Action>
+              <Action
+                type='button'
+                styleType={ActionStyleTypes.Icon}
+                onClick={() => handleNavigate('last')}
+                disabled={!canGoForward}
+                title='Most recent query'
+              >
+                <HistoryIcon direction='last' />
+              </Action>
+            </div>
+          </div>
+        )}
 
         {/* Console label */}
         <div class='mt-4 flex items-center gap-2 mb-2'>
