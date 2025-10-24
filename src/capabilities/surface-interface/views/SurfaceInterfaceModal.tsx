@@ -88,27 +88,13 @@ export function SurfaceInterfaceModal({
     [details, interfaceLookup],
   );
 
-  const [graphRevision, setGraphRevision] = useState(0);
-
-  useEffect(() => {
-    const graphManager = workspaceMgr?.Graph;
-    if (!graphManager || typeof graphManager.OnGraphChanged !== 'function') {
-      return;
-    }
-
-    const unsubscribe = graphManager.OnGraphChanged(() => {
-      setGraphRevision((value: number) => value + 1);
-    });
-    return unsubscribe;
-  }, [workspaceMgr]);
-
   const derivedLookups = useMemo(
     () =>
       deriveInterfaceLookupsFromGraph(
         workspaceMgr.Graph.GetGraph(),
         interfaceLookup,
       ),
-    [workspaceMgr, interfaceLookup, graphRevision],
+    [workspaceMgr, interfaceLookup],
   );
 
   const effectiveSettings = useMemo(
@@ -178,9 +164,13 @@ export function SurfaceInterfaceModal({
     }
   });
   const [previewNonce, setPreviewNonce] = useState(0);
+  const persistTimerRef = useRef<number | null>(null);
+  const lastPersistedRef = useRef<string | null>(null);
+  const initializedLookupRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
+    if (initializedLookupRef.current === interfaceLookup) return;
 
     setImports(resolvedDetails.Imports ?? []);
 
@@ -197,57 +187,37 @@ export function SurfaceInterfaceModal({
     setPageDataType(reconciled);
 
     const incomingHandlerCode = resolvedDetails.PageHandler?.Code ?? '';
-    if (!handlerDirtyRef.current) {
-      const trimmedCode = incomingHandlerCode.trim();
-      const shouldUpdate = trimmedCode !== lastSyncedHandlerRef.current.code;
-      lastSyncedHandlerRef.current.code = trimmedCode;
-      if (shouldUpdate) {
-        setHandlerCode(incomingHandlerCode);
-        lastGeneratedHandlerRef.current.code = trimmedCode;
-      }
-    }
+    setHandlerCode(incomingHandlerCode);
+    lastGeneratedHandlerRef.current.code = incomingHandlerCode.trim();
+    lastSyncedHandlerRef.current.code = incomingHandlerCode.trim();
 
     const incomingHandlerDescription = resolvedDetails.PageHandler?.Description ?? '';
-    if (!handlerDirtyRef.current) {
-      const trimmedDescription = incomingHandlerDescription.trim();
-      const shouldUpdate = trimmedDescription !== lastSyncedHandlerRef.current.description;
-      lastSyncedHandlerRef.current.description = trimmedDescription;
-      if (shouldUpdate) {
-        setHandlerDescription(incomingHandlerDescription);
-        lastGeneratedHandlerRef.current.description = trimmedDescription;
-      }
-    }
+    setHandlerDescription(incomingHandlerDescription);
+    lastGeneratedHandlerRef.current.description = incomingHandlerDescription.trim();
+    lastSyncedHandlerRef.current.description = incomingHandlerDescription.trim();
 
     const incomingHandlerMessages = formatMessages(resolvedDetails.PageHandler?.Messages);
-    if (!handlerDirtyRef.current) {
-      const trimmedMessages = incomingHandlerMessages.trim();
-      const shouldUpdate = trimmedMessages !== lastSyncedHandlerRef.current.messages;
-      lastSyncedHandlerRef.current.messages = trimmedMessages;
-      if (shouldUpdate) {
-        setHandlerMessagesText(incomingHandlerMessages);
-        lastGeneratedHandlerRef.current.messages = trimmedMessages;
-      }
-    }
+    setHandlerMessagesText(incomingHandlerMessages);
+    lastGeneratedHandlerRef.current.messages = incomingHandlerMessages.trim();
+    lastSyncedHandlerRef.current.messages = incomingHandlerMessages.trim();
 
     setPageCode(resolvedDetails.Page?.Code ?? '');
     setPageDescription(resolvedDetails.Page?.Description ?? '');
     setPageMessagesText(formatMessages(resolvedDetails.Page?.Messages));
     setImportsInvalid(false);
-    if (!handlerDirtyRef.current) {
-      handlerDirtyRef.current = false;
-    }
-  }, [
-    isOpen,
-    resolvedDetails,
-    effectiveSettings,
-    workspaceMgr,
-    surfaceLookup,
-    interfaceLookup,
-  ]);
+
+    handlerDirtyRef.current = false;
+    initializedLookupRef.current = interfaceLookup;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, interfaceLookup]);
 
   useEffect(() => {
-    if (!isOpen) {
-      handlerDirtyRef.current = false;
+    if (isOpen) return;
+    initializedLookupRef.current = null;
+    handlerDirtyRef.current = false;
+    if (persistTimerRef.current) {
+      globalThis.clearTimeout(persistTimerRef.current);
+      persistTimerRef.current = null;
     }
   }, [isOpen]);
 
@@ -266,66 +236,82 @@ export function SurfaceInterfaceModal({
     setHandlerMessagesText(next);
   }, []);
 
-  const generatedSlices = pageDataType.Generated;
-  const generatedSliceEntries = useMemo(
-    () =>
-      Object.entries(generatedSlices) as Array<
-        [string, EaCInterfaceGeneratedDataSlice]
-      >,
-    [generatedSlices],
+  const handleImportsChange = useCallback((next: string[]) => {
+    setImports(next);
+  }, []);
+
+  const handlePageCodeChange = useCallback((next: string) => {
+    setPageCode(next);
+  }, []);
+
+  const handlePageDescriptionChange = useCallback((next: string) => {
+    setPageDescription(next);
+  }, []);
+
+  const handlePageMessagesChange = useCallback((next: string) => {
+    setPageMessagesText(next);
+  }, []);
+
+  const persistDetails = useCallback(
+    (patch: Partial<EaCInterfaceDetails>) => {
+      onDetailsChange?.(patch);
+      try {
+        workspaceMgr.EaC.UpdateNodePatch(interfaceLookup, { Details: patch });
+      } catch (error) {
+        console.warn(
+          '[SurfaceInterfaceModal] Failed to persist interface details',
+          error,
+        );
+      }
+    },
+    [workspaceMgr, interfaceLookup, onDetailsChange],
   );
-
-  const interfaceAzi = workspaceMgr.InterfaceAzis?.[interfaceLookup];
-  const enterpriseLookup = workspaceMgr.EaC.GetEaC().EnterpriseLookup ?? 'workspace';
-
-  if (!isOpen) return null;
-
-  const resolvedSnapshot = useMemo(
-    () =>
-      JSON.stringify(
-        buildInterfaceDetailsPatch(
-          resolvedDetails.PageHandler,
-          resolvedDetails.Page,
-          resolvedDetails.Imports ?? [],
-          ensurePageDataType(resolvedDetails.PageDataType),
-          resolvedDetails.PageHandler?.Code ?? '',
-          resolvedDetails.PageHandler?.Description ?? '',
-          formatMessages(resolvedDetails.PageHandler?.Messages),
-          resolvedDetails.PageHandler?.MessageGroups,
-          resolvedDetails.Page?.Code ?? '',
-          resolvedDetails.Page?.Description ?? '',
-          formatMessages(resolvedDetails.Page?.Messages),
-          resolvedDetails.Page?.MessageGroups,
-        ),
-      ),
-    [resolvedDetails],
-  );
-
-  const lastAppliedRef = useRef<string>(resolvedSnapshot);
 
   useEffect(() => {
-    lastAppliedRef.current = resolvedSnapshot;
-  }, [resolvedSnapshot]);
+    if (!isOpen || importsInvalid) {
+      if (persistTimerRef.current) {
+        globalThis.clearTimeout(persistTimerRef.current);
+        persistTimerRef.current = null;
+      }
+      return;
+    }
 
-  const nextDetails = useMemo(() => {
-    if (importsInvalid) return null;
+    if (persistTimerRef.current) {
+      globalThis.clearTimeout(persistTimerRef.current);
+    }
 
-    return buildInterfaceDetailsPatch(
-      resolvedDetails.PageHandler,
-      resolvedDetails.Page,
-      imports,
-      pageDataType,
-      handlerCode,
-      handlerDescription,
-      handlerMessagesText,
-      handlerMessageGroups,
-      pageCode,
-      pageDescription,
-      pageMessagesText,
-      pageMessageGroups,
-    );
+    persistTimerRef.current = globalThis.setTimeout(() => {
+      persistTimerRef.current = null;
+      const patch = buildInterfaceDetailsPatch(
+        resolvedDetails.PageHandler,
+        resolvedDetails.Page,
+        imports,
+        pageDataType,
+        handlerCode,
+        handlerDescription,
+        handlerMessagesText,
+        handlerMessageGroups,
+        pageCode,
+        pageDescription,
+        pageMessagesText,
+        pageMessageGroups,
+      );
+      const serialized = JSON.stringify(patch);
+      if (serialized === lastPersistedRef.current) return;
+      lastPersistedRef.current = serialized;
+      persistDetails(patch);
+    }, 300);
+
+    return () => {
+      if (persistTimerRef.current) {
+        globalThis.clearTimeout(persistTimerRef.current);
+        persistTimerRef.current = null;
+      }
+    };
   }, [
+    isOpen,
     importsInvalid,
+    persistDetails,
     resolvedDetails.PageHandler,
     resolvedDetails.Page,
     imports,
@@ -340,13 +326,19 @@ export function SurfaceInterfaceModal({
     pageMessageGroups,
   ]);
 
-  useEffect(() => {
-    if (!onDetailsChange || !nextDetails) return;
-    const serialized = JSON.stringify(nextDetails);
-    if (serialized === lastAppliedRef.current) return;
-    lastAppliedRef.current = serialized;
-    onDetailsChange(nextDetails);
-  }, [nextDetails, onDetailsChange]);
+  const generatedSlices = pageDataType.Generated;
+  const generatedSliceEntries = useMemo(
+    () =>
+      Object.entries(generatedSlices) as Array<
+        [string, EaCInterfaceGeneratedDataSlice]
+      >,
+    [generatedSlices],
+  );
+
+  const interfaceAzi = workspaceMgr.InterfaceAzis?.[interfaceLookup];
+  const enterpriseLookup = workspaceMgr.EaC.GetEaC().EnterpriseLookup ?? 'workspace';
+
+  if (!isOpen) return null;
 
   const updateGeneratedSlice = useCallback(
     (
@@ -565,7 +557,7 @@ export function SurfaceInterfaceModal({
       content: (
         <SurfaceInterfaceImportsTab
           imports={imports}
-          onChange={setImports}
+          onChange={handleImportsChange}
           onValidityChange={setImportsInvalid}
         />
       ),
@@ -610,9 +602,9 @@ export function SurfaceInterfaceModal({
             code={pageCode}
             description={pageDescription}
             messages={pageMessagesText}
-            onCodeChange={setPageCode}
-            onDescriptionChange={setPageDescription}
-            onMessagesChange={setPageMessagesText}
+            onCodeChange={handlePageCodeChange}
+            onDescriptionChange={handlePageDescriptionChange}
+            onMessagesChange={handlePageMessagesChange}
             placeholder='export default function InterfacePage({ data }: { data?: InterfacePageData }) { ... }'
           />
         </div>
