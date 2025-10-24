@@ -55,7 +55,7 @@ export type {
   SurfaceSchemaSettings,
   SurfaceWarmQuerySettings,
 } from 'jsr:@o-industrial/common@0.0.505/eac';
- //} from '../../../o-industrial/open-industrial-reference-architecture/src/eac/.exports.ts';
+//} from '../../../o-industrial/open-industrial-reference-architecture/src/eac/.exports.ts';
 
 export { merge, type NullableArrayOrObject } from 'jsr:@fathym/common@0.2.274';
 export { z } from 'jsr:@fathym/common@0.2.274/third-party/zod';

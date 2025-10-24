@@ -95,7 +95,8 @@ export const SurfaceWarmQueryModalQuery: FunctionalComponent<SurfaceWarmQueryMod
     onHistoryNavigate?.(direction);
   };
 
-  const positionLabel = `Showing draft query ${displayIndex} of ${displayTotal} (revisions available to this modal instance ONLY)`;
+  const positionLabel =
+    `Showing draft query ${displayIndex} of ${displayTotal} (revisions available to this modal instance ONLY)`;
 
   const hasErrors = !!errors && errors.trim().length > 0;
 

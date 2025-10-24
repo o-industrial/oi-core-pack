@@ -4,7 +4,6 @@ import {
   Action,
   ActionStyleTypes,
   AziPanel,
-  CodeMirrorEditor,
   Input,
   IntentTypes,
   interfacePageDataToSchema,
@@ -46,6 +45,7 @@ import {
 import { SurfaceInterfaceGeneratedCodeTab } from './SurfaceInterfaceGeneratedCodeTab.tsx';
 import { SurfaceInterfaceImportsTab } from './SurfaceInterfaceImportsTab.tsx';
 import { SurfaceInterfacePageDataTab } from './SurfaceInterfacePageDataTab.tsx';
+import { SurfaceCodeMirror } from '../../../components/code/SurfaceCodeMirror.tsx';
 
 type SurfaceInterfaceModalProps = {
   isOpen: boolean;
@@ -269,16 +269,8 @@ export function SurfaceInterfaceModal({
   const persistDetails = useCallback(
     (patch: Partial<EaCInterfaceDetails>) => {
       onDetailsChange?.(patch);
-      try {
-        workspaceMgr.EaC.UpdateNodePatch(interfaceLookup, { Details: patch });
-      } catch (error) {
-        console.warn(
-          '[SurfaceInterfaceModal] Failed to persist interface details',
-          error,
-        );
-      }
     },
-    [workspaceMgr, interfaceLookup, onDetailsChange],
+    [onDetailsChange],
   );
 
   useEffect(() => {
@@ -515,12 +507,12 @@ export function SurfaceInterfaceModal({
       interfaceLookup,
       surfaceLookup,
       enterpriseLookup,
-      UserName: profile.Name || profile.Username || "",
+      UserName: profile.Name || profile.Username || '',
       UserUsername: profile.Username,
       UserFirstName: userFirstName,
       UserProfile: {
-        Username: profile.Username || "",
-        Name: profile.Name || profile.Username || "",
+        Username: profile.Username || '',
+        Name: profile.Name || profile.Username || '',
         FirstName: userFirstName,
       },
       imports,
@@ -746,15 +738,14 @@ function CodeEditorPanel({
   onCodeChange,
   onDescriptionChange,
   onMessagesChange,
-  placeholder,
+  placeholder: _placeholder,
 }: CodeEditorPanelProps) {
   return (
     <div class='flex flex-1 min-h-0 flex-col gap-3'>
-      <CodeMirrorEditor
-        fileContent={code}
-        onContentChange={onCodeChange}
-        placeholder={placeholder}
-        class='flex-1 min-h-[320px] [&>.cm-editor]:h-full [&>.cm-editor]:min-h-0'
+      <SurfaceCodeMirror
+        value={code}
+        onValueChange={onCodeChange}
+        class='flex-1 min-h-[320px]'
       />
       <textarea
         class='h-16 w-full resize-none rounded border border-neutral-700 bg-neutral-950 p-2 text-sm text-neutral-200 outline-none focus:border-teal-400'
@@ -801,8 +792,8 @@ function buildCodeBlock(
 
   return {
     ...(base ?? {}),
-    ...(trimmedCode ? { Code: trimmedCode } : { Code: undefined }),
-    ...(trimmedDescription ? { Description: trimmedDescription } : { Description: undefined }),
+    ...(trimmedCode ? { Code: code } : { Code: undefined }),
+    ...(trimmedDescription ? { Description: description } : { Description: undefined }),
     ...(hasMessages ? { Messages: messages } : { Messages: undefined }),
     ...(hasGroups ? { MessageGroups: messageGroups } : { MessageGroups: undefined }),
   };

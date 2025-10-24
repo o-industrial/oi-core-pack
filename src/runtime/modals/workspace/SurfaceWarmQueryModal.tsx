@@ -530,12 +530,12 @@ export const SurfaceWarmQueryModal: FunctionalComponent<
             extraInputs={{
               ...aziExtraInputs,
               CurrentQuery: query,
-              UserName: profile.Name || profile.Username || "",
+              UserName: profile.Name || profile.Username || '',
               UserUsername: profile.Username,
               UserFirstName: userFirstName,
               UserProfile: {
-                Username: profile.Username || "",
-                Name: profile.Name || profile.Username || "",
+                Username: profile.Username || '',
+                Name: profile.Name || profile.Username || '',
                 FirstName: userFirstName,
               },
             }}
