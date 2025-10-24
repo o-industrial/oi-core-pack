@@ -101,6 +101,20 @@ export function SurfaceInterfaceModal({
     () => mergeInterfaceSettingsWithLookups(settings, derivedLookups),
     [settings, derivedLookups],
   );
+  const { profile } = workspaceMgr.UseAccountProfile();
+  const userFirstName = useMemo(() => {
+    const name = profile.Name?.trim();
+    if (name) {
+      const [first] = name.split(/\s+/);
+      if (first) return first;
+    }
+    const username = profile.Username?.trim();
+    if (username) {
+      const [localPart] = username.split('@');
+      return localPart || username;
+    }
+    return '';
+  }, [profile.Name, profile.Username]);
 
   const [activeTab, setActiveTab] = useState<SurfaceInterfaceTabKey>(TAB_IMPORTS);
 
@@ -501,6 +515,14 @@ export function SurfaceInterfaceModal({
       interfaceLookup,
       surfaceLookup,
       enterpriseLookup,
+      UserName: profile.Name || profile.Username || "",
+      UserUsername: profile.Username,
+      UserFirstName: userFirstName,
+      UserProfile: {
+        Username: profile.Username || "",
+        Name: profile.Name || profile.Username || "",
+        FirstName: userFirstName,
+      },
       imports,
       pageData: {
         summary: {
@@ -538,6 +560,9 @@ export function SurfaceInterfaceModal({
       interfaceLookup,
       surfaceLookup,
       enterpriseLookup,
+      profile.Name,
+      profile.Username,
+      userFirstName,
       imports,
       pageDataType,
       generatedSliceEntries,
