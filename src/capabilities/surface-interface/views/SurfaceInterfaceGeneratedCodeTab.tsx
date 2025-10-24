@@ -109,6 +109,7 @@ function buildGeneratedModulePreview(
   pageDescription: string,
   pageMessages: string,
 ): string {
+  // Keep this generator aligned with samples/GeneratedInterfaceModuleSample.ts.
   const safeId = toPascalCase(interfaceLookup || 'Interface');
   const importBlock = buildImports(imports);
   const pageDataSections = buildPageDataSections(handlerPlan, generatedSlices, safeId);
