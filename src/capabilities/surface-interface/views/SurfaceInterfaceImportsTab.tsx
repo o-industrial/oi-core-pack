@@ -107,8 +107,32 @@ export function SurfaceInterfaceImportsTab({
     propagateChange(entries);
   }, [entries, propagateChange]);
 
+  const editingEntryId = useMemo(
+    () => entries.find((entry: ImportEntry) => entry.editing)?.id ?? null,
+    [entries],
+  );
+
+  const hasEditingEntry = Boolean(editingEntryId);
+
+  const visibleEntries = useMemo(
+    () =>
+      editingEntryId
+        ? entries.filter((entry: ImportEntry) => entry.id === editingEntryId)
+        : entries,
+    [entries, editingEntryId],
+  );
+
   const addEntry = () => {
-    setEntries((current: ImportEntry[]) => [...current, createEmptyEntry()]);
+    setEntries((current: ImportEntry[]) => {
+      const existingEditing = current.some((entry: ImportEntry) => entry.editing);
+      if (existingEditing) return current;
+
+      const stabilized = current.map((entry: ImportEntry) =>
+        entry.editing ? { ...entry, editing: false } : entry
+      );
+
+      return [...stabilized, createEmptyEntry()];
+    });
   };
 
   const removeEntry = (id: string) => {
@@ -117,28 +141,38 @@ export function SurfaceInterfaceImportsTab({
   };
 
   const startEdit = (id: string) => {
-    setEntries((current: ImportEntry[]) =>
-      current.map((entry: ImportEntry) => {
-        if (entry.id !== id) return entry;
-        if (!entry.editing) {
-          entryBackupsRef.current.set(id, snapshotEntry(entry));
+    setEntries((current: ImportEntry[]) => {
+      const otherEditing = current.some(
+        (entry: ImportEntry) => entry.editing && entry.id !== id,
+      );
+      if (otherEditing) return current;
+
+      const target = current.find((entry: ImportEntry) => entry.id === id);
+      if (target && !target.editing) {
+        entryBackupsRef.current.set(id, snapshotEntry(target));
+      }
+
+      return current.map((entry: ImportEntry) => {
+        if (entry.id === id) {
+          return entry.editing ? entry : { ...entry, editing: true };
         }
-        return { ...entry, editing: true };
-      })
-    );
+        return entry.editing ? { ...entry, editing: false } : entry;
+      });
+    });
   };
 
   const cancelEdit = (id: string) => {
     const backup = entryBackupsRef.current.get(id);
-    setEntries((current: ImportEntry[]) =>
-      current.map((entry: ImportEntry) => {
+    setEntries((current: ImportEntry[]) => {
+      if (!backup) {
+        return current.filter((entry: ImportEntry) => entry.id !== id);
+      }
+
+      return current.map((entry: ImportEntry) => {
         if (entry.id !== id) return entry;
-        if (backup) {
-          return { ...snapshotEntry(backup), editing: false };
-        }
-        return { ...entry, editing: false };
-      })
-    );
+        return { ...snapshotEntry(backup), editing: false };
+      });
+    });
     entryBackupsRef.current.delete(id);
   };
 
@@ -309,7 +343,13 @@ export function SurfaceInterfaceImportsTab({
       <div class='flex-1 min-h-0 space-y-4 overflow-y-auto pr-1'>
         {entries.length === 0 && <EmptyImportsState onAdd={addEntry} />}
 
-        {entries.map((entry: ImportEntry) => {
+        {hasEditingEntry && (
+          <p class='rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200'>
+            Finish editing or cancel before working on other imports.
+          </p>
+        )}
+
+        {visibleEntries.map((entry: ImportEntry) => {
           const validation = validateImportEntry(entry);
           const preview = buildImportPreview(entry);
           const serialized = stringifyImportEntry(entry);
@@ -728,16 +768,18 @@ export function SurfaceInterfaceImportsTab({
         })}
       </div>
 
-      <div class='flex justify-start'>
-        <Action
-          type='button'
-          styleType={ActionStyleTypes.Solid | ActionStyleTypes.Rounded}
-          intentType={IntentTypes.Secondary}
-          onClick={addEntry}
-        >
-          Add import
-        </Action>
-      </div>
+      {!hasEditingEntry && entries.length > 0 && (
+        <div class='flex justify-start'>
+          <Action
+            type='button'
+            styleType={ActionStyleTypes.Solid | ActionStyleTypes.Rounded}
+            intentType={IntentTypes.Secondary}
+            onClick={addEntry}
+          >
+            Add import
+          </Action>
+        </div>
+      )}
     </div>
   );
 }
