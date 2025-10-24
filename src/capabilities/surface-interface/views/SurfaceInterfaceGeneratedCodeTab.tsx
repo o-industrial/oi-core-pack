@@ -86,7 +86,7 @@ export function SurfaceInterfaceGeneratedCodeTab({
         </Action>
       </header>
 
-      <div class='flex-1 min-h-0 overflow-hidden rounded border border-neutral-800 bg-neutral-950'>
+      <div class='flex-1 min-h-0 overflow-auto rounded border border-neutral-800 bg-neutral-950'>
         <SurfaceCodeMirror
           value={generatedModule}
           readOnly

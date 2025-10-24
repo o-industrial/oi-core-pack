@@ -109,7 +109,7 @@ export function SurfaceCodeMirror({
       ref={hostRef}
       class={classSet(
         [
-          'relative h-full w-full [&_.cm-editor]:h-full [&_.cm-editor]:w-full [&_.cm-editor]:text-[13px]',
+          'relative h-full w-full overflow-auto [&_.cm-editor]:h-full [&_.cm-editor]:w-full [&_.cm-editor]:text-[13px]',
         ],
         { class: className },
       )}

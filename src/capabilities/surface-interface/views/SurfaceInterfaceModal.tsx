@@ -622,7 +622,7 @@ export function SurfaceInterfaceModal({
     },
     {
       key: TAB_CODE,
-      label: 'Code',
+      label: 'Code Preview',
       content: (
         <SurfaceInterfaceGeneratedCodeTab
           interfaceLookup={interfaceLookup}
