@@ -1,16 +1,12 @@
 import {
   Badge,
-  CodeMirrorEditor,
   Input,
   IntentTypes,
-  IS_BROWSER,
   type JSX,
   Select,
   ToggleCheckbox,
-  useCallback,
   useEffect,
   useMemo,
-  useRef,
 } from '../../../.deps.ts';
 import type {
   EaCInterfaceDataConnectionFeatures,
@@ -41,14 +37,8 @@ type HandlerStep = SurfaceInterfaceHandlerPlanStep;
 type SurfaceInterfaceHandlerTabProps = {
   imports: string[];
   generatedSlices: Array<[string, EaCInterfaceGeneratedDataSlice]>;
-  handlerCode: string;
-  handlerDescription: string;
-  handlerMessages: string;
   steps: SurfaceInterfaceHandlerPlanStep[];
   onStepsChange: (next: SurfaceInterfaceHandlerPlanStep[]) => void;
-  onHandlerCodeChange: (next: string) => void;
-  onHandlerDescriptionChange: (next: string) => void;
-  onHandlerMessagesChange: (next: string) => void;
   onDataConnectionChange: (
     key: string,
     features: EaCInterfaceDataConnectionFeatures | undefined,
@@ -79,34 +69,13 @@ type HandlerStepCardProps = {
     features: EaCInterfaceDataConnectionFeatures | undefined,
   ) => void;
 };
-type AdvancedHandlerEditorProps = {
-  handlerCode: string;
-  handlerDescription: string;
-  handlerMessages: string;
-  onHandlerCodeChange: (next: string) => void;
-  onHandlerDescriptionChange: (next: string) => void;
-  onHandlerMessagesChange: (next: string) => void;
-};
 export function SurfaceInterfaceHandlerTab({
   imports,
   generatedSlices,
-  handlerCode,
-  handlerDescription,
-  handlerMessages,
   steps,
   onStepsChange,
-  onHandlerCodeChange,
-  onHandlerDescriptionChange,
-  onHandlerMessagesChange,
   onDataConnectionChange,
 }: SurfaceInterfaceHandlerTabProps): JSX.Element {
-  useEffect(() => {
-    console.debug('[SurfaceInterfaceHandlerTab] handlerCode prop updated', {
-      length: handlerCode.length,
-      snippet: handlerCode.slice(0, 80),
-    });
-  }, [handlerCode]);
-
   const basePlan = useMemo(
     () => buildBasePlanFromSlices(generatedSlices),
     [generatedSlices],
@@ -148,15 +117,6 @@ export function SurfaceInterfaceHandlerTab({
       />
 
       <PlanSummary steps={steps} />
-
-      <AdvancedHandlerEditor
-        handlerCode={handlerCode}
-        handlerDescription={handlerDescription}
-        handlerMessages={handlerMessages}
-        onHandlerCodeChange={onHandlerCodeChange}
-        onHandlerDescriptionChange={onHandlerDescriptionChange}
-        onHandlerMessagesChange={onHandlerMessagesChange}
-      />
     </div>
   );
 }
@@ -808,86 +768,6 @@ function isValidIsoDate(value: string | undefined): boolean {
   return Number.isFinite(Date.parse(value));
 }
 
-function AdvancedHandlerEditor({
-  handlerCode,
-  handlerDescription,
-  handlerMessages,
-  onHandlerCodeChange,
-  onHandlerDescriptionChange,
-  onHandlerMessagesChange,
-}: AdvancedHandlerEditorProps): JSX.Element {
-  const latestHandlerCodeRef = useRef(handlerCode);
-  useEffect(() => {
-    latestHandlerCodeRef.current = handlerCode;
-  }, [handlerCode]);
-
-  const handleCodeChange = useCallback((value: string) => {
-    if (value === latestHandlerCodeRef.current) return;
-    latestHandlerCodeRef.current = value;
-    console.debug('[SurfaceInterfaceHandlerTab] CodeMirror content change', {
-      length: value.length,
-    });
-    onHandlerCodeChange(value);
-  }, [onHandlerCodeChange]);
-
-  const handleDescriptionChange = useCallback(
-    (value: string) => {
-      if (value !== handlerDescription) {
-        onHandlerDescriptionChange(value);
-      }
-    },
-    [handlerDescription, onHandlerDescriptionChange],
-  );
-
-  const handleMessagesChange = useCallback(
-    (value: string) => {
-      if (value !== handlerMessages) {
-        onHandlerMessagesChange(value);
-      }
-    },
-    [handlerMessages, onHandlerMessagesChange],
-  );
-
-  return (
-    <section class='rounded-lg border border-neutral-800 bg-neutral-950 text-sm text-neutral-200'>
-      <details open class='flex flex-col'>
-        <summary class='cursor-pointer px-4 py-3 text-sm font-semibold text-neutral-100'>
-          Advanced handler source
-        </summary>
-        <div class='flex flex-col gap-3 border-t border-neutral-800 p-4'>
-          {IS_BROWSER
-            ? (
-              <CodeMirrorEditor
-                fileContent={handlerCode}
-                onContentChange={handleCodeChange}
-                placeholder='export async function loadPageData(...) { ... }'
-                class='flex-1 min-h-[320px] [&>.cm-editor]:rounded [&>.cm-editor]:border [&>.cm-editor]:border-neutral-800 [&>.cm-editor]:bg-neutral-950'
-              />
-            )
-            : (
-              <div class='rounded border border-dashed border-neutral-800 bg-neutral-900/40 p-3 text-xs text-neutral-500'>
-                Code editor available in browser runtime only.
-              </div>
-            )}
-          <textarea
-            class='h-16 w-full resize-none rounded border border-neutral-700 bg-neutral-950 p-2 text-sm text-neutral-200 outline-none focus:border-teal-400'
-            placeholder='Optional description for this code block'
-            value={handlerDescription}
-            onInput={(event: JSX.TargetedEvent<HTMLTextAreaElement, Event>) =>
-              handleDescriptionChange(event.currentTarget.value)}
-          />
-          <textarea
-            class='h-24 w-full resize-none rounded border border-neutral-800 bg-neutral-950 p-2 text-xs text-neutral-300 outline-none focus:border-teal-400'
-            placeholder='Guidance messages (one per line) to share with AI collaborators'
-            value={handlerMessages}
-            onInput={(event: JSX.TargetedEvent<HTMLTextAreaElement, Event>) =>
-              handleMessagesChange(event.currentTarget.value)}
-          />
-        </div>
-      </details>
-    </section>
-  );
-}
 function buildBasePlanFromSlices(
   generatedSlices: Array<[string, EaCInterfaceGeneratedDataSlice]>,
 ): SurfaceInterfaceHandlerPlanStep[] {

@@ -1,13 +1,13 @@
 import {
   Action,
   ActionStyleTypes,
-  CodeMirrorEditor,
   type EaCInterfaceGeneratedDataSlice,
   IntentTypes,
   type JSONSchema7,
   type JSX,
   useMemo,
 } from '../../../.deps.ts';
+import { SurfaceCodeMirror } from '../../../components/code/SurfaceCodeMirror.tsx';
 import {
   generateHandlerStub,
   type SurfaceInterfaceHandlerPlanStep,
@@ -87,11 +87,10 @@ export function SurfaceInterfaceGeneratedCodeTab({
       </header>
 
       <div class='flex-1 min-h-0 overflow-hidden rounded border border-neutral-800 bg-neutral-950'>
-        <CodeMirrorEditor
-          fileContent={generatedModule}
-          onContentChange={() => {}}
+        <SurfaceCodeMirror
+          value={generatedModule}
           readOnly
-          class='h-full [&>.cm-editor]:h-full [&>.cm-editor]:rounded [&>.cm-editor]:border-none [&>.cm-editor]:bg-transparent'
+          class='h-full [&_.cm-editor]:h-full [&_.cm-editor]:rounded [&_.cm-editor]:border-none [&_.cm-editor]:bg-transparent'
         />
       </div>
     </div>
