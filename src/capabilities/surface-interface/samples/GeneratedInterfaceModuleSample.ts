@@ -1,150 +1,298 @@
 /**
- * Sample interface module used by the Surface Interface code preview.
- * Mirrors the baseline output from the code generator for the lookup "sample-interface".
- * Keep this file in sync with the generator when making showcase adjustments.
+ * Generated interface module sample.
+ * Each entry mirrors a virtual DFS file emitted by the InterfaceApp processor.
+ * Keep this map in sync with the generator when adjusting templates.
  */
-
-// Generated interface module preview for "interface-1760985057629"
-
-// Keep export names stable; the runtime discovers modules dynamically.
-
-// Imports configured via the Imports tab. Extend this list from that UI.
-import _ from 'https://esm.sh/lodash-es?target=deno';
-
-/**
- * Strongly-typed page data contract for the Interface1760985057629 interface.
- * Keep the export name `InterfacePageData` stable for dynamic consumers.
- */
-export type InterfacePageData = {
-  /**
-   * Step 1: Data Connection - surface-1759499258005->connection-1759499253677 -> Download history
-   * Auto executes during initial load.
-   * Maps to PageData property "dataConnectionSurface1759499258005Connection1759499253677History".
-   */
-  dataConnectionSurface1759499258005Connection1759499253677History: Record<string, unknown>;
-  /**
-   * Optional status helper for UI feedback.
-   */
+export const GeneratedInterfaceModuleSample: Record<string, string> = {
+  'interfaces/sample-interface/types.ts': `export type InterfacePageData = {
   status?: string | undefined;
-  /**
-   * Optional message provided by server-side handlers.
-   */
   message?: string | undefined;
 };
 
-/** Baseline defaults for InterfacePageData. */
 export const defaultInterfacePageData: InterfacePageData = {
-  dataConnectionSurface1759499258005Connection1759499253677History: {} as Record<string, unknown>,
   status: undefined,
   message: undefined,
 };
+`,
+  'interfaces/sample-interface/services.ts': `import type { InterfacePageData } from "./types.ts";
 
-/**
- * Helper that binds the generated PageData contract to component state.
- * Pass your preferred `useState` implementation (for example, from Preact hooks).
- */
-export type PageStateHook = <Value>(initial: Value) => [Value, (next: Value) => void];
-export function createInterfacePageState(
-  useState: PageStateHook,
-  initial: Partial<InterfacePageData> = {},
-): {
-  data: InterfacePageData;
-  setters: { [Key in keyof InterfacePageData]: (value: InterfacePageData[Key]) => void };
-  snapshot(): InterfacePageData;
-} {
-  const base = { ...defaultInterfacePageData, ...initial } as InterfacePageData;
-  const [dataconnectionsurface1759499258005connection1759499253677history, setDataconnectionsurface1759499258005connection1759499253677history] = useState(base.dataConnectionSurface1759499258005Connection1759499253677History);
-  const [status, setStatus] = useState(base.status);
-  const [message, setMessage] = useState(base.message);
+export type InterfaceServiceDescriptor<TResult, TInput = void> = {
+  sliceKey: string;
+  actionKey: string;
+  resultName: string;
+  autoExecute: boolean;
+  includeInResponse: boolean;
+};
+
+export type InterfaceServiceInvoke = <TResult, TInput = void>(
+  descriptor: InterfaceServiceDescriptor<TResult, TInput>,
+  input: TInput,
+) => Promise<TResult>;
+
+export type InterfaceServices = {
+  ping(): Promise<string>;
+};
+
+export function createInterfaceServices(invoke: InterfaceServiceInvoke): InterfaceServices {
   return {
-    data: {
-      dataConnectionSurface1759499258005Connection1759499253677History: dataconnectionsurface1759499258005connection1759499253677history,
-      status: status,
-      message: message,
-    },
-    setters: {
-      dataConnectionSurface1759499258005Connection1759499253677History: setDataconnectionsurface1759499258005connection1759499253677history,
-      status: setStatus,
-      message: setMessage,
-    },
-    snapshot(): InterfacePageData {
-      return {
-        ...base,
-        dataConnectionSurface1759499258005Connection1759499253677History: dataconnectionsurface1759499258005connection1759499253677history,
-        status: status,
-        message: message,
-      };
+    async ping(): Promise<string> {
+      return await invoke<string, void>(
+        {
+          sliceKey: "sample",
+          actionKey: "ping",
+          resultName: "status",
+          autoExecute: false,
+          includeInResponse: false,
+        },
+        undefined as void,
+      );
     },
   };
 }
 
-/**
- * Client-side service stubs for invoking configured interface actions.
- * Replace the placeholder bodies with runtime-specific requests.
- */
-export const Services = {
-  /**
-   * Slice "Data Connection - surface-1759499258005->connection-1759499253677" (dataConnection:surface-1759499258005->connection-1759499253677)
-   * Action "Download history" (dataConnection:surface-1759499258005->connection-1759499253677:history)
-   * Maps to PageData property "dataConnectionSurface1759499258005Connection1759499253677History".
-   * Also runs during initial server-side load.
-   */
-  async downloadHistory(): Promise<Record<string, unknown>> {
-    // TODO: Replace with runtime invocation for slice "dataConnection:surface-1759499258005->connection-1759499253677" action "dataConnection:surface-1759499258005->connection-1759499253677:history".
-    throw new Error("Implement service call before shipping to production.");
-  },
+export type InterfaceServerContext = {
+  request: Request;
+  params: Record<string, string>;
+  headers: Headers;
+  previous?: Partial<InterfacePageData>;
+  services: InterfaceServices;
 };
 
-// Orchestrates 1 action(s) to hydrate interface data.
-// Step 1: Data Connection - surface-1759499258005->connection-1759499253677 -> Download history (maps result to `dataConnectionSurface1759499258005Connection1759499253677History`).
+export type InterfaceClientContext = {
+  previous?: InterfacePageData;
+  services: InterfaceServices;
+  signal?: AbortSignal;
+};
+`,
+  'interfaces/sample-interface/module.tsx': `import type {
+  InterfaceClientContext,
+  InterfaceServerContext,
+  InterfaceServices,
+} from "./services.ts";
+import {
+  defaultInterfacePageData,
+  type InterfacePageData,
+} from "./types.ts";
 
+export async function loadServerData(
+  ctx: InterfaceServerContext,
+): Promise<InterfacePageData> {
+  return {
+    ...defaultInterfacePageData,
+    status: ctx.previous?.status ?? "ready",
+    message: ctx.previous?.message ?? "Author loadServerData for SampleInterface.",
+  };
+}
 
-/**
- * loadPageData orchestrates interface actions on the server.
- * Keep the export name stable so dynamic loaders can locate it.
- */
-export async function loadPageData(
-  req: Request,
-  ctx: Record<string, unknown>,
-): Promise<Record<string, unknown>> {
-  const data: Record<string, unknown> = {};
+export async function loadClientData(
+  _ctx: InterfaceClientContext,
+): Promise<Partial<InterfacePageData>> {
+  return {};
+}
 
-  const callAction = async (slice: string, action: string, input?: unknown) => {
-    const containers = (ctx as Record<string, unknown>)?.actions ??
-      (ctx as Record<string, unknown>)?.Actions ?? {};
-    const handler = (containers as Record<string, Record<string, unknown>>)[slice]?.[action];
-    if (typeof handler === 'function') {
-      return await (handler as (options: { req: Request; ctx: Record<string, unknown>; input?: unknown }) => Promise<unknown> | unknown)({
-        req,
-        ctx,
-        input,
+export default function InterfacePage({
+  data,
+  services,
+  status,
+  refresh,
+}: InterfacePageProps) {
+  return (
+    <section class="oi-interface-splash">
+      <header>
+        <h1>SampleInterface interface</h1>
+        <p>{data.message ?? "Replace this placeholder once the page view is authored."}</p>
+      </header>
+      <button type="button" onClick={() => refresh()} disabled={status.isLoading}>
+        Refresh data
+      </button>
+      <pre>{JSON.stringify(data ?? {}, null, 2)}</pre>
+      {status.error && <p class="text-danger">{status.error}</p>}
+    </section>
+  );
+}
+
+export type InterfacePageProps = {
+  data: InterfacePageData;
+  services: InterfaceServices;
+  status: {
+    isLoading: boolean;
+    error?: string;
+  };
+  refresh: () => Promise<void>;
+};
+`,
+  'interfaces/sample-interface/index.tsx': `import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "preact/hooks";
+import InterfaceModule, { loadClientData } from "./module.tsx";
+import {
+  createInterfaceServices,
+  type InterfaceClientContext,
+} from "./services.ts";
+import {
+  defaultInterfacePageData,
+  type InterfacePageData,
+} from "./types.ts";
+
+type InterfaceWrapperProps = {
+  data?: InterfacePageData;
+  lookup: string;
+};
+
+export default function InterfaceWrapper({
+  data,
+  lookup,
+}: InterfaceWrapperProps) {
+  const [pageData, setPageData] = useState<InterfacePageData>(
+    data ?? defaultInterfacePageData,
+  );
+  const [status, setStatus] = useState<{ isLoading: boolean; error?: string }>({
+    isLoading: false,
+    error: undefined,
+  });
+
+  const services = useMemo(
+    () =>
+      createInterfaceServices(async () => {
+        throw new Error(
+          "Client service invocation not implemented in sample.",
+        );
+      }),
+    [lookup],
+  );
+
+  const refresh = useCallback(async () => {
+    if (typeof loadClientData !== "function") return;
+
+    setStatus({ isLoading: true, error: undefined });
+
+    try {
+      const next = await loadClientData({
+        previous: pageData,
+        services,
+      } satisfies InterfaceClientContext);
+
+      if (next && typeof next === "object") {
+        setPageData((prev) => ({ ...prev, ...next }));
+      }
+
+      setStatus((prev) => ({ ...prev, isLoading: false }));
+    } catch (error) {
+      setStatus({
+        isLoading: false,
+        error: error instanceof Error ? error.message : String(error),
       });
     }
-    return undefined;
+  }, [pageData, services]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  return (
+    <InterfaceModule
+      data={pageData}
+      services={services}
+      status={status}
+      refresh={refresh}
+    />
+  );
+}
+`,
+  'interfaces/sample-interface/handler.ts': `import type { InterfaceRequestContext } from "../registry.ts";
+import type { InterfacePageData } from "./types.ts";
+import {
+  defaultInterfacePageData,
+} from "./types.ts";
+import {
+  createInterfaceServices,
+  type InterfaceServerContext,
+} from "./services.ts";
+import * as Module from "./module.tsx";
+
+export async function loadPageData(
+  req: Request,
+  ctx: InterfaceRequestContext,
+): Promise<InterfacePageData> {
+  const services = createInterfaceServices(async () => {
+    throw new Error(
+      "Server service invocation not implemented in sample.",
+    );
+  });
+
+  if (typeof Module.loadServerData === "function") {
+    const result = await Module.loadServerData({
+      request: req,
+      params: ctx?.Params ?? {},
+      headers: req.headers,
+      previous: undefined,
+      services,
+    } satisfies InterfaceServerContext);
+
+    return { ...defaultInterfacePageData, ...result };
+  }
+
+  return { ...defaultInterfacePageData };
+}
+`,
+  'interfaces/registry.ts': `import { h } from "preact";
+import type { JSX } from "preact";
+import render from "preact-render-to-string";
+
+import InterfaceSampleInterface from "./sample-interface/index.tsx";
+import * as InterfaceSampleInterfaceHandlers from "./sample-interface/handler.ts";
+
+export type InterfaceRequestContext = {
+  Params?: Record<string, string>;
+  [key: string]: unknown;
+};
+
+export type InterfaceRegistryEntry = {
+  lookup: string;
+  Component: (props: { data?: unknown }) => JSX.Element;
+  handlers: Record<string, unknown>;
+  render: (req: Request, ctx: InterfaceRequestContext) => Promise<Response>;
+};
+
+function createEntry(
+  component: InterfaceRegistryEntry["Component"],
+  handlers: InterfaceRegistryEntry["handlers"],
+  lookup: string,
+): InterfaceRegistryEntry {
+  return {
+    lookup,
+    Component: component,
+    handlers,
+    render: async (req: Request, ctx: InterfaceRequestContext) => {
+      const data = "loadPageData" in handlers && typeof handlers.loadPageData === "function"
+        ? await handlers.loadPageData(req, ctx)
+        : undefined;
+
+      const html = render(h(component, { data }));
+
+      return new Response(html, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "X-Interface-Lookup": lookup,
+        },
+      });
+    },
   };
-
-  // 1. Data Connection - surface-1759499258005->connection-1759499253677 -> Download history
-  const result1 = await callAction("dataConnection:surface-1759499258005->connection-1759499253677", "dataConnection:surface-1759499258005->connection-1759499253677:history", undefined);
-  data["dataConnectionSurface1759499258005Connection1759499253677History"] = result1 ?? null;
-
-  return data;
 }
 
-/**
- * Registry entry consumed by the runtime loader.
- * The keys and export names must remain stable for dynamic resolution.
- */
-export const interfaceRegistry = {
-  "interface-1760985057629": {
-    lookup: "interface-1760985057629",
-    Component: InterfacePage,
-    data: {
-      defaults: defaultInterfacePageData,
-      createState: createInterfacePageState,
-    },
-    handlers: {
-      loadPageData,
-    },
-    services: Services,
-  },
+export const interfaceRegistry: Record<string, InterfaceRegistryEntry> = {
+  "sample-interface": createEntry(
+    InterfaceSampleInterface,
+    InterfaceSampleInterfaceHandlers,
+    "sample-interface",
+  ),
 };
+`,
+};
+
+export type GeneratedInterfaceModuleSampleKey =
+  keyof typeof GeneratedInterfaceModuleSample;

@@ -26,6 +26,7 @@ export function SurfaceCodeMirror({
   const hostRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
   const extensionsRef = useRef<Extension[]>([]);
+  const shouldRestoreFocusRef = useRef(false);
 
   const baseExtensions = useMemo(() => {
     const base: Extension[] = [
@@ -47,6 +48,9 @@ export function SurfaceCodeMirror({
       base.push(
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
+            if (update.view.hasFocus) {
+              shouldRestoreFocusRef.current = true;
+            }
             onValueChange(update.state.doc.toString());
           }
         }),
@@ -100,6 +104,13 @@ export function SurfaceCodeMirror({
       view.dispatch({
         changes: { from: 0, to: currentValue.length, insert: value },
       });
+    }
+
+    if (shouldRestoreFocusRef.current) {
+      shouldRestoreFocusRef.current = false;
+      if (!view.hasFocus) {
+        view.focus();
+      }
     }
   }, [baseExtensions, value]);
 

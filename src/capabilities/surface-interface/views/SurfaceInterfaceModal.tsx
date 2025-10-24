@@ -552,93 +552,120 @@ export function SurfaceInterfaceModal({
     ],
   );
 
-  const tabData = [
-    {
-      key: TAB_IMPORTS,
-      label: 'Imports',
-      content: (
-        <SurfaceInterfaceImportsTab
-          imports={imports}
-          onChange={handleImportsChange}
-          onValidityChange={setImportsInvalid}
-        />
-      ),
-    },
-    {
-      key: TAB_DATA,
-      label: 'Page Data',
-      content: (
-        <SurfaceInterfacePageDataTab
-          generatedSlices={generatedSliceEntries}
-          onAccessModeChange={handleAccessModeChange}
-          onDataConnectionChange={handleDataConnectionFeaturesChange}
-          onActionModeChange={handleActionModeChange}
-        />
-      ),
-    },
-    {
-      key: TAB_HANDLER,
-      label: 'Handler',
-      content: (
-        <SurfaceInterfaceHandlerTab
-          imports={imports}
-          generatedSlices={generatedSliceEntries}
-          steps={handlerPlan}
-          onStepsChange={setHandlerPlan}
-          onDataConnectionChange={handleDataConnectionFeaturesChange}
-        />
-      ),
-    },
-    {
-      key: TAB_PAGE,
-      label: 'Page',
-      content: (
-        <div class='flex h-full min-h-0 flex-col'>
-          <CodeEditorPanel
-            code={pageCode}
-            description={pageDescription}
-            messages={pageMessagesText}
-            onCodeChange={handlePageCodeChange}
-            onDescriptionChange={handlePageDescriptionChange}
-            onMessagesChange={handlePageMessagesChange}
-            placeholder='export default function InterfacePage({ data }: { data?: InterfacePageData }) { ... }'
+  const tabData = useMemo(
+    () => [
+      {
+        key: TAB_IMPORTS,
+        label: 'Imports',
+        content: (
+          <SurfaceInterfaceImportsTab
+            imports={imports}
+            onChange={handleImportsChange}
+            onValidityChange={setImportsInvalid}
           />
-        </div>
-      ),
-    },
-    {
-      key: TAB_PREVIEW,
-      label: 'Preview',
-      content: (
-        <InterfacePreviewTab
-          interfaceLookup={interfaceLookup}
-          surfaceLookup={surfaceLookup}
-          previewBaseOverride={previewBaseOverride}
-          onPreviewBaseChange={setPreviewBaseOverride}
-          previewNonce={previewNonce}
-          onRefreshPreview={() => setPreviewNonce((value: number) => value + 1)}
-        />
-      ),
-    },
-    {
-      key: TAB_CODE,
-      label: 'Code Preview',
-      content: (
-        <SurfaceInterfaceGeneratedCodeTab
-          interfaceLookup={interfaceLookup}
-          imports={imports}
-          handlerPlan={handlerPlan}
-          generatedSlices={generatedSliceEntries}
-          handlerCode={handlerCode}
-          handlerDescription={handlerDescription}
-          handlerMessages={handlerMessagesText}
-          pageCode={pageCode}
-          pageDescription={pageDescription}
-          pageMessages={pageMessagesText}
-        />
-      ),
-    },
-  ];
+        ),
+      },
+      {
+        key: TAB_DATA,
+        label: 'Page Data',
+        content: (
+          <SurfaceInterfacePageDataTab
+            generatedSlices={generatedSliceEntries}
+            onAccessModeChange={handleAccessModeChange}
+            onDataConnectionChange={handleDataConnectionFeaturesChange}
+            onActionModeChange={handleActionModeChange}
+          />
+        ),
+      },
+      {
+        key: TAB_HANDLER,
+        label: 'Handler',
+        content: (
+          <SurfaceInterfaceHandlerTab
+            imports={imports}
+            generatedSlices={generatedSliceEntries}
+            steps={handlerPlan}
+            onStepsChange={setHandlerPlan}
+            onDataConnectionChange={handleDataConnectionFeaturesChange}
+          />
+        ),
+      },
+      {
+        key: TAB_PAGE,
+        label: 'Page',
+        content: (
+          <div class='flex h-full min-h-0 flex-col'>
+            <CodeEditorPanel
+              code={pageCode}
+              description={pageDescription}
+              messages={pageMessagesText}
+              onCodeChange={handlePageCodeChange}
+              onDescriptionChange={handlePageDescriptionChange}
+              onMessagesChange={handlePageMessagesChange}
+              placeholder='export default function InterfacePage({ data }: { data?: InterfacePageData }) { ... }'
+            />
+          </div>
+        ),
+      },
+      {
+        key: TAB_PREVIEW,
+        label: 'Preview',
+        content: (
+          <InterfacePreviewTab
+            interfaceLookup={interfaceLookup}
+            surfaceLookup={surfaceLookup}
+            previewBaseOverride={previewBaseOverride}
+            onPreviewBaseChange={setPreviewBaseOverride}
+            previewNonce={previewNonce}
+            onRefreshPreview={() => setPreviewNonce((value: number) => value + 1)}
+          />
+        ),
+      },
+      {
+        key: TAB_CODE,
+        label: 'Code Preview',
+        content: (
+          <SurfaceInterfaceGeneratedCodeTab
+            interfaceLookup={interfaceLookup}
+            imports={imports}
+            handlerPlan={handlerPlan}
+            generatedSlices={generatedSliceEntries}
+            handlerCode={handlerCode}
+            handlerDescription={handlerDescription}
+            handlerMessages={handlerMessagesText}
+            pageCode={pageCode}
+            pageDescription={pageDescription}
+            pageMessages={pageMessagesText}
+          />
+        ),
+      },
+    ],
+    [
+      generatedSliceEntries,
+      handleAccessModeChange,
+      handleActionModeChange,
+      handleDataConnectionFeaturesChange,
+      handleImportsChange,
+      handlePageCodeChange,
+      handlePageDescriptionChange,
+      handlePageMessagesChange,
+      handlerCode,
+      handlerDescription,
+      handlerMessagesText,
+      handlerPlan,
+      imports,
+      interfaceLookup,
+      pageCode,
+      pageDescription,
+      pageMessagesText,
+      previewBaseOverride,
+      previewNonce,
+      setHandlerPlan,
+      setImportsInvalid,
+      setPreviewBaseOverride,
+      surfaceLookup,
+    ],
+  );
 
   return (
     <Modal
