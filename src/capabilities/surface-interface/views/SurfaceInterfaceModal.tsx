@@ -46,6 +46,10 @@ import { SurfaceInterfaceGeneratedCodeTab } from './SurfaceInterfaceGeneratedCod
 import { SurfaceInterfaceImportsTab } from './SurfaceInterfaceImportsTab.tsx';
 import { SurfaceInterfacePageDataTab } from './SurfaceInterfacePageDataTab.tsx';
 import { SurfaceCodeMirror } from '../../../components/code/SurfaceCodeMirror.tsx';
+import {
+  buildDefaultInterfaceComponent,
+  toPascalCase,
+} from './SurfaceInterfaceTemplates.ts';
 
 type SurfaceInterfaceModalProps = {
   isOpen: boolean;
@@ -86,6 +90,27 @@ export function SurfaceInterfaceModal({
   const resolvedDetails = useMemo(
     () => ensureInterfaceDetails(details, interfaceLookup),
     [details, interfaceLookup],
+  );
+
+  const safeInterfaceId = useMemo(
+    () => toPascalCase(interfaceLookup || 'Interface'),
+    [interfaceLookup],
+  );
+
+  const resolvedDisplayName = useMemo(() => {
+    const name = resolvedDetails.Name?.trim();
+    if (name && name.length > 0) return name;
+    return `${safeInterfaceId} interface`;
+  }, [resolvedDetails.Name, safeInterfaceId]);
+
+  const defaultPageTemplate = useMemo(
+    () =>
+      buildDefaultInterfaceComponent(
+        interfaceLookup,
+        safeInterfaceId,
+        resolvedDisplayName,
+      ),
+    [interfaceLookup, safeInterfaceId, resolvedDisplayName],
   );
 
   const derivedLookups = useMemo(
@@ -157,7 +182,11 @@ export function SurfaceInterfaceModal({
   });
   const handlerDirtyRef = useRef(false);
 
-  const [pageCode, setPageCode] = useState(resolvedDetails.Page?.Code ?? '');
+  const [pageCode, setPageCode] = useState(
+    resolvedDetails.Page?.Code?.trim()?.length
+      ? resolvedDetails.Page.Code
+      : defaultPageTemplate,
+  );
   const [pageDescription, setPageDescription] = useState(
     resolvedDetails.Page?.Description ?? '',
   );
@@ -215,7 +244,10 @@ export function SurfaceInterfaceModal({
     lastGeneratedHandlerRef.current.messages = incomingHandlerMessages.trim();
     lastSyncedHandlerRef.current.messages = incomingHandlerMessages.trim();
 
-    setPageCode(resolvedDetails.Page?.Code ?? '');
+    const incomingPageCode = resolvedDetails.Page?.Code;
+    setPageCode(
+      incomingPageCode?.trim()?.length ? incomingPageCode : defaultPageTemplate,
+    );
     setPageDescription(resolvedDetails.Page?.Description ?? '');
     setPageMessagesText(formatMessages(resolvedDetails.Page?.Messages));
     setImportsInvalid(false);
@@ -223,7 +255,7 @@ export function SurfaceInterfaceModal({
     handlerDirtyRef.current = false;
     initializedLookupRef.current = interfaceLookup;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, interfaceLookup]);
+  }, [isOpen, interfaceLookup, defaultPageTemplate]);
 
   useEffect(() => {
     if (isOpen) return;

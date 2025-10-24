@@ -9,6 +9,11 @@ import {
 } from '../../../.deps.ts';
 import { SurfaceCodeMirror } from '../../../components/code/SurfaceCodeMirror.tsx';
 import { type SurfaceInterfaceHandlerPlanStep } from './SurfaceInterfaceHandlerTab.tsx';
+import {
+  buildDefaultInterfaceComponent,
+  toCamelCase,
+  toPascalCase,
+} from './SurfaceInterfaceTemplates.ts';
 
 type SurfaceInterfaceGeneratedCodeTabProps = {
   interfaceLookup: string;
@@ -753,29 +758,6 @@ function buildClientLoaderStub(): string {
 }`;
 }
 
-function buildDefaultInterfaceComponent(lookup: string, safeId: string): string {
-  return `export default function InterfacePage({
-  data,
-  services,
-  status,
-  refresh,
-}: InterfacePageProps) {
-  return (
-    <section class="oi-interface-splash">
-      <header>
-        <h1>${safeId} interface</h1>
-        <p>Lookup: ${lookup}</p>
-      </header>
-      <button type="button" class="oi-interface-splash__refresh" onClick={() => refresh()} disabled={status.isLoading}>
-        Refresh data
-      </button>
-      {status.error && <p class="oi-interface-splash__error">{status.error}</p>}
-      <pre>{JSON.stringify(data ?? {}, null, 2)}</pre>
-    </section>
-  );
-}`;
-}
-
 function buildGuidanceComment(label: string, description: string, messages: string): string {
   const lines = [
     description.trim(),
@@ -1030,27 +1012,6 @@ function formatPropertyKey(name: string): string {
 
 function formatObjectProperty(name: string): string {
   return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) ? name : JSON.stringify(name);
-}
-
-function toPascalCase(value: string): string {
-  return value
-    .split(/[^A-Za-z0-9]+/)
-    .filter((segment) => segment.length > 0)
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join('') || 'Interface';
-}
-
-function toCamelCase(value: string): string {
-  const segments = value
-    .split(/[^A-Za-z0-9]+/)
-    .filter((segment) => segment.length > 0)
-    .map((segment) => segment.toLowerCase());
-  if (segments.length === 0) return '';
-  return segments
-    .map((segment, index) =>
-      index === 0 ? segment : segment.charAt(0).toUpperCase() + segment.slice(1)
-    )
-    .join('');
 }
 
 function createIdentifier(source: string, used: Set<string>, fallback: string): string {

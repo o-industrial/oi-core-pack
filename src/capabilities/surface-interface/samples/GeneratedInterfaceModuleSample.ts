@@ -1,8 +1,22 @@
+import {
+  buildDefaultInterfaceComponent,
+  toPascalCase,
+} from '../views/SurfaceInterfaceTemplates.ts';
+
 /**
  * Generated interface module sample.
  * Each entry mirrors a virtual DFS file emitted by the InterfaceApp processor.
  * Keep this map in sync with the generator when adjusting templates.
  */
+const sampleLookup = 'sample-interface';
+const sampleSafeId = toPascalCase(sampleLookup);
+const sampleDisplayName = `${sampleSafeId} interface`;
+const sampleDefaultComponent = buildDefaultInterfaceComponent(
+  sampleLookup,
+  sampleSafeId,
+  sampleDisplayName,
+);
+
 export const GeneratedInterfaceModuleSample: Record<string, string> = {
   'interfaces/sample-interface/types.ts': `export type InterfacePageData = {
   status?: string | undefined;
@@ -90,26 +104,7 @@ export async function loadClientData(
   return {};
 }
 
-export default function InterfacePage({
-  data,
-  services,
-  status,
-  refresh,
-}: InterfacePageProps) {
-  return (
-    <section class="oi-interface-splash">
-      <header>
-        <h1>SampleInterface interface</h1>
-        <p>{data.message ?? "Replace this placeholder once the page view is authored."}</p>
-      </header>
-      <button type="button" onClick={() => refresh()} disabled={status.isLoading}>
-        Refresh data
-      </button>
-      <pre>{JSON.stringify(data ?? {}, null, 2)}</pre>
-      {status.error && <p class="text-danger">{status.error}</p>}
-    </section>
-  );
-}
+${sampleDefaultComponent}
 
 export type InterfacePageProps = {
   data: InterfacePageData;
