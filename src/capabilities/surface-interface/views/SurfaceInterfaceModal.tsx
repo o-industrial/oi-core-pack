@@ -4,6 +4,7 @@ import {
   Action,
   ActionStyleTypes,
   AziPanel,
+  Badge,
   Input,
   IntentTypes,
   interfacePageDataToSchema,
@@ -614,7 +615,6 @@ export function SurfaceInterfaceModal({
         label: 'Handler',
         content: (
           <SurfaceInterfaceHandlerTab
-            imports={imports}
             generatedSlices={generatedSliceEntries}
             steps={handlerPlan}
             onStepsChange={setHandlerPlan}
@@ -626,7 +626,8 @@ export function SurfaceInterfaceModal({
         key: TAB_PAGE,
         label: 'Page',
         content: (
-          <div class='flex h-full min-h-0 flex-col'>
+          <div class='flex h-full min-h-0 flex-col gap-4'>
+            <PageImportsSummary imports={imports} />
             <CodeEditorPanel
               code={pageCode}
               description={pageDescription}
@@ -768,6 +769,53 @@ type CodeEditorPanelProps = {
   onMessagesChange: (value: string) => void;
   placeholder: string;
 };
+
+function PageImportsSummary({ imports }: { imports: string[] }): JSX.Element {
+  const hasImports = imports.length > 0;
+
+  return (
+    <section class='rounded-lg border border-neutral-800 bg-neutral-950 text-sm text-neutral-200'>
+      <details open class='flex flex-col'>
+        <summary class='flex cursor-pointer items-center justify-between gap-3 px-4 py-3'>
+          <div class='space-y-1'>
+            <h3 class='text-sm font-semibold text-neutral-100'>
+              Page imports
+            </h3>
+            <p class='text-xs text-neutral-400'>
+              Code authored on this tab can reference these modules directly. Manage the list from the Imports tab.
+            </p>
+          </div>
+          <Badge intentType={hasImports ? IntentTypes.Secondary : IntentTypes.Info}>
+            {hasImports
+              ? `${imports.length} ${imports.length === 1 ? 'import' : 'imports'}`
+              : 'None configured'}
+          </Badge>
+        </summary>
+
+        <div class='flex flex-col gap-2 border-t border-neutral-800 p-4'>
+          {hasImports
+            ? (
+              <ul class='max-h-48 space-y-1 overflow-y-auto pr-1 text-[13px]'>
+                {imports.map((line, index) => (
+                  <li
+                    key={`${index}-${line}`}
+                    class='truncate rounded border border-neutral-800 bg-neutral-900/70 px-2 py-1 font-mono text-xs'
+                  >
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            )
+            : (
+              <p class='text-xs text-neutral-500'>
+                No additional imports configured yet. Add shared dependencies on the Imports tab.
+              </p>
+            )}
+        </div>
+      </details>
+    </section>
+  );
+}
 
 function CodeEditorPanel({
   code,

@@ -27,6 +27,7 @@ export function SurfaceCodeMirror({
   const viewRef = useRef<EditorView | null>(null);
   const extensionsRef = useRef<Extension[]>([]);
   const shouldRestoreFocusRef = useRef(false);
+  const lastSelectionRef = useRef<{ anchor: number; head: number } | null>(null);
 
   const baseExtensions = useMemo(() => {
     const base: Extension[] = [
@@ -52,6 +53,14 @@ export function SurfaceCodeMirror({
               shouldRestoreFocusRef.current = true;
             }
             onValueChange(update.state.doc.toString());
+          }
+
+          if (update.selectionSet) {
+            const main = update.state.selection.main;
+            lastSelectionRef.current = {
+              anchor: main.anchor,
+              head: main.head,
+            };
           }
         }),
       );
@@ -79,6 +88,8 @@ export function SurfaceCodeMirror({
 
     viewRef.current = view;
     extensionsRef.current = baseExtensions;
+    const main = view.state.selection.main;
+    lastSelectionRef.current = { anchor: main.anchor, head: main.head };
 
     return () => {
       view.destroy();
@@ -101,9 +112,23 @@ export function SurfaceCodeMirror({
 
     const currentValue = view.state.doc.toString();
     if (currentValue !== value) {
+      const selection = lastSelectionRef.current ?? {
+        anchor: view.state.selection.main.anchor,
+        head: view.state.selection.main.head,
+      };
+      const clamp = (position: number) =>
+        Math.max(0, Math.min(value.length, position));
+
+      const nextSelection = {
+        anchor: clamp(selection.anchor),
+        head: clamp(selection.head),
+      };
+
       view.dispatch({
         changes: { from: 0, to: currentValue.length, insert: value },
+        selection: nextSelection,
       });
+      lastSelectionRef.current = nextSelection;
     }
 
     if (shouldRestoreFocusRef.current) {
