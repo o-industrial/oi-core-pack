@@ -272,6 +272,21 @@ export function SurfaceInterfaceModal({
     setImports(next);
   }, []);
 
+  const handleHandlerCodeChange = useCallback((next: string) => {
+    handlerDirtyRef.current = true;
+    setHandlerCode(next);
+  }, []);
+
+  const handleHandlerDescriptionChange = useCallback((next: string) => {
+    handlerDirtyRef.current = true;
+    setHandlerDescription(next);
+  }, []);
+
+  const handleHandlerMessagesChange = useCallback((next: string) => {
+    handlerDirtyRef.current = true;
+    setHandlerMessagesText(next);
+  }, []);
+
   const handlePageCodeChange = useCallback((next: string) => {
     setPageCode(next);
   }, []);
@@ -619,6 +634,12 @@ export function SurfaceInterfaceModal({
             steps={handlerPlan}
             onStepsChange={setHandlerPlan}
             onDataConnectionChange={handleDataConnectionFeaturesChange}
+            handlerCode={handlerCode}
+            handlerDescription={handlerDescription}
+            handlerMessages={handlerMessagesText}
+            onHandlerCodeChange={handleHandlerCodeChange}
+            onHandlerDescriptionChange={handleHandlerDescriptionChange}
+            onHandlerMessagesChange={handleHandlerMessagesChange}
           />
         ),
       },

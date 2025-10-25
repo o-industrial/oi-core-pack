@@ -512,7 +512,7 @@ type BuildHandlerFileOptions = {
 function buildHandlerFile(options: BuildHandlerFileOptions): string {
   const { lookup, handlerCode, handlerDescription, handlerMessages } = options;
 
-  const guidance = buildGuidanceComment('Server handler guidance', handlerDescription, handlerMessages);
+  const guidance = buildGuidanceComment("Server handler guidance", handlerDescription, handlerMessages);
   const customCode = handlerCode.trim();
 
   if (customCode.length > 0) {
@@ -525,256 +525,36 @@ import {
   defaultInterfacePageData,
 } from "./types.ts";
 import {
-  createInterfaceServices,
   type InterfaceServerContext,
-  type InterfaceServiceDescriptor,
+  type InterfaceServices,
 } from "./services.ts";
 import * as Module from "./module.tsx";
 
 ${guidance.trim().length > 0 ? `${guidance}\n\n` : ''}export async function loadPageData(
   req: Request,
   ctx: InterfaceRequestContext,
+  services: InterfaceServices,
+  seed: InterfacePageData,
 ): Promise<InterfacePageData> {
-  const invoke = createServerInvoker(ctx);
-  const services = createInterfaceServices(invoke);
+  const data = { ...seed };
+  void services;
 
   if (typeof Module.loadServerData === "function") {
     const result = await Module.loadServerData({
       request: req,
       params: ctx?.Params ?? {},
       headers: req.headers,
-      previous: undefined,
+      previous: data,
       services,
     } satisfies InterfaceServerContext);
 
-    return { ...defaultInterfacePageData, ...result };
+    return { ...data, ...result };
   }
 
-  return { ...defaultInterfacePageData };
+  return data;
 }
-
-function createServerInvoker(
-  ctx: InterfaceRequestContext,
-): InterfaceServiceInvokeShim {
-  return async function invoke<TResult, TInput>(
-    descriptor: InterfaceServiceDescriptor<TResult, TInput>,
-    _input: TInput,
-  ): Promise<TResult> {
-    console.warn(
-      "Server service invocation not yet wired for",
-      ${JSON.stringify(lookup)},
-      descriptor,
-      ctx,
-    );
-    throw new Error(
-      \`Server invocation not implemented for \${descriptor.sliceKey}/\${descriptor.actionKey}.\`,
-    );
-  };
-}
-
-type InterfaceServiceInvokeShim = <TResult, TInput>(
-  descriptor: InterfaceServiceDescriptor<TResult, TInput>,
-  input: TInput,
-) => Promise<TResult>;
 `;
 }
-
-type DataProp = {
-  name: string;
-  type: string;
-  optional: boolean;
-  docLines: string[];
-  defaultValue: string;
-};
-
-function collectDataProps(
-  handlerPlan: SurfaceInterfaceHandlerPlanStep[],
-  sliceMap: Map<string, EaCInterfaceGeneratedDataSlice>,
-): DataProp[] {
-  const props = new Map<string, DataProp>();
-
-  handlerPlan.forEach((step, index) => {
-    if (!step.includeInResponse) return;
-    const propertyName = step.resultName.trim() || toCamelCase(step.actionKey);
-    if (!propertyName) return;
-
-    const slice = sliceMap.get(step.sliceKey);
-    const action = slice?.Actions?.find((candidate) => candidate?.Key === step.actionKey);
-    const outputSchema = (action?.Output as JSONSchema7 | undefined) ??
-      (slice?.Schema as JSONSchema7 | undefined);
-    const type = schemaToTsType(outputSchema, 'unknown');
-    const optional = !step.autoExecute;
-    const defaultValue = schemaToDefaultValue(outputSchema, type, optional);
-    const docLines = [
-      `Step ${index + 1}: ${step.sliceLabel} -> ${step.actionLabel}`,
-      step.autoExecute
-        ? 'Runs automatically during load.'
-        : 'Invoke manually via InterfaceServices when needed.',
-      `Maps to InterfacePageData["${propertyName}"].`,
-    ];
-
-    props.set(propertyName, {
-      name: propertyName,
-      type,
-      optional,
-      docLines,
-      defaultValue,
-    });
-  });
-
-  const baseProps: DataProp[] = [
-    {
-      name: 'status',
-      type: 'string | undefined',
-      optional: true,
-      docLines: ['Optional status helper for UI feedback.'],
-      defaultValue: 'undefined',
-    },
-    {
-      name: 'message',
-      type: 'string | undefined',
-      optional: true,
-      docLines: ['Optional message provided by server-side handlers.'],
-      defaultValue: 'undefined',
-    },
-  ];
-
-  baseProps.forEach((prop) => {
-    if (!props.has(prop.name)) props.set(prop.name, prop);
-  });
-
-  return Array.from(props.values());
-}
-
-type ServiceDefinition = {
-  methodName: string;
-  inputType: string;
-  hasInput: boolean;
-  outputType: string;
-  descriptor: {
-    sliceKey: string;
-    actionKey: string;
-    resultName: string;
-    autoExecute: boolean;
-    includeInResponse: boolean;
-  };
-  docLines: string[];
-  aliasBase: string;
-};
-
-function collectServiceDefinitions(
-  handlerPlan: SurfaceInterfaceHandlerPlanStep[],
-  sliceMap: Map<string, EaCInterfaceGeneratedDataSlice>,
-): ServiceDefinition[] {
-  const services: ServiceDefinition[] = [];
-  const usedNames = new Set<string>();
-
-  handlerPlan.forEach((step, index) => {
-    const slice = sliceMap.get(step.sliceKey);
-    const action = slice?.Actions?.find((candidate) => candidate?.Key === step.actionKey);
-
-    const outputSchema = (action?.Output as JSONSchema7 | undefined) ??
-      (slice?.Schema as JSONSchema7 | undefined);
-    const outputType = schemaToTsType(outputSchema, 'unknown');
-
-    const inputSchema = action?.Input as JSONSchema7 | undefined;
-    const hasInput = Boolean(inputSchema);
-    const inputType = hasInput ? schemaToTsType(inputSchema, 'Record<string, unknown>') : 'void';
-
-    const methodBase = step.actionLabel.trim() || step.actionKey || `service${index + 1}`;
-    const methodName = createIdentifier(methodBase, usedNames, `service${index + 1}`);
-    const aliasBase = toPascalCase(methodName);
-
-    const docLines = [
-      `Invokes ${step.sliceLabel} -> ${step.actionLabel}.`,
-      hasInput ? 'Accepts input derived from the action schema.' : 'No input required.',
-      step.includeInResponse
-        ? `Upon auto-execution maps to InterfacePageData["${step.resultName || methodName}"].`
-        : 'Does not automatically populate InterfacePageData.',
-    ];
-
-    services.push({
-      methodName,
-      inputType,
-      hasInput,
-      outputType,
-      descriptor: {
-        sliceKey: step.sliceKey,
-        actionKey: step.actionKey,
-        resultName: step.resultName || methodName,
-        autoExecute: step.autoExecute,
-        includeInResponse: step.includeInResponse,
-      },
-      docLines,
-      aliasBase,
-    });
-  });
-
-  if (services.length === 0) {
-    services.push({
-      methodName: 'ping',
-      inputType: 'void',
-      hasInput: false,
-      outputType: 'string',
-      descriptor: {
-        sliceKey: 'sample',
-        actionKey: 'ping',
-        resultName: 'status',
-        autoExecute: false,
-        includeInResponse: false,
-      },
-      docLines: ['Placeholder service. Configure handler actions to replace this stub.'],
-      aliasBase: 'Ping',
-    });
-  }
-
-  return services;
-}
-
-function buildServerLoaderStub(safeId: string, props: DataProp[]): string {
-  const statusProp = props.find((prop) => prop.name === 'status');
-  const messageProp = props.find((prop) => prop.name === 'message');
-  const statusFallback = statusProp ? '"ready"' : '"ready"';
-  const messageFallback = messageProp
-    ? `"Author loadServerData for ${safeId}."`
-    : `"Author loadServerData for ${safeId}."`;
-
-  return `export async function loadServerData(
-  ctx: InterfaceServerContext,
-): Promise<InterfacePageData> {
-  return {
-    ...defaultInterfacePageData,
-    status: ctx.previous?.status ?? ${statusFallback},
-    message: ctx.previous?.message ?? ${messageFallback},
-  };
-}`;
-}
-
-function buildClientLoaderStub(): string {
-  return `export async function loadClientData(
-  _ctx: InterfaceClientContext,
-): Promise<Partial<InterfacePageData>> {
-  return {};
-}`;
-}
-
-function buildGuidanceComment(label: string, description: string, messages: string): string {
-  const lines = [
-    description.trim(),
-    ...messages.split(/\r?\n/).map((line) => line.trim()).filter(Boolean),
-  ].filter(Boolean);
-
-  if (lines.length === 0) return '';
-
-  const formatted = lines.map((line) => `// ${line}`).join('\n');
-  return `${formatted}\n// (${label})`;
-}
-
-type RegistryEntry = {
-  lookup: string;
-  safeId: string;
-};
-
 function buildRegistryFile(entries: RegistryEntry[]): string {
   const importLines = [
     'import { h } from "preact";',
@@ -786,6 +566,8 @@ function buildRegistryFile(entries: RegistryEntry[]): string {
     .map(({ lookup, safeId }) => [
       `import Interface${safeId} from "./${lookup}/index.tsx";`,
       `import * as Interface${safeId}Handlers from "./${lookup}/handler.ts";`,
+      `import { createInterfaceServices as createInterface${safeId}Services } from "./${lookup}/services.ts";`,
+      `import { defaultInterfacePageData as defaultInterface${safeId}PageData } from "./${lookup}/types.ts";`,
     ])
     .flat();
 
@@ -809,6 +591,8 @@ export type InterfaceHandlers = {
   loadPageData?: (
     req: Request,
     ctx: InterfaceRequestContext,
+    services: unknown,
+    seed: unknown,
   ) => Promise<unknown> | unknown;
 };
 
@@ -821,19 +605,69 @@ export type InterfaceRegistryEntry = {
   render: (req: Request, ctx: InterfaceRequestContext) => Promise<Response>;
 };
 
+type RegistryServiceDescriptor = {
+  sliceKey: string;
+  actionKey: string;
+  resultName: string;
+  autoExecute: boolean;
+  includeInResponse: boolean;
+};
+
+type RegistryServiceInvoke = <TResult, TInput>(
+  descriptor: RegistryServiceDescriptor,
+  input: TInput,
+) => Promise<TResult>;
+
+function createServerInvoker(
+  lookup: string,
+  req: Request,
+  ctx: InterfaceRequestContext,
+): RegistryServiceInvoke {
+  return async <TResult, TInput>(
+    descriptor: RegistryServiceDescriptor,
+    input: TInput,
+  ): Promise<TResult> => {
+    const containers = (ctx as Record<string, unknown>)?.actions ??
+      (ctx as Record<string, unknown>)?.Actions ?? {};
+    const handler = (containers as Record<string, Record<string, unknown>>)[descriptor.sliceKey]?.[descriptor.actionKey];
+    if (typeof handler === "function") {
+      return await (handler as (
+        options: { req: Request; ctx: InterfaceRequestContext; input?: unknown },
+      ) => Promise<unknown> | unknown)({
+        req,
+        ctx,
+        input,
+      }) as TResult;
+    }
+
+    console.warn(
+      "No server handler registered for",
+      lookup,
+      descriptor.sliceKey,
+      descriptor.actionKey,
+    );
+    return undefined as TResult;
+  };
+}
+
 function createEntry(
   component: InterfacePageComponent,
   handlers: InterfaceHandlers,
   lookup: string,
+  buildServices: (req: Request, ctx: InterfaceRequestContext) => unknown,
+  buildSeed: () => unknown,
 ): InterfaceRegistryEntry {
   return {
     lookup,
     Component: component,
     handlers,
     render: async (req: Request, ctx: InterfaceRequestContext) => {
-      const data = handlers.loadPageData
-        ? await handlers.loadPageData(req, ctx)
-        : undefined;
+      const seed = buildSeed();
+      const services = buildServices(req, ctx);
+      const resolved = handlers.loadPageData
+        ? await handlers.loadPageData(req, ctx, services, seed)
+        : seed;
+      const data = resolved ?? seed;
 
       const html = render(h(component, { data }));
 
@@ -850,7 +684,16 @@ function createEntry(
 
   const registryEntries = entries
     .map(({ lookup, safeId }) =>
-      `  "${escapeTemplate(lookup)}": createEntry(Interface${safeId}, Interface${safeId}Handlers, "${escapeTemplate(lookup)}"),`
+      `  "${escapeTemplate(lookup)}": createEntry(
+    Interface${safeId},
+    Interface${safeId}Handlers,
+    "${escapeTemplate(lookup)}",
+    (req, ctx) =>
+      createInterface${safeId}Services(
+        createServerInvoker("${escapeTemplate(lookup)}", req, ctx),
+      ),
+    () => ({ ...defaultInterface${safeId}PageData }),
+  ),`
     )
     .join('\n');
 
@@ -876,109 +719,6 @@ ${registryEntries}
 
   return `${segments.join('\n\n')}\n`;
 }
-
-type RouteOptions = {
-  RoutesBase?: string;
-};
-
-function buildRoutePath(processor: RouteOptions): string {
-  const baseSegments = (processor.RoutesBase ?? 'w/:workspace/ui')
-    .split('/')
-    .map((segment) => segment.trim())
-    .filter((segment) => segment.length)
-    .map((segment) => segment.startsWith(':') ? `[${segment.slice(1)}]` : segment);
-
-  return ['routes', ...baseSegments, '[interfaceLookup]', 'index.tsx'].join('/');
-}
-
-function buildRouteFile(processor: RouteOptions): string {
-  const depth = (processor.RoutesBase?.split('/')
-    .filter((segment) => segment.trim().length).length ?? 0) + 2;
-  const prefix = '../'.repeat(depth);
-  const registryImportPath = `${prefix}interfaces/registry.ts`;
-
-  const methodExports = HTTP_METHODS.map((method) =>
-    `export async function ${method}(
-  req: Request,
-  ctx: InterfaceRequestContext,
-): Promise<Response> {
-  return await resolveInterface("${method}", req, ctx);
-}`
-  ).join('\n\n');
-
-  return `import { interfaceRegistry } from "${registryImportPath}";
-import type { InterfaceRequestContext } from "${registryImportPath}";
-
-type HandlerFn = (req: Request, ctx: InterfaceRequestContext) => Promise<Response> | Response;
-
-const SUPPORTED_METHODS = ${JSON.stringify(HTTP_METHODS)} as const;
-
-type SupportedMethod = (typeof SUPPORTED_METHODS)[number];
-
-function normalizeMethod(method: string | undefined): SupportedMethod {
-  const candidate = (method ?? "GET").toUpperCase();
-  return (SUPPORTED_METHODS as readonly string[]).includes(candidate)
-    ? candidate as SupportedMethod
-    : "GET";
-}
-
-async function resolveInterface(
-  method: SupportedMethod | string,
-  req: Request,
-  ctx: InterfaceRequestContext,
-): Promise<Response> {
-  const lookup = ctx?.Params?.interfaceLookup ?? "";
-  const entry = interfaceRegistry[lookup as keyof typeof interfaceRegistry];
-
-  if (!entry) {
-    return new Response("Interface not found.", {
-      status: 404,
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
-    });
-  }
-
-  const normalized = normalizeMethod(
-    typeof method === "string" ? method : method,
-  );
-
-  const handlers = entry.handlers as Record<string, unknown> & {
-    default?: HandlerFn;
-    GET?: HandlerFn;
-  };
-
-  const direct = handlers[normalized] as HandlerFn | undefined;
-
-  if (typeof direct === "function") {
-    return await direct(req, ctx);
-  }
-
-  if (normalized === "HEAD" && typeof handlers.GET === "function") {
-    const response = await handlers.GET(req, ctx);
-    return new Response(null, {
-      status: response.status,
-      headers: response.headers,
-    });
-  }
-
-  if (typeof handlers.default === "function") {
-    return await handlers.default(req, ctx);
-  }
-
-  return await entry.render(req, ctx);
-}
-
-export default async function handler(
-  req: Request,
-  ctx: InterfaceRequestContext,
-): Promise<Response> {
-  const method = normalizeMethod(req?.method);
-  return await resolveInterface(method, req, ctx);
-}
-
-${methodExports}
-`;
-}
-
 const HTTP_METHODS = ['DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT'] as const;
 
 function wrapTypeAlias(name: string, typeString: string): string {
@@ -1200,3 +940,5 @@ function copyToClipboard(text: string): void {
     writer.call(clipboard, text).catch(() => {});
   }
 }
+
+

@@ -96,7 +96,7 @@ export function SurfaceCodeMirror({
       viewRef.current = null;
       extensionsRef.current = [];
     };
-  }, [baseExtensions, value]);
+  }, [baseExtensions]);
 
   useEffect(() => {
     const view = viewRef.current;

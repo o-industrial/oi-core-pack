@@ -203,34 +203,33 @@ import {
   defaultInterfacePageData,
 } from "./types.ts";
 import {
-  createInterfaceServices,
   type InterfaceServerContext,
+  type InterfaceServices,
 } from "./services.ts";
 import * as Module from "./module.tsx";
 
 export async function loadPageData(
   req: Request,
   ctx: InterfaceRequestContext,
+  services: InterfaceServices,
+  seed: InterfacePageData,
 ): Promise<InterfacePageData> {
-  const services = createInterfaceServices(async () => {
-    throw new Error(
-      "Server service invocation not implemented in sample.",
-    );
-  });
+  const data = { ...seed };
+  void services;
 
   if (typeof Module.loadServerData === "function") {
     const result = await Module.loadServerData({
       request: req,
       params: ctx?.Params ?? {},
       headers: req.headers,
-      previous: undefined,
+      previous: data,
       services,
     } satisfies InterfaceServerContext);
 
-    return { ...defaultInterfacePageData, ...result };
+    return { ...data, ...result };
   }
 
-  return { ...defaultInterfacePageData };
+  return data;
 }
 `,
   'interfaces/registry.ts': `import { h } from "preact";
