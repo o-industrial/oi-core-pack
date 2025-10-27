@@ -30,11 +30,16 @@ export function SurfaceCodeMirror({
   const extensionsRef = useRef<Extension[]>([]);
   const shouldRestoreFocusRef = useRef(false);
   const lastSelectionRef = useRef<{ anchor: number; head: number } | null>(null);
+  const lastPropValueRef = useRef<string>(value);
+
+  const lockedLinesKey = lockedLineNumbers && lockedLineNumbers.length > 0
+    ? lockedLineNumbers.join(',')
+    : null;
 
   const lockedLinesSet = useMemo(() => {
-    if (!lockedLineNumbers || lockedLineNumbers.length === 0) return null;
+    if (!lockedLineNumbers || !lockedLinesKey) return null;
     return new Set(lockedLineNumbers);
-  }, [lockedLineNumbers]);
+  }, [lockedLinesKey, lockedLineNumbers]);
 
   const baseExtensions = useMemo(() => {
     const base: Extension[] = [
@@ -119,6 +124,7 @@ export function SurfaceCodeMirror({
     extensionsRef.current = baseExtensions;
     const main = view.state.selection.main;
     lastSelectionRef.current = { anchor: main.anchor, head: main.head };
+    lastPropValueRef.current = value;
 
     return () => {
       view.destroy();
@@ -139,25 +145,28 @@ export function SurfaceCodeMirror({
       });
     }
 
-    const currentValue = view.state.doc.toString();
-    if (currentValue !== value) {
-      const selection = lastSelectionRef.current ?? {
-        anchor: view.state.selection.main.anchor,
-        head: view.state.selection.main.head,
-      };
-      const clamp = (position: number) =>
-        Math.max(0, Math.min(value.length, position));
+    if (lastPropValueRef.current !== value) {
+      const currentValue = view.state.doc.toString();
+      if (currentValue !== value) {
+        const selection = lastSelectionRef.current ?? {
+          anchor: view.state.selection.main.anchor,
+          head: view.state.selection.main.head,
+        };
+        const clamp = (position: number) =>
+          Math.max(0, Math.min(value.length, position));
 
-      const nextSelection = {
-        anchor: clamp(selection.anchor),
-        head: clamp(selection.head),
-      };
+        const nextSelection = {
+          anchor: clamp(selection.anchor),
+          head: clamp(selection.head),
+        };
 
-      view.dispatch({
-        changes: { from: 0, to: currentValue.length, insert: value },
-        selection: nextSelection,
-      });
-      lastSelectionRef.current = nextSelection;
+        view.dispatch({
+          changes: { from: 0, to: currentValue.length, insert: value },
+          selection: nextSelection,
+        });
+        lastSelectionRef.current = nextSelection;
+      }
+      lastPropValueRef.current = value;
     }
 
     if (shouldRestoreFocusRef.current) {

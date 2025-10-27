@@ -6,7 +6,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from '../../../.deps.ts';
 import type {
@@ -445,7 +444,7 @@ function HandlerStepCard({
 
   return (
     <div class='rounded border border-neutral-800 bg-neutral-950/80'>
-      <header class='flex flex-wrap items-center justify-between gap-2 px-3 py-2'>
+      <header class='flex flex-wrap items-center justify-between gap-3 px-4 py-2 border border-sky-500/60 border-l-4 border-l-sky-400 bg-neutral-950/95 shadow-[0_0_32px_rgba(34,211,238,0.35)]'>
         <button
           type='button'
           class='flex items-center gap-2 text-left text-sm font-semibold text-neutral-100 focus:outline-none'
@@ -602,27 +601,27 @@ function CustomHandlerStep({
     if (enabled) setIsOpen(true);
   }, [enabled]);
 
-  const cachedSegments = useRef<{ prefix: string; body: string; suffix: string } | null>(null);
-  const lastCodeRef = useRef<string>('');
-
-  const segments = useMemo(() => {
-    if (cachedSegments.current && lastCodeRef.current === code) {
-      return cachedSegments.current;
+  const lockedLines = useMemo(() => {
+    if (!enabled) return undefined;
+    const lines = code.split('\n');
+    if (lines.length === 0) return undefined;
+    const result = new Set<number>();
+    const first = lines[0]?.trim() ?? '';
+    if (first.includes('loadPageData')) result.add(1);
+    for (let index = lines.length - 1; index >= 0; index -= 1) {
+      const trimmed = lines[index]?.trim();
+      if (!trimmed) continue;
+      if (trimmed === '}') result.add(index + 1);
+      break;
     }
-    const next = splitHandlerCode(code);
-    cachedSegments.current = next;
-    lastCodeRef.current = code;
-    return next;
-  }, [code]);
+    return result.size ? Array.from(result.values()).sort((a, b) => a - b) : undefined;
+  }, [code, enabled]);
 
-  const handleBodyChange = useCallback(
+  const handleCodeChange = useCallback(
     (next: string) => {
-      const stitched = `${segments.prefix}${next}${segments.suffix}`;
-      lastCodeRef.current = stitched;
-      cachedSegments.current = { ...segments, body: next };
-      onCodeChange(stitched);
+      onCodeChange(next);
     },
-    [onCodeChange, segments],
+    [onCodeChange],
   );
 
   const handleToggle = (checked: boolean) => {
@@ -650,7 +649,7 @@ function CustomHandlerStep({
 
   return (
     <div class='rounded border border-neutral-800 bg-neutral-950/80'>
-      <header class='flex flex-wrap items-center justify-between gap-2 px-3 py-2'>
+      <header class='flex flex-wrap items-center justify-between gap-3 px-4 py-2 border border-cyan-400/60 border-l-4 border-l-cyan-400 bg-neutral-950/95 shadow-[0_0_32px_rgba(34,211,238,0.35)]'>
         <button
           type='button'
           class='flex items-center gap-2 text-left text-sm font-semibold text-neutral-100 focus:outline-none'
@@ -687,21 +686,12 @@ function CustomHandlerStep({
                   </p>
                 </div>
                 <div class='overflow-hidden rounded border border-neutral-800'>
-                  {segments.prefix.trim().length > 0 && (
-                    <pre class='m-0 border-b border-neutral-800 bg-neutral-900/80 px-3 py-2 font-mono text-[12px] text-neutral-300'>
-                      {segments.prefix.replace(/\s+$/, '')}
-                    </pre>
-                  )}
                   <SurfaceCodeMirror
-                    value={segments.body}
-                    onValueChange={handleBodyChange}
+                    value={code}
+                    onValueChange={handleCodeChange}
+                    lockedLineNumbers={lockedLines}
                     class='min-h-[240px] [&_.cm-editor]:rounded-none [&_.cm-editor]:border-none [&_.cm-editor]:bg-neutral-950'
                   />
-                  {segments.suffix.trim().length > 0 && (
-                    <pre class='m-0 border-t border-neutral-800 bg-neutral-900/80 px-3 py-2 font-mono text-[12px] text-neutral-300'>
-                      {segments.suffix.replace(/^\s+/, '')}
-                    </pre>
-                  )}
                 </div>
               </div>
 
@@ -1128,24 +1118,6 @@ function buildCustomHandlerSkeleton(): string {
   return seed;
 }
 `;
-}
-
-function splitHandlerCode(code: string): { prefix: string; body: string; suffix: string } {
-  const source = code ?? '';
-  if (!source.trim().length) {
-    return { prefix: '', body: source, suffix: '' };
-  }
-  const openIndex = source.indexOf('{');
-  const closeIndex = source.lastIndexOf('}');
-  if (openIndex === -1 || closeIndex === -1 || closeIndex <= openIndex) {
-    return { prefix: '', body: source, suffix: '' };
-  }
-
-  const prefix = source.slice(0, openIndex + 1);
-  const suffix = source.slice(closeIndex);
-  const body = source.slice(openIndex + 1, closeIndex);
-
-  return { prefix, body, suffix };
 }
 
 export function generateHandlerStub(
