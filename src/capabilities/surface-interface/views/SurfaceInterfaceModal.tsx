@@ -494,18 +494,25 @@ export function SurfaceInterfaceModal({
 
     const previousGenerated = { ...lastGeneratedHandlerRef.current };
 
-    if (!handlerEnabled) {
-      lastGeneratedHandlerRef.current.code = trimmedStub;
-      lastGeneratedHandlerRef.current.description = trimmedDescription;
-      lastGeneratedHandlerRef.current.messages = trimmedMessages;
-      return;
-    }
+  if (!handlerEnabled) {
+    lastGeneratedHandlerRef.current.code = trimmedStub;
+    lastGeneratedHandlerRef.current.description = trimmedDescription;
+    lastGeneratedHandlerRef.current.messages = trimmedMessages;
+    return;
+  }
 
-    const currentCode = handlerCode.trim();
-    if (
-      trimmedStub.length > 0 &&
-      (currentCode.length === 0 || currentCode === previousGenerated.code)
-    ) {
+  if (handlerDirtyRef.current) {
+    lastGeneratedHandlerRef.current.code = trimmedStub;
+    lastGeneratedHandlerRef.current.description = trimmedDescription;
+    lastGeneratedHandlerRef.current.messages = trimmedMessages;
+    return;
+  }
+
+  const currentCode = handlerCode.trim();
+  if (
+    trimmedStub.length > 0 &&
+    (currentCode.length === 0 || currentCode === previousGenerated.code)
+  ) {
       setHandlerCode(stub);
       handlerDirtyRef.current = false;
       lastGeneratedHandlerRef.current.code = trimmedStub;

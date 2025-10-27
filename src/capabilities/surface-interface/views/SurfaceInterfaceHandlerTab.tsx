@@ -617,9 +617,12 @@ function CustomHandlerStep({
 
   const handleBodyChange = useCallback(
     (next: string) => {
-      onCodeChange(`${segments.prefix}${next}${segments.suffix}`);
+      const stitched = `${segments.prefix}${next}${segments.suffix}`;
+      lastCodeRef.current = stitched;
+      cachedSegments.current = { ...segments, body: next };
+      onCodeChange(stitched);
     },
-    [onCodeChange, segments.prefix, segments.suffix],
+    [onCodeChange, segments],
   );
 
   const handleToggle = (checked: boolean) => {
