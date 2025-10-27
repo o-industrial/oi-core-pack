@@ -3,6 +3,7 @@ import {
   IntentTypes,
   type JSX,
   ToggleCheckbox,
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -600,6 +601,15 @@ function CustomHandlerStep({
     if (enabled) setIsOpen(true);
   }, [enabled]);
 
+  const segments = useMemo(() => splitHandlerCode(code), [code]);
+
+  const handleBodyChange = useCallback(
+    (next: string) => {
+      onCodeChange(`${segments.prefix}${next}${segments.suffix}`);
+    },
+    [onCodeChange, segments.prefix, segments.suffix],
+  );
+
   const handleToggle = (checked: boolean) => {
     if (checked) {
       if (!enabled) {
@@ -654,16 +664,26 @@ function CustomHandlerStep({
 
           {enabled ? (
             <>
+              {segments.prefix.trim().length > 0 && (
+                <pre class='rounded bg-neutral-900/80 p-3 font-mono text-[12px] text-neutral-300'>
+                  {segments.prefix.replace(/\s+$/, '')}
+                </pre>
+              )}
               <FormRow
                 label='Custom handler code'
                 description='Returns an updated InterfacePageData object. The generated data is provided as the seed argument.'
               >
                 <SurfaceCodeMirror
-                  value={code}
-                  onValueChange={onCodeChange}
+                  value={segments.body}
+                  onValueChange={handleBodyChange}
                   class='min-h-[240px]'
                 />
               </FormRow>
+              {segments.suffix.trim().length > 0 && (
+                <pre class='rounded bg-neutral-900/80 p-3 font-mono text-[12px] text-neutral-300'>
+                  {segments.suffix.replace(/^\s+/, '')}
+                </pre>
+              )}
 
               <FormRow label='Description'>
                 <textarea
@@ -1088,6 +1108,45 @@ function buildCustomHandlerSkeleton(): string {
   return seed;
 }
 `;
+}
+
+function splitHandlerCode(code: string): { prefix: string; body: string; suffix: string } {
+  const source = code ?? '';
+  if (!source.trim().length) {
+    return { prefix: '', body: source, suffix: '' };
+  }
+  const openIndex = source.indexOf('{');
+  const closeIndex = source.lastIndexOf('}');
+  if (openIndex === -1 || closeIndex === -1 || closeIndex <= openIndex) {
+    return { prefix: '', body: source, suffix: '' };
+  }
+
+  let prefix = source.slice(0, openIndex + 1);
+  let suffix = source.slice(closeIndex);
+  let body = source.slice(openIndex + 1, closeIndex);
+
+  let leading = '';
+  if (body.startsWith('\r\n')) {
+    leading = '\r\n';
+    body = body.slice(2);
+  } else if (body.startsWith('\n')) {
+    leading = '\n';
+    body = body.slice(1);
+  }
+
+  let trailing = '';
+  if (body.endsWith('\r\n')) {
+    trailing = '\r\n';
+    body = body.slice(0, -2);
+  } else if (body.endsWith('\n')) {
+    trailing = '\n';
+    body = body.slice(0, -1);
+  }
+
+  prefix = `${prefix}${leading}`;
+  suffix = `${trailing}${suffix}`;
+
+  return { prefix, body, suffix };
 }
 
 export function generateHandlerStub(

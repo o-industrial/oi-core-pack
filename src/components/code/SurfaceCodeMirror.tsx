@@ -12,6 +12,7 @@ export type SurfaceCodeMirrorProps = {
   extensions?: Extension[];
   theme?: Extension | null;
   readOnly?: boolean;
+  lockedLineNumbers?: number[];
 } & JSX.HTMLAttributes<HTMLDivElement>;
 
 export function SurfaceCodeMirror({
@@ -20,6 +21,7 @@ export function SurfaceCodeMirror({
   extensions,
   theme = oneDark,
   readOnly = false,
+  lockedLineNumbers,
   class: className,
   ...divProps
 }: SurfaceCodeMirrorProps): JSX.Element {
@@ -28,6 +30,11 @@ export function SurfaceCodeMirror({
   const extensionsRef = useRef<Extension[]>([]);
   const shouldRestoreFocusRef = useRef(false);
   const lastSelectionRef = useRef<{ anchor: number; head: number } | null>(null);
+
+  const lockedLinesSet = useMemo(() => {
+    if (!lockedLineNumbers || lockedLineNumbers.length === 0) return null;
+    return new Set(lockedLineNumbers);
+  }, [lockedLineNumbers]);
 
   const baseExtensions = useMemo(() => {
     const base: Extension[] = [
@@ -43,6 +50,28 @@ export function SurfaceCodeMirror({
     if (readOnly) {
       base.push(EditorState.readOnly.of(true));
       base.push(EditorView.editable.of(false));
+    }
+
+    if (lockedLinesSet && lockedLinesSet.size > 0) {
+      base.push(
+        EditorState.transactionFilter.of((tr) => {
+          if (!tr.docChanged) return tr;
+          let blocked = false;
+          tr.changes.iterChanges((fromA, toA) => {
+            if (blocked) return;
+            const fromLine = tr.startState.doc.lineAt(fromA).number;
+            const toLine = tr.startState.doc.lineAt(toA).number;
+            for (let line = fromLine; line <= toLine; line += 1) {
+              if (lockedLinesSet.has(line)) {
+                blocked = true;
+                break;
+              }
+            }
+          });
+          if (blocked) return [];
+          return tr;
+        }),
+      );
     }
 
     if (onValueChange) {
@@ -71,7 +100,7 @@ export function SurfaceCodeMirror({
     }
 
     return base;
-  }, [extensions, readOnly, onValueChange, theme]);
+  }, [extensions, lockedLinesSet, readOnly, onValueChange, theme]);
 
   useEffect(() => {
     if (!hostRef.current || viewRef.current) return;
