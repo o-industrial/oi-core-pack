@@ -161,6 +161,9 @@ export function SurfaceInterfaceModal({
   const [handlerCode, setHandlerCode] = useState(
     resolvedDetails.PageHandler?.Code ?? '',
   );
+  const [handlerEnabled, setHandlerEnabled] = useState<boolean>(() =>
+    (resolvedDetails.PageHandler?.Code ?? '').trim().length > 0
+  );
   const [handlerDescription, setHandlerDescription] = useState(
     resolvedDetails.PageHandler?.Description ?? '',
   );
@@ -232,6 +235,7 @@ export function SurfaceInterfaceModal({
 
     const incomingHandlerCode = resolvedDetails.PageHandler?.Code ?? '';
     setHandlerCode(incomingHandlerCode);
+    setHandlerEnabled(incomingHandlerCode.trim().length > 0);
     lastGeneratedHandlerRef.current.code = incomingHandlerCode.trim();
     lastSyncedHandlerRef.current.code = incomingHandlerCode.trim();
 
@@ -285,6 +289,10 @@ export function SurfaceInterfaceModal({
   const handleHandlerMessagesChange = useCallback((next: string) => {
     handlerDirtyRef.current = true;
     setHandlerMessagesText(next);
+  }, []);
+
+  const handleHandlerEnabledChange = useCallback((next: boolean) => {
+    setHandlerEnabled(next);
   }, []);
 
   const handlePageCodeChange = useCallback((next: string) => {
@@ -481,10 +489,22 @@ export function SurfaceInterfaceModal({
     const messages = buildGeneratedMessages(handlerPlan);
 
     const trimmedStub = stub.trim();
+    const trimmedDescription = description.trim();
+    const trimmedMessages = messages.trim();
+
+    const previousGenerated = { ...lastGeneratedHandlerRef.current };
+
+    if (!handlerEnabled) {
+      lastGeneratedHandlerRef.current.code = trimmedStub;
+      lastGeneratedHandlerRef.current.description = trimmedDescription;
+      lastGeneratedHandlerRef.current.messages = trimmedMessages;
+      return;
+    }
+
     const currentCode = handlerCode.trim();
     if (
       trimmedStub.length > 0 &&
-      (currentCode.length === 0 || currentCode === lastGeneratedHandlerRef.current.code)
+      (currentCode.length === 0 || currentCode === previousGenerated.code)
     ) {
       setHandlerCode(stub);
       handlerDirtyRef.current = false;
@@ -493,13 +513,12 @@ export function SurfaceInterfaceModal({
       lastGeneratedHandlerRef.current.code = currentCode;
     }
 
-    const trimmedDescription = description.trim();
     const currentDescription = handlerDescription.trim();
     if (
       trimmedDescription.length > 0 &&
       (
         currentDescription.length === 0 ||
-        currentDescription === lastGeneratedHandlerRef.current.description
+        currentDescription === previousGenerated.description
       )
     ) {
       setHandlerDescription(description);
@@ -509,13 +528,12 @@ export function SurfaceInterfaceModal({
       lastGeneratedHandlerRef.current.description = currentDescription;
     }
 
-    const trimmedMessages = messages.trim();
     const currentMessages = handlerMessagesText.trim();
     if (
       trimmedMessages.length > 0 &&
       (
         currentMessages.length === 0 ||
-        currentMessages === lastGeneratedHandlerRef.current.messages
+        currentMessages === previousGenerated.messages
       )
     ) {
       setHandlerMessagesText(messages);
@@ -530,6 +548,7 @@ export function SurfaceInterfaceModal({
     handlerCode,
     handlerDescription,
     handlerMessagesText,
+    handlerEnabled,
     setHandlerCode,
     setHandlerDescription,
     setHandlerMessagesText,
@@ -635,9 +654,11 @@ export function SurfaceInterfaceModal({
             onStepsChange={setHandlerPlan}
             onDataConnectionChange={handleDataConnectionFeaturesChange}
             handlerCode={handlerCode}
+            handlerEnabled={handlerEnabled}
             handlerDescription={handlerDescription}
             handlerMessages={handlerMessagesText}
             onHandlerCodeChange={handleHandlerCodeChange}
+            onHandlerEnabledChange={handleHandlerEnabledChange}
             onHandlerDescriptionChange={handleHandlerDescriptionChange}
             onHandlerMessagesChange={handleHandlerMessagesChange}
           />
@@ -699,12 +720,17 @@ export function SurfaceInterfaceModal({
       handleAccessModeChange,
       handleActionModeChange,
       handleDataConnectionFeaturesChange,
+      handleHandlerCodeChange,
+      handleHandlerDescriptionChange,
+      handleHandlerEnabledChange,
+      handleHandlerMessagesChange,
       handleImportsChange,
       handlePageCodeChange,
       handlePageDescriptionChange,
       handlePageMessagesChange,
       handlerCode,
       handlerDescription,
+      handlerEnabled,
       handlerMessagesText,
       handlerPlan,
       imports,

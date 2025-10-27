@@ -43,9 +43,11 @@ type SurfaceInterfaceHandlerTabProps = {
     features: EaCInterfaceDataConnectionFeatures | undefined
   ) => void;
   handlerCode: string;
+  handlerEnabled: boolean;
   handlerDescription: string;
   handlerMessages: string;
   onHandlerCodeChange: (next: string) => void;
+  onHandlerEnabledChange: (next: boolean) => void;
   onHandlerDescriptionChange: (next: string) => void;
   onHandlerMessagesChange: (next: string) => void;
 };
@@ -63,9 +65,11 @@ type HandlerPlannerProps = {
     features: EaCInterfaceDataConnectionFeatures | undefined
   ) => void;
   handlerCode: string;
+  handlerEnabled: boolean;
   handlerDescription: string;
   handlerMessages: string;
   onHandlerCodeChange: (next: string) => void;
+  onHandlerEnabledChange: (next: boolean) => void;
   onHandlerDescriptionChange: (next: string) => void;
   onHandlerMessagesChange: (next: string) => void;
 };
@@ -85,9 +89,11 @@ export function SurfaceInterfaceHandlerTab({
   onStepsChange,
   onDataConnectionChange,
   handlerCode,
+  handlerEnabled,
   handlerDescription,
   handlerMessages,
   onHandlerCodeChange,
+  onHandlerEnabledChange,
   onHandlerDescriptionChange,
   onHandlerMessagesChange,
 }: SurfaceInterfaceHandlerTabProps): JSX.Element {
@@ -132,9 +138,11 @@ export function SurfaceInterfaceHandlerTab({
         onStepChange={handleStepChange}
         onDataConnectionChange={onDataConnectionChange}
         handlerCode={handlerCode}
+        handlerEnabled={handlerEnabled}
         handlerDescription={handlerDescription}
         handlerMessages={handlerMessages}
         onHandlerCodeChange={onHandlerCodeChange}
+        onHandlerEnabledChange={onHandlerEnabledChange}
         onHandlerDescriptionChange={onHandlerDescriptionChange}
         onHandlerMessagesChange={onHandlerMessagesChange}
       />
@@ -270,13 +278,22 @@ function HandlerPlanner({
   onStepChange,
   onDataConnectionChange,
   handlerCode,
+  handlerEnabled,
   handlerDescription,
   handlerMessages,
   onHandlerCodeChange,
+  onHandlerEnabledChange,
   onHandlerDescriptionChange,
   onHandlerMessagesChange,
 }: HandlerPlannerProps): JSX.Element {
-  const defaultHandlerStub = useMemo(() => generateHandlerStub(steps), [steps]);
+  const defaultHandlerDescription = useMemo(
+    () => buildGeneratedDescription(steps),
+    [steps],
+  );
+  const defaultHandlerMessages = useMemo(
+    () => buildGeneratedMessages(steps),
+    [steps],
+  );
   return (
     <section class="rounded-lg border border-neutral-800 bg-neutral-950 text-sm text-neutral-200">
       <details open class="flex flex-col">
@@ -318,10 +335,13 @@ function HandlerPlanner({
           <CustomHandlerStep
             stepIndex={steps.length}
             code={handlerCode}
+            enabled={handlerEnabled}
             description={handlerDescription}
             messages={handlerMessages}
-            defaultCode={defaultHandlerStub}
+            defaultDescription={defaultHandlerDescription}
+            defaultMessages={defaultHandlerMessages}
             onCodeChange={onHandlerCodeChange}
+            onEnabledChange={onHandlerEnabledChange}
             onDescriptionChange={onHandlerDescriptionChange}
             onMessagesChange={onHandlerMessagesChange}
           />
@@ -528,27 +548,35 @@ function HandlerStepCard({
 type FormRowProps = {
   label: string;
   description?: string;
+  disabled?: boolean;
   children: JSX.Element | JSX.Element[];
 };
 
-function FormRow({ label, description, children }: FormRowProps): JSX.Element {
+function FormRow({ label, description, disabled = false, children }: FormRowProps): JSX.Element {
+  const labelClasses = `text-sm font-semibold ${disabled ? 'text-neutral-500' : 'text-neutral-100'}`;
+  const descriptionClasses = `text-xs ${disabled ? 'text-neutral-700' : 'text-neutral-400'}`;
+  const ariaDisabled = disabled ? 'true' : undefined;
+
   return (
-    <div class='flex flex-col gap-2 md:flex-row md:items-start md:gap-6'>
-      <div class='md:w-56'>
-        <p class='text-sm font-semibold text-neutral-100'>{label}</p>
-        {description && <p class='text-xs text-neutral-400'>{description}</p>}
+    <div class='flex flex-col gap-3 py-1' aria-disabled={ariaDisabled}>
+      <div class='space-y-1'>
+        <p class={labelClasses}>{label}</p>
+        {description && <p class={descriptionClasses}>{description}</p>}
       </div>
       <div class='flex-1 min-w-0'>{children}</div>
     </div>
   );
 }
- type CustomHandlerStepProps = {
+type CustomHandlerStepProps = {
   stepIndex: number;
   code: string;
+  enabled: boolean;
   description: string;
   messages: string;
-  defaultCode: string;
+  defaultDescription: string;
+  defaultMessages: string;
   onCodeChange: (next: string) => void;
+  onEnabledChange: (next: boolean) => void;
   onDescriptionChange: (next: string) => void;
   onMessagesChange: (next: string) => void;
 };
@@ -556,14 +584,16 @@ function FormRow({ label, description, children }: FormRowProps): JSX.Element {
 function CustomHandlerStep({
   stepIndex,
   code,
+  enabled,
   description,
   messages,
-  defaultCode,
+  defaultDescription,
+  defaultMessages,
   onCodeChange,
+  onEnabledChange,
   onDescriptionChange,
   onMessagesChange,
 }: CustomHandlerStepProps): JSX.Element {
-  const enabled = code.trim().length > 0;
   const [isOpen, setIsOpen] = useState(enabled);
 
   useEffect(() => {
@@ -573,17 +603,23 @@ function CustomHandlerStep({
   const handleToggle = (checked: boolean) => {
     if (checked) {
       if (!enabled) {
-        const fallback =
-          defaultCode.trim().length > 0
-            ? defaultCode
-            : buildCustomHandlerSkeleton();
-        onCodeChange(fallback);
+        if (code.trim().length === 0) {
+          onCodeChange(buildCustomHandlerSkeleton());
+        }
+        if (description.trim().length === 0 && defaultDescription.trim().length > 0) {
+          onDescriptionChange(defaultDescription);
+        }
+        if (messages.trim().length === 0 && defaultMessages.trim().length > 0) {
+          onMessagesChange(defaultMessages);
+        }
       }
+      onEnabledChange(true);
       setIsOpen(true);
     } else {
       onCodeChange('');
       onDescriptionChange('');
       onMessagesChange('');
+      onEnabledChange(false);
     }
   };
 
@@ -616,39 +652,40 @@ function CustomHandlerStep({
             Extend or override the generated handler before it returns data. When disabled, the default orchestration built from the steps above is used.
           </p>
 
-          <FormRow
-            label='Custom handler code'
-            description='Returns an updated InterfacePageData object. The generated data is provided as the seed argument.'
-          >
-            <SurfaceCodeMirror
-              value={code}
-              onValueChange={onCodeChange}
-              readOnly={!enabled}
-              class='min-h-[240px]'
-            />
-          </FormRow>
+          {enabled ? (
+            <>
+              <FormRow
+                label='Custom handler code'
+                description='Returns an updated InterfacePageData object. The generated data is provided as the seed argument.'
+              >
+                <SurfaceCodeMirror
+                  value={code}
+                  onValueChange={onCodeChange}
+                  class='min-h-[240px]'
+                />
+              </FormRow>
 
-          <FormRow label='Description'>
-            <textarea
-              class='h-16 w-full resize-none rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-teal-400'
-              placeholder='Optional description for this handler override.'
-              value={description}
-              disabled={!enabled}
-              onInput={(event: JSX.TargetedEvent<HTMLTextAreaElement, Event>) =>
-                onDescriptionChange(event.currentTarget.value)}
-            />
-          </FormRow>
+              <FormRow label='Description'>
+                <textarea
+                  class='h-16 w-full resize-none rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-teal-400'
+                  placeholder='Optional description for this handler override.'
+                  value={description}
+                  onInput={(event: JSX.TargetedEvent<HTMLTextAreaElement, Event>) =>
+                    onDescriptionChange(event.currentTarget.value)}
+                />
+              </FormRow>
 
-          <FormRow label='Guidance messages'>
-            <textarea
-              class='h-20 w-full resize-none rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-teal-400'
-              placeholder='Optional guidance messages (one per line).'
-              value={messages}
-              disabled={!enabled}
-              onInput={(event: JSX.TargetedEvent<HTMLTextAreaElement, Event>) =>
-                onMessagesChange(event.currentTarget.value)}
-            />
-          </FormRow>
+              <FormRow label='Guidance messages'>
+                <textarea
+                  class='h-20 w-full resize-none rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-teal-400'
+                  placeholder='Optional guidance messages (one per line).'
+                  value={messages}
+                  onInput={(event: JSX.TargetedEvent<HTMLTextAreaElement, Event>) =>
+                    onMessagesChange(event.currentTarget.value)}
+                />
+              </FormRow>
+            </>
+          ) : null}
         </div>
       )}
     </div>
@@ -1043,16 +1080,12 @@ type HandlerStubOptions = {
 
 function buildCustomHandlerSkeleton(): string {
   return `export async function loadPageData(
-  req: Request,
-  ctx: Record<string, unknown>,
-  services: InterfaceServices,
+  _req: Request,
+  _ctx: Record<string, unknown>,
+  _services: InterfaceServices,
   seed: InterfacePageData,
 ): Promise<InterfacePageData> {
-  // Start from the generated data produced by the handler plan.
-  const data = { ...seed };
-
-  // TODO: Call services.* helpers or augment the response before returning.
-  return data;
+  return seed;
 }
 `;
 }
