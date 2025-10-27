@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from '../../../.deps.ts';
 import type {
@@ -601,7 +602,18 @@ function CustomHandlerStep({
     if (enabled) setIsOpen(true);
   }, [enabled]);
 
-  const segments = useMemo(() => splitHandlerCode(code), [code]);
+  const cachedSegments = useRef<{ prefix: string; body: string; suffix: string } | null>(null);
+  const lastCodeRef = useRef<string>('');
+
+  const segments = useMemo(() => {
+    if (cachedSegments.current && lastCodeRef.current === code) {
+      return cachedSegments.current;
+    }
+    const next = splitHandlerCode(code);
+    cachedSegments.current = next;
+    lastCodeRef.current = code;
+    return next;
+  }, [code]);
 
   const handleBodyChange = useCallback(
     (next: string) => {
@@ -1126,30 +1138,9 @@ function splitHandlerCode(code: string): { prefix: string; body: string; suffix:
     return { prefix: '', body: source, suffix: '' };
   }
 
-  let prefix = source.slice(0, openIndex + 1);
-  let suffix = source.slice(closeIndex);
-  let body = source.slice(openIndex + 1, closeIndex);
-
-  let leading = '';
-  if (body.startsWith('\r\n')) {
-    leading = '\r\n';
-    body = body.slice(2);
-  } else if (body.startsWith('\n')) {
-    leading = '\n';
-    body = body.slice(1);
-  }
-
-  let trailing = '';
-  if (body.endsWith('\r\n')) {
-    trailing = '\r\n';
-    body = body.slice(0, -2);
-  } else if (body.endsWith('\n')) {
-    trailing = '\n';
-    body = body.slice(0, -1);
-  }
-
-  prefix = `${prefix}${leading}`;
-  suffix = `${trailing}${suffix}`;
+  const prefix = source.slice(0, openIndex + 1);
+  const suffix = source.slice(closeIndex);
+  const body = source.slice(openIndex + 1, closeIndex);
 
   return { prefix, body, suffix };
 }

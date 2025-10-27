@@ -158,10 +158,10 @@ export function DataAPISuiteModal({
             </div>
             <a
               class='inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-sky-500 via-cyan-500 to-emerald-500 px-5 py-2 text-sm font-semibold text-slate-900 shadow-lg transition hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-sky-400'
-              href='mailto:support@fathym.com'
+              href='mailto:support@openindustrial.co'
             >
               <span class='inline-flex h-2 w-2 rounded-full bg-slate-900/60'></span>
-              Email support@fathym.com
+              Email support@openindustrial.co
             </a>
           </div>
         </section>

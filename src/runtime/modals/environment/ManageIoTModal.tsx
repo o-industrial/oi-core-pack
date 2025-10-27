@@ -436,10 +436,10 @@ export function ManageIoTModal({
         <div class='rounded-2xl border border-slate-700/60 bg-slate-900/60 p-4 text-slate-300'>
           Need help mapping bespoke data flows? Email{' '}
           <a
-            href='mailto:support@fathym.com?subject=Manage%20IoT%20Support'
+            href='mailto:support@openindustrial.co?subject=Manage%20IoT%20Support'
             class='font-semibold text-sky-300 hover:text-sky-200'
           >
-            support@fathym.com
+            support@openindustrial.co
           </a>{' '}
           and the team can co-design the topology with you.
         </div>

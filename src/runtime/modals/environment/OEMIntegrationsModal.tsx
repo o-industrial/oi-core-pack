@@ -37,12 +37,12 @@ const capabilityPromos: CapabilityPromo[] = [
       {
         label: 'Deploy',
         intent: IntentTypes.Primary,
-        href: 'mailto:support@fathym.com?subject=Deploy%20HighByte%20on%20my%20metal',
+        href: 'mailto:support@openindustrial.co?subject=Deploy%20HighByte%20on%20my%20metal',
       },
       {
         label: 'Connect',
         intent: IntentTypes.Info,
-        href: 'mailto:support@fathym.com?subject=Connect%20HighByte%20to%20Open%20Industrial',
+        href: 'mailto:support@openindustrial.co?subject=Connect%20HighByte%20to%20Open%20Industrial',
         outline: true,
       },
     ],
@@ -68,12 +68,12 @@ const capabilityPromos: CapabilityPromo[] = [
       {
         label: 'Deploy',
         intent: IntentTypes.Primary,
-        href: 'mailto:support@fathym.com?subject=Deploy%20Node-RED%20on%20my%20metal',
+        href: 'mailto:support@openindustrial.co?subject=Deploy%20Node-RED%20on%20my%20metal',
       },
       {
         label: 'Connect',
         intent: IntentTypes.Info,
-        href: 'mailto:support@fathym.com?subject=Connect%20Node-RED%20to%20Open%20Industrial',
+        href: 'mailto:support@openindustrial.co?subject=Connect%20Node-RED%20to%20Open%20Industrial',
         outline: true,
       },
     ],
@@ -96,12 +96,12 @@ const capabilityPromos: CapabilityPromo[] = [
       {
         label: 'Deploy',
         intent: IntentTypes.Primary,
-        href: 'mailto:support@fathym.com?subject=Deploy%20Power%20BI%20on%20my%20metal',
+        href: 'mailto:support@openindustrial.co?subject=Deploy%20Power%20BI%20on%20my%20metal',
       },
       {
         label: 'Connect',
         intent: IntentTypes.Info,
-        href: 'mailto:support@fathym.com?subject=Connect%20Power%20BI%20to%20Open%20Industrial',
+        href: 'mailto:support@openindustrial.co?subject=Connect%20Power%20BI%20to%20Open%20Industrial',
         outline: true,
       },
     ],
@@ -125,12 +125,12 @@ const capabilityPromos: CapabilityPromo[] = [
       {
         label: 'Deploy',
         intent: IntentTypes.Primary,
-        href: 'mailto:support@fathym.com?subject=Deploy%20Grafana%20on%20my%20metal',
+        href: 'mailto:support@openindustrial.co?subject=Deploy%20Grafana%20on%20my%20metal',
       },
       {
         label: 'Connect',
         intent: IntentTypes.Info,
-        href: 'mailto:support@fathym.com?subject=Connect%20Grafana%20to%20Open%20Industrial',
+        href: 'mailto:support@openindustrial.co?subject=Connect%20Grafana%20to%20Open%20Industrial',
         outline: true,
       },
     ],
@@ -411,10 +411,10 @@ export function OEMIntegrationsModal({
         <div class='rounded-2xl border border-slate-700/60 bg-slate-900/60 p-4 text-slate-300'>
           Need a bespoke integration? Email{' '}
           <a
-            href='mailto:support@fathym.com?subject=OEM%20Integration%20Request'
+            href='mailto:support@openindustrial.co?subject=OEM%20Integration%20Request'
             class='font-semibold text-sky-300 hover:text-sky-200'
           >
-            support@fathym.com
+            support@openindustrial.co
           </a>{' '}
           and we&apos;ll scope the connector with you.
         </div>

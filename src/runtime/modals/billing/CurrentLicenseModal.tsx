@@ -367,8 +367,8 @@ export function CurrentLicenseModal({
               <p class='text-sm font-semibold text-white'>Need help choosing?</p>
               <p class='mt-2 text-xs text-slate-400'>
                 Email{' '}
-                <a class='underline text-sky-300' href='mailto:support@fathym.com'>
-                  support@fathym.com
+                <a class='underline text-sky-300' href='mailto:support@openindustrial.co'>
+                  support@openindustrial.co
                 </a>{' '}
                 with your workspace goals and we will recommend the right plan.
               </p>

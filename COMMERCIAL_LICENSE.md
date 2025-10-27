@@ -37,7 +37,7 @@ Under this Agreement, the licensee is not permitted to:
 
 The fees for commercial use are determined by Fathym, Inc. For details on
 obtaining a commercial license, including pricing information, please contact us
-at support@fathym.com.
+at support@openindustrial.co.
 
 ## Warranty Disclaimer
 
@@ -53,4 +53,4 @@ OF THE SOFTWARE IN A COMMERCIAL CAPACITY.
 
 ## Contact
 
-To obtain a commercial license, please reach out to us at support@fathym.com.
+To obtain a commercial license, please reach out to us at support@openindustrial.co.

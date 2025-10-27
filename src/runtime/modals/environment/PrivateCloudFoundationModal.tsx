@@ -365,7 +365,7 @@ export function PrivateCloudFoundationModal({
         {!hasWorkspaceCloud && (
           <section class='space-y-6'>
             <div class='relative overflow-hidden rounded-3xl border border-amber-400/60 bg-amber-500/10 p-6 text-amber-100 shadow-xl'>
-              <div class='absolute inset-x-0 top-0 h-px bg-gradient-to-r from-amber-400/60 via-orange-400/50 to-pink-400/60 opacity-70'>
+              <div class='absolute inset-x-0 top-0 h-px bg-gradient-to-r from-amber-400/60 via-orange-400/50 to-pink-400/60 opacity-70 rounded-t-3xl'>
               </div>
               <h4 class='text-base font-semibold text-amber-100'>Workspace cloud required</h4>
               <p class='mt-2 text-sm text-amber-100/80'>
@@ -385,7 +385,7 @@ export function PrivateCloudFoundationModal({
                   class='relative overflow-hidden rounded-3xl border border-slate-700/50 bg-slate-900/70 p-5 shadow-lg'
                 >
                   <div
-                    class={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${item.accent} opacity-80`}
+                    class={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${item.accent} opacity-80 rounded-t-3xl`}
                   >
                   </div>
                   <div class='flex items-start gap-3'>
@@ -407,50 +407,10 @@ export function PrivateCloudFoundationModal({
 
         {hasWorkspaceCloud && (
           <section class='space-y-6'>
-            <div class='relative overflow-hidden rounded-3xl border border-slate-700/60 bg-slate-900/70 p-6 shadow-xl space-y-6'>
-              <div class='absolute inset-x-0 top-0 h-px bg-gradient-to-r from-emerald-400/50 via-sky-400/40 to-cyan-400/50 opacity-80'>
-              </div>
-
-              <div class='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
-                <div class='space-y-2'>
-                  <h4 class='text-xl font-semibold text-white'>Workspace Cloud</h4>
-                  <p class='text-sm text-slate-300'>
-                    {workspaceCloud?.Details?.Name || 'Workspace Cloud'} -{' '}
-                    {workspaceCloud?.Details?.Type || 'Azure'}
-                  </p>
-                </div>
-                <div class='space-y-2 rounded-2xl border border-slate-700/60 bg-slate-900/60 px-4 py-3 text-xs text-slate-300'>
-                  <div class='flex items-center justify-between gap-4'>
-                    <span class='font-semibold text-slate-200'>Azure regions</span>
-                    <button
-                      type='button'
-                      class='text-xs font-semibold text-sky-300 hover:text-sky-200 disabled:text-slate-500'
-                      onClick={loadLocations}
-                      disabled={loadingLocs}
-                    >
-                      {loadingLocs ? 'Refreshing...' : 'Refresh'}
-                    </button>
-                  </div>
-                  <div>
-                    {loadingLocs
-                      ? (
-                        <span class='inline-flex items-center gap-2'>
-                          <LoadingIcon class='h-4 w-4 animate-spin text-sky-300' />{' '}
-                          Loading available regions...
-                        </span>
-                      )
-                      : locations.length > 0
-                      ? `${locations.length} regions available`
-                      : 'No regions returned yet.'}
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {foundationView === 'plan' && (
               <>
-                <div class='relative rounded-3xl border border-slate-700/60 bg-slate-900/70 p-6 shadow-xl space-y-6'>
-                  <div class={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${baseHighlight.accent} opacity-80`}>
+                <div class='relative overflow-hidden rounded-3xl border border-slate-700/60 bg-slate-900/70 p-6 shadow-xl space-y-6'>
+                  <div class={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${baseHighlight.accent} opacity-80 rounded-t-3xl`}>
                   </div>
                   <div class='relative space-y-6'>
                     <div class='flex items-start gap-4'>
@@ -507,12 +467,36 @@ export function PrivateCloudFoundationModal({
                                 </option>
                               ))}
                             </select>
-                            {!loadingLocs && locations.length === 0 && (
-                              <div class='mt-1 text-xs text-amber-300'>
-                                No regions returned. Refresh after your subscription permissions are
-                                confirmed.
+                            <div class='mt-2 space-y-1'>
+                              <div class='flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400'>
+                                <span>
+                                  {loadingLocs
+                                    ? (
+                                      <span class='inline-flex items-center gap-2'>
+                                        <LoadingIcon class='h-4 w-4 animate-spin text-sky-300' />{' '}
+                                        Loading available regions...
+                                      </span>
+                                    )
+                                    : locations.length > 0
+                                    ? `${locations.length} regions available`
+                                    : 'No regions returned yet.'}
+                                </span>
+                                <button
+                                  type='button'
+                                  class='text-xs font-semibold text-sky-300 hover:text-sky-200 disabled:text-slate-500'
+                                  onClick={loadLocations}
+                                  disabled={loadingLocs}
+                                >
+                                  {loadingLocs ? 'Refreshing...' : 'Refresh'}
+                                </button>
                               </div>
-                            )}
+                              {!loadingLocs && locations.length === 0 && (
+                                <div class='text-xs text-amber-300'>
+                                  No regions returned. Refresh after your subscription permissions are
+                                  confirmed.
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                         {baseErr && <div class='text-xs text-rose-400'>{baseErr}</div>}
@@ -550,8 +534,8 @@ export function PrivateCloudFoundationModal({
                   </div>
                 </div>
 
-                <div class='relative rounded-3xl border border-slate-700/60 bg-slate-900/70 p-6 shadow-xl space-y-6'>
-                  <div class={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${secureHighlight.accent} opacity-80`}>
+                <div class='relative overflow-hidden rounded-3xl border border-slate-700/60 bg-slate-900/70 p-6 shadow-xl space-y-6'>
+                  <div class={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${secureHighlight.accent} opacity-80 rounded-t-3xl`}>
                   </div>
                   <div class='relative space-y-5'>
                     <div class='flex items-start gap-4'>
@@ -605,8 +589,8 @@ export function PrivateCloudFoundationModal({
 
             {foundationView === 'manage' && (
               <>
-                <div class='relative rounded-3xl border border-slate-700/60 bg-slate-900/70 p-6 shadow-xl space-y-5'>
-                  <div class={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${baseHighlight.accent} opacity-80`}>
+                <div class='relative overflow-hidden rounded-3xl border border-slate-700/60 bg-slate-900/70 p-6 shadow-xl space-y-5'>
+                  <div class={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${baseHighlight.accent} opacity-80 rounded-t-3xl`}>
                   </div>
                   <div class='relative space-y-5'>
                     <div class='flex items-start gap-4'>
@@ -665,8 +649,8 @@ export function PrivateCloudFoundationModal({
                   </div>
                 </div>
 
-                <div class='relative rounded-3xl border border-slate-700/60 bg-slate-900/70 p-6 shadow-xl space-y-5'>
-                  <div class={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${secureHighlight.accent} opacity-80`}>
+                <div class='relative overflow-hidden rounded-3xl border border-slate-700/60 bg-slate-900/70 p-6 shadow-xl space-y-5'>
+                  <div class={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${secureHighlight.accent} opacity-80 rounded-t-3xl`}>
                   </div>
                   <div class='relative space-y-5'>
                     <div class='flex items-start gap-4'>
@@ -708,10 +692,10 @@ export function PrivateCloudFoundationModal({
             <div class='rounded-2xl border border-slate-700/60 bg-slate-900/60 p-4 text-slate-300'>
               Want it faster? Email{' '}
               <a
-                href='mailto:support@fathym.com?subject=Private%20Cloud%20Foundation%20Setup'
+                href='mailto:support@openindustrial.co?subject=Private%20Cloud%20Foundation%20Setup'
                 class='font-semibold text-sky-300 hover:text-sky-200'
               >
-                support@fathym.com
+                support@openindustrial.co
               </a>{' '}
               and the team will help provision it today.
             </div>
