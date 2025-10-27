@@ -664,26 +664,31 @@ function CustomHandlerStep({
 
           {enabled ? (
             <>
-              {segments.prefix.trim().length > 0 && (
-                <pre class='rounded bg-neutral-900/80 p-3 font-mono text-[12px] text-neutral-300'>
-                  {segments.prefix.replace(/\s+$/, '')}
-                </pre>
-              )}
-              <FormRow
-                label='Custom handler code'
-                description='Returns an updated InterfacePageData object. The generated data is provided as the seed argument.'
-              >
-                <SurfaceCodeMirror
-                  value={segments.body}
-                  onValueChange={handleBodyChange}
-                  class='min-h-[240px]'
-                />
-              </FormRow>
-              {segments.suffix.trim().length > 0 && (
-                <pre class='rounded bg-neutral-900/80 p-3 font-mono text-[12px] text-neutral-300'>
-                  {segments.suffix.replace(/^\s+/, '')}
-                </pre>
-              )}
+              <div class='flex flex-col gap-2'>
+                <div class='space-y-1'>
+                  <p class='text-sm font-semibold text-neutral-100'>Custom handler code</p>
+                  <p class='text-xs text-neutral-400'>
+                    Returns an updated InterfacePageData object. The generated data is provided as the seed argument.
+                  </p>
+                </div>
+                <div class='overflow-hidden rounded border border-neutral-800'>
+                  {segments.prefix.trim().length > 0 && (
+                    <pre class='m-0 border-b border-neutral-800 bg-neutral-900/80 px-3 py-2 font-mono text-[12px] text-neutral-300'>
+                      {segments.prefix.replace(/\s+$/, '')}
+                    </pre>
+                  )}
+                  <SurfaceCodeMirror
+                    value={segments.body}
+                    onValueChange={handleBodyChange}
+                    class='min-h-[240px] [&_.cm-editor]:rounded-none [&_.cm-editor]:border-none [&_.cm-editor]:bg-neutral-950'
+                  />
+                  {segments.suffix.trim().length > 0 && (
+                    <pre class='m-0 border-t border-neutral-800 bg-neutral-900/80 px-3 py-2 font-mono text-[12px] text-neutral-300'>
+                      {segments.suffix.replace(/^\s+/, '')}
+                    </pre>
+                  )}
+                </div>
+              </div>
 
               <FormRow label='Description'>
                 <textarea

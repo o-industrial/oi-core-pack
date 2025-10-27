@@ -58,6 +58,8 @@ const foundationHighlights: FoundationHighlight[] = [
   },
 ];
 
+const [baseHighlight, secureHighlight] = foundationHighlights;
+
 type PreconnectHighlight = {
   title: string;
   description: string;
@@ -360,31 +362,6 @@ export function PrivateCloudFoundationModal({
           </div>
         </section>
 
-        <section class='grid gap-6 md:grid-cols-3'>
-          {foundationHighlights.map((item) => (
-            <div
-              key={item.title}
-              class='group relative overflow-hidden rounded-3xl border border-slate-700/50 bg-slate-900/70 p-6 shadow-xl transition-transform duration-300 hover:-translate-y-1 hover:border-slate-500/60'
-            >
-              <div
-                class={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${item.accent} opacity-80`}
-              >
-              </div>
-              <div class='relative flex items-start gap-4'>
-                <div
-                  class={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${item.accent} text-slate-900 shadow-lg`}
-                >
-                  {item.icon}
-                </div>
-                <div class='space-y-2'>
-                  <h4 class='text-lg font-semibold text-white'>{item.title}</h4>
-                  <p class='text-sm leading-relaxed text-slate-300'>{item.description}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </section>
-
         {!hasWorkspaceCloud && (
           <section class='space-y-6'>
             <div class='relative overflow-hidden rounded-3xl border border-amber-400/60 bg-amber-500/10 p-6 text-amber-100 shadow-xl'>
@@ -429,225 +406,303 @@ export function PrivateCloudFoundationModal({
         )}
 
         {hasWorkspaceCloud && (
-          <section class='relative overflow-hidden rounded-3xl border border-slate-700/60 bg-slate-900/70 p-6 shadow-xl space-y-6'>
-            <div class='absolute inset-x-0 top-0 h-px bg-gradient-to-r from-emerald-400/50 via-sky-400/40 to-cyan-400/50 opacity-80'>
-            </div>
-
-            <div class='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
-              <div class='space-y-2'>
-                <h4 class='text-xl font-semibold text-white'>Workspace Cloud</h4>
-                <p class='text-sm text-slate-300'>
-                  {workspaceCloud?.Details?.Name || 'Workspace Cloud'} -{' '}
-                  {workspaceCloud?.Details?.Type || 'Azure'}
-                </p>
+          <section class='space-y-6'>
+            <div class='relative overflow-hidden rounded-3xl border border-slate-700/60 bg-slate-900/70 p-6 shadow-xl space-y-6'>
+              <div class='absolute inset-x-0 top-0 h-px bg-gradient-to-r from-emerald-400/50 via-sky-400/40 to-cyan-400/50 opacity-80'>
               </div>
-              <div class='rounded-2xl border border-slate-700/60 bg-slate-900/60 px-4 py-3 text-xs text-slate-300 space-y-2'>
-                <div class='flex items-center justify-between gap-4'>
-                  <span class='font-semibold text-slate-200'>Azure regions</span>
-                  <button
-                    type='button'
-                    class='text-xs font-semibold text-sky-300 hover:text-sky-200 disabled:text-slate-500'
-                    onClick={loadLocations}
-                    disabled={loadingLocs}
-                  >
-                    {loadingLocs ? 'Refreshing…' : 'Refresh'}
-                  </button>
+
+              <div class='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+                <div class='space-y-2'>
+                  <h4 class='text-xl font-semibold text-white'>Workspace Cloud</h4>
+                  <p class='text-sm text-slate-300'>
+                    {workspaceCloud?.Details?.Name || 'Workspace Cloud'} -{' '}
+                    {workspaceCloud?.Details?.Type || 'Azure'}
+                  </p>
                 </div>
-                <div>
-                  {loadingLocs
-                    ? (
-                      <span class='inline-flex items-center gap-2'>
-                        <LoadingIcon class='h-4 w-4 animate-spin text-sky-300' />{' '}
-                        Loading available regions...
-                      </span>
-                    )
-                    : locations.length > 0
-                    ? `${locations.length} regions available`
-                    : 'No regions returned yet.'}
+                <div class='space-y-2 rounded-2xl border border-slate-700/60 bg-slate-900/60 px-4 py-3 text-xs text-slate-300'>
+                  <div class='flex items-center justify-between gap-4'>
+                    <span class='font-semibold text-slate-200'>Azure regions</span>
+                    <button
+                      type='button'
+                      class='text-xs font-semibold text-sky-300 hover:text-sky-200 disabled:text-slate-500'
+                      onClick={loadLocations}
+                      disabled={loadingLocs}
+                    >
+                      {loadingLocs ? 'Refreshing...' : 'Refresh'}
+                    </button>
+                  </div>
+                  <div>
+                    {loadingLocs
+                      ? (
+                        <span class='inline-flex items-center gap-2'>
+                          <LoadingIcon class='h-4 w-4 animate-spin text-sky-300' />{' '}
+                          Loading available regions...
+                        </span>
+                      )
+                      : locations.length > 0
+                      ? `${locations.length} regions available`
+                      : 'No regions returned yet.'}
+                  </div>
                 </div>
               </div>
             </div>
 
             {foundationView === 'plan' && (
-              <div class='space-y-6'>
-                <div class='grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]'>
-                  <div class='space-y-4'>
-                    <h5 class='text-lg font-semibold text-white'>Define the foundation scope</h5>
-                    <p class='text-sm text-slate-300 leading-relaxed'>
-                      Choose the resource group and default region. These anchor the landing zone
-                      templates the automation will apply for your private cloud foundation.
-                    </p>
-                    <p class='text-xs text-slate-400 leading-relaxed'>
-                      Adjust these inputs anytime before you start provisioning. The live review
-                      below mirrors every change so stakeholders can see exactly what will deploy.
-                    </p>
+              <>
+                <div class='relative rounded-3xl border border-slate-700/60 bg-slate-900/70 p-6 shadow-xl space-y-6'>
+                  <div class={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${baseHighlight.accent} opacity-80`}>
                   </div>
-
-                  <div class='space-y-4 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-5'>
-                    <div class='grid gap-4'>
-                      <div>
-                        <label class='mb-1 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-400'>
-                          Resource Group Name
-                        </label>
-                        <input
-                          type='text'
-                          class='w-full rounded-lg border border-slate-700/60 bg-slate-900/60 px-3 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-400/60'
-                          value={rgName}
-                          onInput={(e) => setRgName((e.target as HTMLInputElement).value)}
-                        />
-                      </div>
-                      <div>
-                        <label class='mb-1 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-400'>
-                          Region
-                        </label>
-                        <select
-                          class='w-full rounded-lg border border-slate-700/60 bg-slate-900/60 px-3 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-400/60'
-                          value={region}
-                          disabled={loadingLocs || locations.length === 0}
-                          onChange={(e) => setRegion((e.target as HTMLSelectElement).value)}
-                        >
-                          {locations.map((l) => (
-                            <option value={l.Name} key={l.Name}>
-                              {l.Name}
-                            </option>
-                          ))}
-                        </select>
-                        {!loadingLocs && locations.length === 0 && (
-                          <div class='mt-1 text-xs text-amber-300'>
-                            No regions returned. Refresh after your subscription permissions are
-                            confirmed.
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    {baseErr && <div class='text-xs text-rose-400'>{baseErr}</div>}
-                    <div class='flex flex-wrap items-center gap-3'>
-                      <Action
-                        onClick={submitBase}
-                        disabled={baseBusy || !region || !rgName || loadingLocs}
-                      >
-                        {baseBusy ? 'Provisioning foundation...' : 'Start provisioning'}
-                      </Action>
-                      {isLocalPreview && (
-                        <Action
-                          styleType={ActionStyleTypes.Outline}
-                          onClick={() => {
-                            setBaseBusy(false);
-                            setBaseDone(false);
-                            setFoundationView('manage');
-                          }}
-                        >
-                          Preview management view
-                        </Action>
-                      )}
-                      <span class='text-xs text-slate-400'>
-                        Clicking start provisioning moves you to the management dashboard.
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div class='space-y-4 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-5'>
-                  <div class='space-y-3'>
-                    <h5 class='text-lg font-semibold text-white'>Review your deployment plan</h5>
-                    <p class='text-sm text-slate-300 leading-relaxed'>
-                      Confirm the resources and guardrails that will deploy with this foundation.
-                    </p>
-                    <div class='grid gap-3 sm:grid-cols-2'>
-                      <div class='rounded-xl border border-slate-700/60 bg-slate-900/60 p-3 text-xs text-slate-300'>
-                        <div class='font-semibold text-slate-100'>Resource group</div>
-                        <div class='mt-1'>
-                          {rgName || 'Not set'}
-                        </div>
-                      </div>
-                      <div class='rounded-xl border border-slate-700/60 bg-slate-900/60 p-3 text-xs text-slate-300'>
-                        <div class='font-semibold text-slate-100'>Region</div>
-                        <div class='mt-1'>
-                          {region || 'Select a region'}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class='grid gap-4 md:grid-cols-2'>
-                    {blueprintCards.map((item) => (
+                  <div class='relative space-y-6'>
+                    <div class='flex items-start gap-4'>
                       <div
-                        key={item.title}
-                        class='rounded-2xl border border-slate-700/60 bg-slate-900/70 p-4'
+                        class={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${baseHighlight.accent} text-slate-900 shadow-lg`}
                       >
-                        <div class='text-sm font-semibold text-white'>{item.title}</div>
-                        <div class='mt-1 text-xs text-slate-300'>{item.summary}</div>
-                        <p class='mt-2 text-xs text-slate-400 leading-relaxed'>{item.why}</p>
+                        {baseHighlight.icon}
                       </div>
-                    ))}
+                      <div class='space-y-2'>
+                        <h4 class='text-xl font-semibold text-white'>{baseHighlight.title}</h4>
+                        <p class='text-sm leading-relaxed text-slate-300'>
+                          {baseHighlight.description}
+                        </p>
+                        <div class='space-y-1 text-xs leading-relaxed text-slate-400'>
+                          <p>
+                            Choose the resource group and default region. These anchor the landing zone
+                            templates the automation will apply for your private cloud foundation.
+                          </p>
+                          <p>
+                            Adjust these inputs anytime before you start provisioning. The live review
+                            below mirrors every change so stakeholders can see exactly what will deploy.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class='space-y-5'>
+                      <div class='space-y-4 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-5'>
+                        <div class='grid gap-4 md:grid-cols-2'>
+                          <div>
+                            <label class='mb-1 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-400'>
+                              Resource Group Name
+                            </label>
+                            <input
+                              type='text'
+                              class='w-full rounded-lg border border-slate-700/60 bg-slate-900/60 px-3 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-400/60'
+                              value={rgName}
+                              onInput={(e) => setRgName((e.target as HTMLInputElement).value)}
+                            />
+                          </div>
+                          <div>
+                            <label class='mb-1 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-400'>
+                              Region
+                            </label>
+                            <select
+                              class='w-full rounded-lg border border-slate-700/60 bg-slate-900/60 px-3 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-400/60'
+                              value={region}
+                              disabled={loadingLocs || locations.length === 0}
+                              onChange={(e) => setRegion((e.target as HTMLSelectElement).value)}
+                            >
+                              {locations.map((l) => (
+                                <option value={l.Name} key={l.Name}>
+                                  {l.Name}
+                                </option>
+                              ))}
+                            </select>
+                            {!loadingLocs && locations.length === 0 && (
+                              <div class='mt-1 text-xs text-amber-300'>
+                                No regions returned. Refresh after your subscription permissions are
+                                confirmed.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {baseErr && <div class='text-xs text-rose-400'>{baseErr}</div>}
+                      </div>
+                      <div class='pt-2'>
+                        <div class='sticky bottom-4 z-20 rounded-2xl border border-slate-700/70 bg-slate-950/90 p-4 shadow-xl backdrop-blur'>
+                          <div class='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+                            <div class='flex flex-wrap items-center gap-3'>
+                              <Action
+                                onClick={submitBase}
+                                disabled={baseBusy || !region || !rgName || loadingLocs}
+                              >
+                                {baseBusy ? 'Provisioning foundation...' : 'Start provisioning'}
+                              </Action>
+                              {isLocalPreview && (
+                                <Action
+                                  styleType={ActionStyleTypes.Outline}
+                                  onClick={() => {
+                                    setBaseBusy(false);
+                                    setBaseDone(false);
+                                    setFoundationView('manage');
+                                  }}
+                                >
+                                  Preview management view
+                                </Action>
+                              )}
+                            </div>
+                            <span class='text-xs text-slate-400'>
+                              Clicking start provisioning moves you to the management dashboard.
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+
+                <div class='relative rounded-3xl border border-slate-700/60 bg-slate-900/70 p-6 shadow-xl space-y-6'>
+                  <div class={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${secureHighlight.accent} opacity-80`}>
+                  </div>
+                  <div class='relative space-y-5'>
+                    <div class='flex items-start gap-4'>
+                      <div
+                        class={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${secureHighlight.accent} text-slate-900 shadow-lg`}
+                      >
+                        {secureHighlight.icon}
+                      </div>
+                      <div class='space-y-2'>
+                        <h4 class='text-xl font-semibold text-white'>{secureHighlight.title}</h4>
+                        <p class='text-sm leading-relaxed text-slate-300'>
+                          {secureHighlight.description}
+                        </p>
+                        <p class='text-xs text-slate-400 leading-relaxed'>
+                          Confirm the resources and guardrails that will deploy with this foundation.
+                        </p>
+                      </div>
+                    </div>
+                    <div class='space-y-4'>
+                      <div class='grid gap-3 sm:grid-cols-2'>
+                        <div class='rounded-xl border border-slate-700/60 bg-slate-900/60 p-3 text-xs text-slate-300'>
+                          <div class='font-semibold text-slate-100'>Resource group</div>
+                          <div class='mt-1'>
+                            {rgName || 'Not set'}
+                          </div>
+                        </div>
+                        <div class='rounded-xl border border-slate-700/60 bg-slate-900/60 p-3 text-xs text-slate-300'>
+                          <div class='font-semibold text-slate-100'>Region</div>
+                          <div class='mt-1'>
+                            {region || 'Select a region'}
+                          </div>
+                        </div>
+                      </div>
+                      <div class='grid gap-4 md:grid-cols-2'>
+                        {blueprintCards.map((item) => (
+                          <div
+                            key={item.title}
+                            class='rounded-2xl border border-slate-700/60 bg-slate-900/70 p-4'
+                          >
+                            <div class='text-sm font-semibold text-white'>{item.title}</div>
+                            <div class='mt-1 text-xs text-slate-300'>{item.summary}</div>
+                            <p class='mt-2 text-xs text-slate-400 leading-relaxed'>{item.why}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
             )}
 
             {foundationView === 'manage' && (
-              <div class='space-y-5'>
-                <div class='space-y-3 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-5'>
-                  <div class='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
-                    <div>
-                      <h5 class='text-lg font-semibold text-white'>Foundation status</h5>
-                      <p class='text-sm text-slate-300'>
-                        {rgName} - {region || 'Region pending'}
-                      </p>
-                    </div>
-                    <span class={`text-xs font-semibold ${managementStatusClass}`}>
-                      {managementStatusText}
-                    </span>
+              <>
+                <div class='relative rounded-3xl border border-slate-700/60 bg-slate-900/70 p-6 shadow-xl space-y-5'>
+                  <div class={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${baseHighlight.accent} opacity-80`}>
                   </div>
-                  <p class='text-sm text-slate-300 leading-relaxed'>
-                    Keep this view open while automation runs. We will extend it with live activity
-                    and hand-offs for security operations next.
-                  </p>
-                  {!baseBusy && (
-                    <div class='flex flex-wrap items-center gap-2'>
-                      <Action
-                        styleType={ActionStyleTypes.Outline}
-                        onClick={() => setFoundationView('plan')}
+                  <div class='relative space-y-5'>
+                    <div class='flex items-start gap-4'>
+                      <div
+                        class={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${baseHighlight.accent} text-slate-900 shadow-lg`}
                       >
-                        Adjust foundation inputs
-                      </Action>
-                      {isLocalPreview && (
-                        <>
-                          <Action
-                            styleType={ActionStyleTypes.Outline}
-                            onClick={() => setBaseDone(false)}
-                          >
-                            Show queued state
-                          </Action>
-                          <Action
-                            styleType={ActionStyleTypes.Outline}
-                            onClick={() => setBaseDone(true)}
-                          >
-                            Show ready state
-                          </Action>
-                        </>
-                      )}
+                        {baseHighlight.icon}
+                      </div>
+                      <div class='space-y-2'>
+                        <h4 class='text-xl font-semibold text-white'>{baseHighlight.title}</h4>
+                        <p class='text-sm leading-relaxed text-slate-300'>
+                          Keep this view open while automation runs. We will extend it with live activity
+                          and hand-offs for security operations next.
+                        </p>
+                      </div>
                     </div>
-                  )}
-                </div>
-                <div class='grid gap-4 md:grid-cols-2'>
-                  {managementCards.map((item) => (
-                    <div
-                      key={item.title}
-                      class='rounded-2xl border border-slate-700/60 bg-slate-900/70 p-4'
-                    >
-                      <div class='flex items-center justify-between gap-3 text-sm'>
-                        <h5 class='font-semibold text-white'>{item.title}</h5>
-                        <span class={`text-xs ${managementStatusClass}`}>
-                          {item.status}
+                    <div class='space-y-3 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-5'>
+                      <div class='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+                        <div>
+                          <h5 class='text-lg font-semibold text-white'>Foundation status</h5>
+                          <p class='text-sm text-slate-300'>
+                            {rgName} - {region || 'Region pending'}
+                          </p>
+                        </div>
+                        <span class={`text-xs font-semibold ${managementStatusClass}`}>
+                          {managementStatusText}
                         </span>
                       </div>
-                      <p class='mt-2 text-xs text-slate-400 leading-relaxed'>
-                        {item.description}
-                      </p>
+                      {!baseBusy && (
+                        <div class='flex flex-wrap items-center gap-2'>
+                          <Action
+                            styleType={ActionStyleTypes.Outline}
+                            onClick={() => setFoundationView('plan')}
+                          >
+                            Adjust foundation inputs
+                          </Action>
+                          {isLocalPreview && (
+                            <>
+                              <Action
+                                styleType={ActionStyleTypes.Outline}
+                                onClick={() => setBaseDone(false)}
+                              >
+                                Show queued state
+                              </Action>
+                              <Action
+                                styleType={ActionStyleTypes.Outline}
+                                onClick={() => setBaseDone(true)}
+                              >
+                                Show ready state
+                              </Action>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  ))}
+                  </div>
                 </div>
-              </div>
+
+                <div class='relative rounded-3xl border border-slate-700/60 bg-slate-900/70 p-6 shadow-xl space-y-5'>
+                  <div class={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${secureHighlight.accent} opacity-80`}>
+                  </div>
+                  <div class='relative space-y-5'>
+                    <div class='flex items-start gap-4'>
+                      <div
+                        class={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${secureHighlight.accent} text-slate-900 shadow-lg`}
+                      >
+                        {secureHighlight.icon}
+                      </div>
+                      <div class='space-y-2'>
+                        <h4 class='text-xl font-semibold text-white'>{secureHighlight.title}</h4>
+                        <p class='text-sm leading-relaxed text-slate-300'>
+                          Follow each track to confirm your operations guardrails finish landing.
+                        </p>
+                      </div>
+                    </div>
+                    <div class='grid gap-4 md:grid-cols-2'>
+                      {managementCards.map((item) => (
+                        <div
+                          key={item.title}
+                          class='rounded-2xl border border-slate-700/60 bg-slate-900/70 p-4'
+                        >
+                          <div class='flex items-center justify-between gap-3 text-sm'>
+                            <h5 class='font-semibold text-white'>{item.title}</h5>
+                            <span class={`text-xs ${managementStatusClass}`}>
+                              {item.status}
+                            </span>
+                          </div>
+                          <p class='mt-2 text-xs text-slate-400 leading-relaxed'>
+                            {item.description}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </>
             )}
 
             <div class='rounded-2xl border border-slate-700/60 bg-slate-900/60 p-4 text-slate-300'>
