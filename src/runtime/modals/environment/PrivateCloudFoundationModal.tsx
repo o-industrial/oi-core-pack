@@ -60,6 +60,62 @@ const foundationHighlights: FoundationHighlight[] = [
 
 const [baseHighlight, secureHighlight] = foundationHighlights;
 
+type CloudFoundationPlanNetwork = {
+  Name: string;
+  AddressSpace: string;
+  Subnets: Array<{ Name: string; AddressPrefix: string }>;
+};
+
+type CloudFoundationPlanKeyVaultPolicy = {
+  TenantId: string;
+  ObjectId: string;
+  Permissions: {
+    Keys?: string[];
+    Secrets?: string[];
+    Certificates?: string[];
+    Storage?: string[];
+  };
+};
+
+type CloudFoundationPlanData = {
+  WorkspaceLookup: string;
+  Providers?: string[];
+  ResourceGroup: {
+    Name: string;
+    Location: string;
+    Tags?: Record<string, string>;
+  };
+  Network?: CloudFoundationPlanNetwork;
+  KeyVault?: {
+    VaultName: string;
+    AccessPolicies?: CloudFoundationPlanKeyVaultPolicy[];
+    Tags?: Record<string, string>;
+  };
+  LogAnalytics?: {
+    WorkspaceName: string;
+    RetentionInDays?: number;
+    Tags?: Record<string, string>;
+  };
+  Diagnostics?: {
+    WorkspaceResourceId?: string;
+    Targets: Array<{
+      ResourceId: string;
+      Logs?: string[];
+      Metrics?: string[];
+    }>;
+  };
+  Governance?: {
+    Scope: string;
+    PolicyDefinitions?: Array<{ Id: string; Parameters?: Record<string, unknown> }>;
+    RoleAssignments?: Array<{
+      RoleDefinitionId: string;
+      PrincipalId: string;
+      Condition?: string;
+      ConditionVersion?: string;
+    }>;
+  };
+};
+
 type PreconnectHighlight = {
   title: string;
   description: string;
@@ -197,10 +253,31 @@ export function PrivateCloudFoundationModal({
       setBaseErr(undefined);
       setBaseDone(false);
       setFoundationView('manage');
+      const workspaceLookup = eac?.EnterpriseLookup || '';
+      const defaultProviders = [
+        'Microsoft.Resources',
+        'Microsoft.Network',
+        'Microsoft.KeyVault',
+        'Microsoft.OperationalInsights',
+        'Microsoft.Insights',
+        'Microsoft.Authorization',
+      ];
+      const foundationPlan: CloudFoundationPlanData = {
+        WorkspaceLookup: workspaceLookup,
+        Providers: defaultProviders,
+        ResourceGroup: {
+          Name: rgName,
+          Location: region,
+        },
+      };
       const res = await fetch('/workspace/api/o-industrial/calz/base', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ region, rgName }),
+        body: JSON.stringify({
+          region,
+          rgName,
+          foundationPlan,
+        }),
       });
       const data = await res.json();
       if (!data?.status) throw new Error('No status returned');

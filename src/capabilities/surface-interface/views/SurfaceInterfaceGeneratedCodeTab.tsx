@@ -878,19 +878,21 @@ import {
 import * as Module from "./module.tsx";
 
 ${guidance.trim().length > 0 ? `${guidance}\n\n` : ''}export async function loadPageData(
-  req: Request,
-  ctx: InterfaceRequestContext,
+  request: Request,
+  context: InterfaceRequestContext,
   services: InterfaceServices,
   seed: InterfacePageData,
 ): Promise<InterfacePageData> {
   const data = { ...seed };
+  void request;
+  void context;
   void services;
 
   if (typeof Module.loadServerData === "function") {
     const result = await Module.loadServerData({
-      request: req,
-      params: ctx?.Params ?? {},
-      headers: req.headers,
+      request,
+      params: context?.Params ?? {},
+      headers: request.headers,
       previous: data,
       services,
     } satisfies InterfaceServerContext);

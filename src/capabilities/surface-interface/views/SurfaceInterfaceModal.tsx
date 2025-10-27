@@ -37,8 +37,11 @@ import {
 } from './interfaceDefaults.ts';
 import { reconcileInterfacePageData } from './pageDataHelpers.ts';
 import {
+  DEFAULT_HANDLER_BODY,
   buildGeneratedDescription,
   buildGeneratedMessages,
+  composeHandlerCode,
+  extractHandlerBody,
   generateHandlerStub,
   type SurfaceInterfaceHandlerPlanStep,
   SurfaceInterfaceHandlerTab,
@@ -161,6 +164,9 @@ export function SurfaceInterfaceModal({
   const [handlerCode, setHandlerCode] = useState(
     resolvedDetails.PageHandler?.Code ?? '',
   );
+  const [handlerBody, setHandlerBody] = useState(() =>
+    extractHandlerBody(resolvedDetails.PageHandler?.Code ?? '')
+  );
   const [handlerEnabled, setHandlerEnabled] = useState<boolean>(() =>
     (resolvedDetails.PageHandler?.Code ?? '').trim().length > 0
   );
@@ -236,6 +242,7 @@ export function SurfaceInterfaceModal({
     const incomingHandlerCode = resolvedDetails.PageHandler?.Code ?? '';
     setHandlerCode(incomingHandlerCode);
     setHandlerEnabled(incomingHandlerCode.trim().length > 0);
+    setHandlerBody(extractHandlerBody(incomingHandlerCode));
     lastGeneratedHandlerRef.current.code = incomingHandlerCode.trim();
     lastSyncedHandlerRef.current.code = incomingHandlerCode.trim();
 
@@ -276,10 +283,15 @@ export function SurfaceInterfaceModal({
     setImports(next);
   }, []);
 
-  const handleHandlerCodeChange = useCallback((next: string) => {
-    handlerDirtyRef.current = true;
-    setHandlerCode(next);
-  }, []);
+  const handleHandlerBodyChange = useCallback(
+    (next: string) => {
+      handlerDirtyRef.current = true;
+      setHandlerBody(next);
+      const composed = next.trim().length ? composeHandlerCode(next) : '';
+      setHandlerCode(composed);
+    },
+    [],
+  );
 
   const handleHandlerDescriptionChange = useCallback((next: string) => {
     handlerDirtyRef.current = true;
@@ -292,8 +304,17 @@ export function SurfaceInterfaceModal({
   }, []);
 
   const handleHandlerEnabledChange = useCallback((next: boolean) => {
+    handlerDirtyRef.current = true;
     setHandlerEnabled(next);
-  }, []);
+    if (!next) {
+      setHandlerBody('');
+      setHandlerCode('');
+    } else if (handlerBody.trim().length === 0) {
+      const defaultBody = DEFAULT_HANDLER_BODY;
+      setHandlerBody(defaultBody);
+      setHandlerCode(composeHandlerCode(defaultBody));
+    }
+  }, [handlerBody]);
 
   const handlePageCodeChange = useCallback((next: string) => {
     setPageCode(next);
@@ -494,26 +515,28 @@ export function SurfaceInterfaceModal({
 
     const previousGenerated = { ...lastGeneratedHandlerRef.current };
 
-  if (!handlerEnabled) {
-    lastGeneratedHandlerRef.current.code = trimmedStub;
-    lastGeneratedHandlerRef.current.description = trimmedDescription;
-    lastGeneratedHandlerRef.current.messages = trimmedMessages;
-    return;
-  }
+    if (!handlerEnabled) {
+      lastGeneratedHandlerRef.current.code = trimmedStub;
+      lastGeneratedHandlerRef.current.description = trimmedDescription;
+      lastGeneratedHandlerRef.current.messages = trimmedMessages;
+      return;
+    }
 
-  if (handlerDirtyRef.current) {
-    lastGeneratedHandlerRef.current.code = trimmedStub;
-    lastGeneratedHandlerRef.current.description = trimmedDescription;
-    lastGeneratedHandlerRef.current.messages = trimmedMessages;
-    return;
-  }
+    if (handlerDirtyRef.current) {
+      lastGeneratedHandlerRef.current.code = trimmedStub;
+      lastGeneratedHandlerRef.current.description = trimmedDescription;
+      lastGeneratedHandlerRef.current.messages = trimmedMessages;
+      return;
+    }
 
-  const currentCode = handlerCode.trim();
-  if (
-    trimmedStub.length > 0 &&
-    (currentCode.length === 0 || currentCode === previousGenerated.code)
-  ) {
+    const currentCode = handlerCode.trim();
+    if (
+      trimmedStub.length > 0 &&
+      (currentCode.length === 0 || currentCode === previousGenerated.code)
+    ) {
+      const nextBody = extractHandlerBody(stub);
       setHandlerCode(stub);
+      setHandlerBody(nextBody);
       handlerDirtyRef.current = false;
       lastGeneratedHandlerRef.current.code = trimmedStub;
     } else {
@@ -556,6 +579,7 @@ export function SurfaceInterfaceModal({
     handlerDescription,
     handlerMessagesText,
     handlerEnabled,
+    setHandlerBody,
     setHandlerCode,
     setHandlerDescription,
     setHandlerMessagesText,
@@ -597,6 +621,7 @@ export function SurfaceInterfaceModal({
         })),
       },
       handler: {
+        body: handlerBody,
         code: handlerCode,
         description: handlerDescription,
         messages: parseMessages(handlerMessagesText),
@@ -616,8 +641,9 @@ export function SurfaceInterfaceModal({
       userFirstName,
       imports,
       pageDataType,
-      generatedSliceEntries,
-      handlerCode,
+    generatedSliceEntries,
+    handlerBody,
+    handlerCode,
       handlerDescription,
       handlerMessagesText,
       pageCode,
@@ -660,11 +686,11 @@ export function SurfaceInterfaceModal({
             steps={handlerPlan}
             onStepsChange={setHandlerPlan}
             onDataConnectionChange={handleDataConnectionFeaturesChange}
-            handlerCode={handlerCode}
+            handlerBody={handlerBody}
             handlerEnabled={handlerEnabled}
             handlerDescription={handlerDescription}
             handlerMessages={handlerMessagesText}
-            onHandlerCodeChange={handleHandlerCodeChange}
+            onHandlerBodyChange={handleHandlerBodyChange}
             onHandlerEnabledChange={handleHandlerEnabledChange}
             onHandlerDescriptionChange={handleHandlerDescriptionChange}
             onHandlerMessagesChange={handleHandlerMessagesChange}
@@ -727,7 +753,6 @@ export function SurfaceInterfaceModal({
       handleAccessModeChange,
       handleActionModeChange,
       handleDataConnectionFeaturesChange,
-      handleHandlerCodeChange,
       handleHandlerDescriptionChange,
       handleHandlerEnabledChange,
       handleHandlerMessagesChange,

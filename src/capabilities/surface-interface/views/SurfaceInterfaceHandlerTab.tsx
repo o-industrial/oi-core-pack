@@ -3,7 +3,6 @@ import {
   IntentTypes,
   type JSX,
   ToggleCheckbox,
-  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -35,6 +34,39 @@ export type SurfaceInterfaceHandlerPlanStep = {
 
 type HandlerStep = SurfaceInterfaceHandlerPlanStep;
 
+export const HANDLER_PREFIX = `export async function loadPageData(
+  request: Request,
+  context: Record<string, unknown>,
+  services: InterfaceServices,
+  seed: InterfacePageData,
+): Promise<InterfacePageData> {
+`;
+
+export const HANDLER_SUFFIX = `}
+`;
+
+export const DEFAULT_HANDLER_BODY = `  void request;
+  void context;
+  void services;
+
+  return seed;
+`;
+
+export function composeHandlerCode(body: string): string {
+  return `${HANDLER_PREFIX}${body}${HANDLER_SUFFIX}`;
+}
+
+export function extractHandlerBody(code: string): string {
+  const source = code ?? '';
+  if (!source.trim().length) return '';
+  const openIndex = source.indexOf('{');
+  const closeIndex = source.lastIndexOf('}');
+  if (openIndex === -1 || closeIndex === -1 || closeIndex <= openIndex) {
+    return source;
+  }
+  return source.slice(openIndex + 1, closeIndex);
+}
+
 type SurfaceInterfaceHandlerTabProps = {
   generatedSlices: Array<[string, EaCInterfaceGeneratedDataSlice]>;
   steps: SurfaceInterfaceHandlerPlanStep[];
@@ -43,11 +75,11 @@ type SurfaceInterfaceHandlerTabProps = {
     key: string,
     features: EaCInterfaceDataConnectionFeatures | undefined
   ) => void;
-  handlerCode: string;
+  handlerBody: string;
   handlerEnabled: boolean;
   handlerDescription: string;
   handlerMessages: string;
-  onHandlerCodeChange: (next: string) => void;
+  onHandlerBodyChange: (next: string) => void;
   onHandlerEnabledChange: (next: boolean) => void;
   onHandlerDescriptionChange: (next: string) => void;
   onHandlerMessagesChange: (next: string) => void;
@@ -65,11 +97,11 @@ type HandlerPlannerProps = {
     key: string,
     features: EaCInterfaceDataConnectionFeatures | undefined
   ) => void;
-  handlerCode: string;
+  handlerBody: string;
   handlerEnabled: boolean;
   handlerDescription: string;
   handlerMessages: string;
-  onHandlerCodeChange: (next: string) => void;
+  onHandlerBodyChange: (next: string) => void;
   onHandlerEnabledChange: (next: boolean) => void;
   onHandlerDescriptionChange: (next: string) => void;
   onHandlerMessagesChange: (next: string) => void;
@@ -89,11 +121,11 @@ export function SurfaceInterfaceHandlerTab({
   steps,
   onStepsChange,
   onDataConnectionChange,
-  handlerCode,
+  handlerBody,
   handlerEnabled,
   handlerDescription,
   handlerMessages,
-  onHandlerCodeChange,
+  onHandlerBodyChange,
   onHandlerEnabledChange,
   onHandlerDescriptionChange,
   onHandlerMessagesChange,
@@ -138,11 +170,11 @@ export function SurfaceInterfaceHandlerTab({
         slicesByKey={slicesByKey}
         onStepChange={handleStepChange}
         onDataConnectionChange={onDataConnectionChange}
-        handlerCode={handlerCode}
+        handlerBody={handlerBody}
         handlerEnabled={handlerEnabled}
         handlerDescription={handlerDescription}
         handlerMessages={handlerMessages}
-        onHandlerCodeChange={onHandlerCodeChange}
+        onHandlerBodyChange={onHandlerBodyChange}
         onHandlerEnabledChange={onHandlerEnabledChange}
         onHandlerDescriptionChange={onHandlerDescriptionChange}
         onHandlerMessagesChange={onHandlerMessagesChange}
@@ -278,11 +310,11 @@ function HandlerPlanner({
   slicesByKey,
   onStepChange,
   onDataConnectionChange,
-  handlerCode,
+  handlerBody,
   handlerEnabled,
   handlerDescription,
   handlerMessages,
-  onHandlerCodeChange,
+  onHandlerBodyChange,
   onHandlerEnabledChange,
   onHandlerDescriptionChange,
   onHandlerMessagesChange,
@@ -335,13 +367,13 @@ function HandlerPlanner({
 
           <CustomHandlerStep
             stepIndex={steps.length}
-            code={handlerCode}
+            body={handlerBody}
             enabled={handlerEnabled}
             description={handlerDescription}
             messages={handlerMessages}
             defaultDescription={defaultHandlerDescription}
             defaultMessages={defaultHandlerMessages}
-            onCodeChange={onHandlerCodeChange}
+            onBodyChange={onHandlerBodyChange}
             onEnabledChange={onHandlerEnabledChange}
             onDescriptionChange={onHandlerDescriptionChange}
             onMessagesChange={onHandlerMessagesChange}
@@ -570,13 +602,13 @@ function FormRow({ label, description, disabled = false, children }: FormRowProp
 }
 type CustomHandlerStepProps = {
   stepIndex: number;
-  code: string;
+  body: string;
   enabled: boolean;
   description: string;
   messages: string;
   defaultDescription: string;
   defaultMessages: string;
-  onCodeChange: (next: string) => void;
+  onBodyChange: (next: string) => void;
   onEnabledChange: (next: boolean) => void;
   onDescriptionChange: (next: string) => void;
   onMessagesChange: (next: string) => void;
@@ -584,13 +616,13 @@ type CustomHandlerStepProps = {
 
 function CustomHandlerStep({
   stepIndex,
-  code,
+  body,
   enabled,
   description,
   messages,
   defaultDescription,
   defaultMessages,
-  onCodeChange,
+  onBodyChange,
   onEnabledChange,
   onDescriptionChange,
   onMessagesChange,
@@ -601,34 +633,12 @@ function CustomHandlerStep({
     if (enabled) setIsOpen(true);
   }, [enabled]);
 
-  const lockedLines = useMemo(() => {
-    if (!enabled) return undefined;
-    const lines = code.split('\n');
-    if (lines.length === 0) return undefined;
-    const result = new Set<number>();
-    const first = lines[0]?.trim() ?? '';
-    if (first.includes('loadPageData')) result.add(1);
-    for (let index = lines.length - 1; index >= 0; index -= 1) {
-      const trimmed = lines[index]?.trim();
-      if (!trimmed) continue;
-      if (trimmed === '}') result.add(index + 1);
-      break;
-    }
-    return result.size ? Array.from(result.values()).sort((a, b) => a - b) : undefined;
-  }, [code, enabled]);
-
-  const handleCodeChange = useCallback(
-    (next: string) => {
-      onCodeChange(next);
-    },
-    [onCodeChange],
-  );
 
   const handleToggle = (checked: boolean) => {
     if (checked) {
       if (!enabled) {
-        if (code.trim().length === 0) {
-          onCodeChange(buildCustomHandlerSkeleton());
+        if (body.trim().length === 0) {
+          onBodyChange(DEFAULT_HANDLER_BODY);
         }
         if (description.trim().length === 0 && defaultDescription.trim().length > 0) {
           onDescriptionChange(defaultDescription);
@@ -640,7 +650,7 @@ function CustomHandlerStep({
       onEnabledChange(true);
       setIsOpen(true);
     } else {
-      onCodeChange('');
+      onBodyChange('');
       onDescriptionChange('');
       onMessagesChange('');
       onEnabledChange(false);
@@ -686,12 +696,17 @@ function CustomHandlerStep({
                   </p>
                 </div>
                 <div class='overflow-hidden rounded border border-neutral-800'>
+                  <pre class='m-0 border-b border-neutral-800 bg-neutral-900/80 px-3 py-2 font-mono text-[12px] text-neutral-300'>
+                    {HANDLER_PREFIX.replace(/\s+$/, '')}
+                  </pre>
                   <SurfaceCodeMirror
-                    value={code}
-                    onValueChange={handleCodeChange}
-                    lockedLineNumbers={lockedLines}
+                    value={body}
+                    onValueChange={onBodyChange}
                     class='min-h-[240px] [&_.cm-editor]:rounded-none [&_.cm-editor]:border-none [&_.cm-editor]:bg-neutral-950'
                   />
+                  <pre class='m-0 border-t border-neutral-800 bg-neutral-900/80 px-3 py-2 font-mono text-[12px] text-neutral-300'>
+                    {HANDLER_SUFFIX.replace(/^\s+/, '')}
+                  </pre>
                 </div>
               </div>
 
@@ -1109,15 +1124,7 @@ type HandlerStubOptions = {
 };
 
 function buildCustomHandlerSkeleton(): string {
-  return `export async function loadPageData(
-  _req: Request,
-  _ctx: Record<string, unknown>,
-  _services: InterfaceServices,
-  seed: InterfacePageData,
-): Promise<InterfacePageData> {
-  return seed;
-}
-`;
+  return composeHandlerCode(DEFAULT_HANDLER_BODY);
 }
 
 export function generateHandlerStub(
@@ -1133,12 +1140,14 @@ export function generateHandlerStub(
     ' * Keep the export name stable so dynamic loaders can locate it.',
     ' */',
     'export async function loadPageData(',
-    '  req: Request,',
-    '  ctx: Record<string, unknown>,',
+    '  request: Request,',
+    '  context: Record<string, unknown>,',
     '  services: InterfaceServices,',
     `  seed: ${returnType},`,
     `): Promise<${returnType}> {`,
     `  const data: ${returnType} = { ...seed };`,
+    '  void request;',
+    '  void context;',
     '  void services;',
   ];
 
@@ -1146,13 +1155,13 @@ export function generateHandlerStub(
     lines.push(
       '',
       '  const callAction = async (slice: string, action: string, input?: unknown) => {',
-      '    const containers = (ctx as Record<string, unknown>)?.actions ??',
-      '      (ctx as Record<string, unknown>)?.Actions ?? {};',
+      '    const containers = (context as Record<string, unknown>)?.actions ??',
+      '      (context as Record<string, unknown>)?.Actions ?? {};',
       '    const handler = (containers as Record<string, Record<string, unknown>>)[slice]?.[action];',
       "    if (typeof handler === 'function') {",
-      '      return await (handler as (options: { req: Request; ctx: Record<string, unknown>; input?: unknown }) => Promise<unknown> | unknown)({',
-      '        req,',
-      '        ctx,',
+      '      return await (handler as (options: { request: Request; context: Record<string, unknown>; input?: unknown }) => Promise<unknown> | unknown)({',
+      '        request,',
+      '        context,',
       '        input,',
       '      });',
       '    }',
