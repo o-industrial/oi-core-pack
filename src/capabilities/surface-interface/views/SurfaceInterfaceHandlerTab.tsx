@@ -45,14 +45,11 @@ export const HANDLER_PREFIX = `export async function loadPageData(
 export const HANDLER_SUFFIX = `}
 `;
 
-export const DEFAULT_HANDLER_BODY = `  void request;
-  void context;
-  void services;
-
-  return seed;
+export const DEFAULT_HANDLER_BODY = `  return seed;
 `;
 
 export function composeHandlerCode(body: string): string {
+  if (!body.trim().length) return '';
   return `${HANDLER_PREFIX}${body}${HANDLER_SUFFIX}`;
 }
 
@@ -1146,9 +1143,6 @@ export function generateHandlerStub(
     `  seed: ${returnType},`,
     `): Promise<${returnType}> {`,
     `  const data: ${returnType} = { ...seed };`,
-    '  void request;',
-    '  void context;',
-    '  void services;',
   ];
 
   if (executableSteps.length > 0) {

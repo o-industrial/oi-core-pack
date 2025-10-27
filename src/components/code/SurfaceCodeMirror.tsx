@@ -1,7 +1,7 @@
 import { EditorState, type Extension, StateEffect } from 'npm:@codemirror/state@6.5.2';
 import { EditorView, highlightActiveLine, keymap, lineNumbers } from 'npm:@codemirror/view@6.38.6';
 import { defaultHighlightStyle, syntaxHighlighting } from 'npm:@codemirror/language@6.11.3';
-import { history, historyKeymap } from 'npm:@codemirror/commands@6.10.0';
+import { history, historyKeymap, indentWithTab } from 'npm:@codemirror/commands@6.10.0';
 import { javascript } from 'npm:@codemirror/lang-javascript@6.2.4';
 import { oneDark } from 'npm:@codemirror/theme-one-dark@6.1.3';
 import { classSet, type JSX, useEffect, useMemo, useRef } from '../../.deps.ts';
@@ -46,7 +46,7 @@ export function SurfaceCodeMirror({
       lineNumbers(),
       highlightActiveLine(),
       history(),
-      keymap.of(historyKeymap),
+      keymap.of([...historyKeymap, indentWithTab]),
       javascript(),
       syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
       theme ?? [],

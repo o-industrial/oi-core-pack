@@ -884,9 +884,6 @@ ${guidance.trim().length > 0 ? `${guidance}\n\n` : ''}export async function load
   seed: InterfacePageData,
 ): Promise<InterfacePageData> {
   const data = { ...seed };
-  void request;
-  void context;
-  void services;
 
   if (typeof Module.loadServerData === "function") {
     const result = await Module.loadServerData({
