@@ -213,6 +213,353 @@ function buildInterfaceFiles(options: BuildInterfaceFilesOptions): Map<string, s
   return files;
 }
 
+type DataProp = {
+  name: string;
+  type: string;
+  optional: boolean;
+  defaultValue: string;
+  docLines: string[];
+};
+
+type ServiceDefinition = {
+  aliasBase: string;
+  methodName: string;
+  hasInput: boolean;
+  inputType: string;
+  outputType: string;
+  docLines: string[];
+  descriptor: {
+    sliceKey: string;
+    actionKey: string;
+    resultName: string;
+    autoExecute: boolean;
+    includeInResponse: boolean;
+  };
+};
+
+type RouteOptions = {
+  RoutesBase?: string;
+};
+
+type RegistryEntry = {
+  lookup: string;
+  safeId: string;
+};
+
+function collectDataProps(
+  handlerPlan: SurfaceInterfaceHandlerPlanStep[],
+  sliceMap: Map<string, EaCInterfaceGeneratedDataSlice>,
+): DataProp[] {
+  const props = new Map<string, DataProp>();
+
+  const upsertProp = (candidate: DataProp) => {
+    const existing = props.get(candidate.name);
+    if (!existing) {
+      props.set(candidate.name, { ...candidate });
+      return;
+    }
+
+    existing.optional = existing.optional && candidate.optional;
+    existing.type = mergeTypeExpressions(existing.type, candidate.type);
+    existing.defaultValue = chooseDefaultValue(existing.defaultValue, candidate.defaultValue);
+    existing.docLines = mergeDocLines(existing.docLines, candidate.docLines);
+  };
+
+  for (const [sliceKey, slice] of sliceMap.entries()) {
+    if (!slice || slice.Enabled === false) continue;
+
+    const schema = slice.Schema;
+    if (!isJsonSchemaObject(schema)) continue;
+
+    const properties = (schema.properties as Record<string, JSONSchema7> | undefined) ?? {};
+    const required = new Set((schema.required as string[] | undefined) ?? []);
+
+    for (const [propName, schemaEntry] of Object.entries(properties)) {
+      const optional = !required.has(propName);
+      const entrySchema = typeof schemaEntry === 'boolean' ? undefined : schemaEntry;
+      const typeString = schemaToTsType(entrySchema, 'unknown');
+      const defaultValue = schemaToDefaultValue(entrySchema, typeString, optional);
+      const propDescription =
+        entrySchema && typeof entrySchema.description === 'string'
+          ? (entrySchema.description as string)
+          : undefined;
+
+      const docLines = sanitizeDocLines([
+        slice.Label ?? sliceKey,
+        slice.Description,
+        propDescription,
+      ]);
+
+      upsertProp({
+        name: propName,
+        type: typeString,
+        optional,
+        defaultValue,
+        docLines,
+      });
+    }
+  }
+
+  for (const step of handlerPlan) {
+    if (!step.includeInResponse) continue;
+    const resultName = step.resultName?.trim();
+    if (!resultName) continue;
+
+    const slice = sliceMap.get(step.sliceKey);
+    const action = slice?.Actions?.find((candidate) => candidate?.Key === step.actionKey);
+    const outputSchema = action?.Output;
+    const autoExecute = Boolean(step.autoExecute);
+    const optional = !autoExecute;
+    const typeString = schemaToTsType(outputSchema, 'unknown');
+    const defaultValue = schemaToDefaultValue(outputSchema, typeString, optional);
+
+    const docLines = sanitizeDocLines([
+      action?.Label ?? step.actionLabel ?? step.actionKey,
+      action?.Description,
+      slice?.Label ? `Slice: ${slice.Label}` : undefined,
+      step.notes,
+      step.invocationType ? `Invocation type: ${step.invocationType}` : undefined,
+      autoExecute ? 'Executes automatically during loadPageData.' : undefined,
+      step.includeInResponse ? `Included in handler response as "${resultName}".` : undefined,
+    ]);
+
+    upsertProp({
+      name: resultName,
+      type: typeString,
+      optional,
+      defaultValue,
+      docLines,
+    });
+  }
+
+  return Array.from(props.values());
+}
+
+function collectServiceDefinitions(
+  handlerPlan: SurfaceInterfaceHandlerPlanStep[],
+  sliceMap: Map<string, EaCInterfaceGeneratedDataSlice>,
+): ServiceDefinition[] {
+  const definitions: ServiceDefinition[] = [];
+  const usedAliasBases = new Set<string>();
+  const usedMethodNames = new Set<string>();
+
+  const aliasFor = (seed: string, fallback: string) =>
+    createPascalIdentifier(seed, usedAliasBases, fallback);
+
+  for (const step of handlerPlan) {
+    const slice = sliceMap.get(step.sliceKey);
+    const action = slice?.Actions?.find((candidate) => candidate?.Key === step.actionKey);
+
+    const aliasSeed =
+      action?.Label?.trim() ||
+      step.actionLabel?.trim() ||
+      slice?.Label?.trim() ||
+      `${step.sliceKey}-${step.actionKey}`;
+    const aliasBase = aliasFor(aliasSeed, 'Action');
+
+    const methodSeed =
+      step.actionLabel?.trim() ||
+      action?.Label?.trim() ||
+      step.resultName?.trim() ||
+      `${step.sliceKey}-${step.actionKey}`;
+    const methodName = createIdentifier(methodSeed, usedMethodNames, 'invokeAction');
+
+    const resultName = step.resultName?.trim() || toCamelCase(`${step.sliceKey}-${step.actionKey}-result`);
+
+    const inputSchema = action?.Input;
+    const outputSchema = action?.Output;
+
+    const hasInput = inputSchema !== undefined;
+    const inputType = schemaToTsType(inputSchema, 'Record<string, unknown>');
+    const outputType = schemaToTsType(outputSchema, 'unknown');
+
+    const docLines = sanitizeDocLines([
+      slice?.Label ? `Slice: ${slice.Label}` : undefined,
+      action?.Label ?? step.actionLabel ?? step.actionKey,
+      action?.Description,
+      step.notes,
+      step.invocationType ? `Invocation type: ${step.invocationType}` : undefined,
+      hasInput ? 'Accepts input payload.' : undefined,
+      step.autoExecute ? 'Auto-executes during server load.' : undefined,
+      step.includeInResponse ? `Result stored on handler response as "${resultName}".` : undefined,
+    ]);
+
+    definitions.push({
+      aliasBase,
+      methodName,
+      hasInput,
+      inputType,
+      outputType,
+      docLines,
+      descriptor: {
+        sliceKey: step.sliceKey,
+        actionKey: step.actionKey,
+        resultName,
+        autoExecute: step.autoExecute,
+        includeInResponse: step.includeInResponse,
+      },
+    });
+  }
+
+  return definitions;
+}
+
+function buildRoutePath(options: RouteOptions): string {
+  const base = options.RoutesBase ?? 'w/:workspace/ui';
+  const segments = base
+    .split('/')
+    .map((segment) => segment.trim())
+    .filter((segment) => segment.length > 0)
+    .map((segment) => (segment.startsWith(':') ? `[${segment.slice(1)}]` : segment));
+
+  return ['routes', ...segments, '[interfaceLookup]', 'index.tsx'].join('/');
+}
+
+function buildRouteFile(options: RouteOptions): string {
+  const base = options.RoutesBase ?? 'w/:workspace/ui';
+  const depth = base.split('/').filter((segment) => segment.trim().length > 0).length + 2;
+  const prefix = '../'.repeat(depth);
+  const registryImportPath = `${prefix}interfaces/registry.ts`;
+
+  const methodExports = HTTP_METHODS.map((method) =>
+    `export async function ${method}(
+  req: Request,
+  ctx: InterfaceRequestContext,
+): Promise<Response> {
+  return await resolveInterface("${method}", req, ctx);
+}`
+  ).join('\n\n');
+
+  return `import { interfaceRegistry } from "${registryImportPath}";
+import type { InterfaceRequestContext } from "${registryImportPath}";
+
+type HandlerFn = (req: Request, ctx: InterfaceRequestContext) => Promise<Response> | Response;
+
+const SUPPORTED_METHODS = ${JSON.stringify(HTTP_METHODS)} as const;
+
+type SupportedMethod = (typeof SUPPORTED_METHODS)[number];
+
+function normalizeMethod(method: string | undefined): SupportedMethod {
+  const candidate = (method ?? "GET").toUpperCase();
+  return (SUPPORTED_METHODS as readonly string[]).includes(candidate)
+    ? candidate as SupportedMethod
+    : "GET";
+}
+
+async function resolveInterface(
+  method: SupportedMethod | string,
+  req: Request,
+  ctx: InterfaceRequestContext,
+): Promise<Response> {
+  const lookup = ctx?.Params?.interfaceLookup ?? "";
+  const entry = interfaceRegistry[lookup as keyof typeof interfaceRegistry];
+
+  if (!entry) {
+    return new Response("Interface not found.", {
+      status: 404,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+
+  const normalized = normalizeMethod(
+    typeof method === "string" ? method : method,
+  );
+
+  const handlers = entry.handlers as Record<string, unknown> & {
+    default?: HandlerFn;
+    GET?: HandlerFn;
+  };
+
+  const direct = handlers[normalized] as HandlerFn | undefined;
+
+  if (typeof direct === "function") {
+    return await direct(req, ctx);
+  }
+
+  if (normalized === "HEAD" && typeof handlers.GET === "function") {
+    const response = await handlers.GET(req, ctx);
+    return new Response(null, {
+      status: response.status,
+      headers: response.headers,
+    });
+  }
+
+  if (typeof handlers.default === "function") {
+    return await handlers.default(req, ctx);
+  }
+
+  return await entry.render(req, ctx);
+}
+
+export default async function handler(
+  req: Request,
+  ctx: InterfaceRequestContext,
+): Promise<Response> {
+  const method = normalizeMethod(req?.method);
+  return await resolveInterface(method, req, ctx);
+}
+
+${methodExports}
+`;
+}
+
+function buildGuidanceComment(label: string, description?: string, messages?: string): string {
+  const descriptionLines = sanitizeCommentBlock(description);
+  const messageLines = sanitizeCommentBlock(messages);
+
+  if (descriptionLines.length === 0 && messageLines.length === 0) {
+    return '';
+  }
+
+  const lines: string[] = ['/**', ` * ${sanitizeCommentLine(label)}.`];
+
+  for (const line of descriptionLines) {
+    lines.push(` * ${line}`);
+  }
+
+  if (messageLines.length > 0) {
+    lines.push(' *');
+    lines.push(' * Guidance notes:');
+    for (const message of messageLines) {
+      lines.push(` * - ${message}`);
+    }
+  }
+
+  lines.push(' */');
+  return lines.join('\n');
+}
+
+function buildServerLoaderStub(safeId: string, props: DataProp[]): string {
+  const lines: string[] = [
+    'export async function loadServerData(',
+    '  ctx: InterfaceServerContext,',
+    '): Promise<InterfacePageData> {',
+    '  const data = { ...defaultInterfacePageData, ...(ctx.previous ?? {}) };',
+    '  void ctx;',
+  ];
+
+  if (props.length > 0) {
+    lines.push('  // Known page data properties:');
+    for (const prop of props) {
+      lines.push(`  // - ${prop.name}${prop.optional ? '?' : ''}: ${prop.type}`);
+    }
+  }
+
+  lines.push(`  // TODO: Populate interface data for ${safeId}.`);
+  lines.push('  return data;');
+  lines.push('}');
+
+  return lines.join('\n');
+}
+
+function buildClientLoaderStub(): string {
+  return `export async function loadClientData(
+  _ctx: InterfaceClientContext,
+): Promise<Partial<InterfacePageData>> {
+  return {};
+}`;
+}
+
 function buildTypesFile(safeId: string, props: DataProp[]): string {
   const lines: string[] = [
     '/**',
@@ -768,6 +1115,75 @@ function createIdentifier(source: string, used: Set<string>, fallback: string): 
   }
   used.add(proposal);
   return proposal;
+}
+
+function createPascalIdentifier(seed: string, used: Set<string>, fallback: string): string {
+  let base = toPascalCase(seed);
+  if (!base) base = fallback;
+  if (!/^[A-Za-z]/.test(base)) {
+    base = fallback;
+  }
+  let proposal = base;
+  let counter = 2;
+  while (used.has(proposal)) {
+    proposal = `${base}${counter}`;
+    counter += 1;
+  }
+  used.add(proposal);
+  return proposal;
+}
+
+function mergeTypeExpressions(current: string, next: string): string {
+  if (current === next) return current;
+  if (current === 'unknown') return next;
+  if (next === 'unknown') return current;
+  if (current.includes(next)) return current;
+  if (next.includes(current)) return next;
+  return `${current} | ${next}`;
+}
+
+function chooseDefaultValue(current: string, candidate: string): string {
+  const isMeaningful = (value: string) =>
+    value !== 'undefined' && !value.startsWith('undefined as unknown as');
+  if (isMeaningful(current)) return current;
+  if (isMeaningful(candidate)) return candidate;
+  return candidate;
+}
+
+function mergeDocLines(current: string[], next: string[]): string[] {
+  const seen = new Set<string>();
+  const merged: string[] = [];
+  for (const line of [...current, ...next]) {
+    const trimmed = line.trim();
+    if (!trimmed.length) continue;
+    if (seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    merged.push(trimmed);
+  }
+  return merged;
+}
+
+function sanitizeDocLines(lines: Array<string | undefined | null>): string[] {
+  const result: string[] = [];
+  for (const line of lines) {
+    if (!line) continue;
+    const sanitized = sanitizeCommentLine(line);
+    if (!sanitized.length) continue;
+    result.push(sanitized);
+  }
+  return result;
+}
+
+function sanitizeCommentBlock(source?: string): string[] {
+  if (!source) return [];
+  return source
+    .split(/\r?\n/)
+    .map(sanitizeCommentLine)
+    .filter((entry) => entry.length > 0);
+}
+
+function sanitizeCommentLine(line: string): string {
+  return line.replace(/\*\//g, '*\\/').trim();
 }
 
 type JsonSchemaObject = Exclude<JSONSchema7, boolean>;

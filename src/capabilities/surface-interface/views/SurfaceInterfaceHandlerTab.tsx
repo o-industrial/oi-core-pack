@@ -727,7 +727,11 @@ function DataConnectionPrefetchSettings({
           <button
             key={mode}
             type='button'
-            class={ounded border px-2 py-1 text-xs transition }
+            class={`rounded border px-2 py-1 text-xs transition ${
+              (effectivePrefetch.Mode ?? 'relative') === mode
+                ? 'border-teal-400 bg-teal-400/10 text-teal-200'
+                : 'border-neutral-700 text-neutral-400 hover-border-neutral-500'
+            }`}
             onClick={() => {
               updatePrefetchSlice(mode, (slice) => {
                 slice.Mode = mode;
