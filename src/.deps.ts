@@ -66,6 +66,8 @@ import { classSet, IS_BROWSER } from 'jsr:@fathym/atomic@0.0.184';
 export { classSet, IS_BROWSER };
 
 export type { EaCEnterpriseDetails, EverythingAsCode } from 'jsr:@fathym/eac@0.2.131';
+export type { EaCStatus } from 'jsr:@fathym/eac@0.2.131/steward/status';
+export { EaCStatusProcessingTypes } from 'jsr:@fathym/eac@0.2.131/steward/status';
 
 export {
   type EaCWarmQueryDetails,

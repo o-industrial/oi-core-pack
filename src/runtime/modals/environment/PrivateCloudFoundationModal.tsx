@@ -9,6 +9,8 @@ import {
   useRef,
   useState,
   WorkspaceManager,
+  EaCStatus,
+  EaCStatusProcessingTypes,
   EaCFoundationAsCode,
   EaCFoundationDetails,
   EaCServiceDefinitions,
@@ -77,6 +79,12 @@ type PreconnectHighlight = {
   description: string;
   accent: string;
   icon: JSX.Element;
+};
+
+type FoundationCommitStatus = Partial<EaCStatus> & {
+  CommitID?: string;
+  ID?: string;
+  Processing: EaCStatus['Processing'];
 };
 
 const preconnectHighlights: PreconnectHighlight[] = [
@@ -189,6 +197,8 @@ export function PrivateCloudFoundationModal({
   const [baseErr, setBaseErr] = useState<string | undefined>(undefined);
   const [runQueued, setRunQueued] = useState(false);
   const [previousCommitId, setPreviousCommitId] = useState<string | null>(null);
+  const [latestCommitStatus, setLatestCommitStatus] = useState<FoundationCommitStatus | null>(null);
+  const [latestCommitError, setLatestCommitError] = useState<string | null>(null);
 
   const setFoundationView = (view: 'plan' | 'manage', manual = false) => {
     if (manual) viewManuallyChanged.current = true;
@@ -202,10 +212,10 @@ export function PrivateCloudFoundationModal({
   const foundationView = foundationViewInternal;
 
   useEffect(() => {
-    if ((foundationOutputs || runQueued) && !viewManuallyChanged.current) {
+    if ((foundationOutputs || runQueued || latestCommitStatus) && !viewManuallyChanged.current) {
       setFoundationViewInternal('manage');
     }
-  }, [foundationOutputs, runQueued]);
+  }, [foundationOutputs, runQueued, latestCommitStatus]);
 
   useEffect(() => {
     if (!foundationDetails) return;
@@ -350,10 +360,22 @@ const mergeFoundationPartial = (details: EaCFoundationDetails) => {
       }
       const data = await res.json();
       if (!data?.status) throw new Error('No status returned');
+      const statusPayload = data.status as FoundationCommitStatus;
+      const resolvedCommitId = typeof data.commitId === 'string' && data.commitId.length > 0
+        ? data.commitId
+        : statusPayload.CommitID ?? statusPayload.ID ?? '';
+      const normalizedStatus: FoundationCommitStatus = {
+        ...statusPayload,
+        CommitID: statusPayload.CommitID ?? (resolvedCommitId || undefined),
+        ID: statusPayload.ID ?? (resolvedCommitId || statusPayload.CommitID),
+        Processing: statusPayload.Processing ?? EaCStatusProcessingTypes.PROCESSING,
+      };
       mergeFoundationPartial(payloadDetails);
+      setLatestCommitStatus(normalizedStatus);
+      setLatestCommitError(null);
       setRunQueued(true);
-      if (typeof data.status.CommitID === 'string' && data.status.CommitID.length > 0) {
-        setPreviousCommitId(data.status.CommitID);
+      if (resolvedCommitId) {
+        setPreviousCommitId(resolvedCommitId);
       } else if (lastCommitId) {
         setPreviousCommitId(lastCommitId);
       } else {
@@ -361,12 +383,67 @@ const mergeFoundationPartial = (details: EaCFoundationDetails) => {
       }
     } catch (err) {
       setBaseErr((err as Error).message);
+      setLatestCommitStatus(null);
+      setLatestCommitError((err as Error).message);
       handleViewChange('plan');
       setRunQueued(false);
     } finally {
       setBaseBusy(false);
     }
   };
+
+  useEffect(() => {
+    if (!previousCommitId || !runQueued) {
+      return;
+    }
+
+    let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    const poll = async () => {
+      if (cancelled) return;
+
+      let nextDelay = 4000;
+
+      try {
+        const status = await workspaceMgr.GetCommitStatus(previousCommitId);
+        if (cancelled) return;
+
+        const normalized: FoundationCommitStatus = {
+          ...status,
+          CommitID: status.CommitID ?? status.ID ?? previousCommitId,
+          ID: status.ID ?? status.CommitID ?? previousCommitId,
+          Processing: status.Processing,
+        };
+
+        setLatestCommitStatus(normalized);
+        setLatestCommitError(null);
+
+        if (
+          status.Processing === EaCStatusProcessingTypes.COMPLETE ||
+          status.Processing === EaCStatusProcessingTypes.ERROR
+        ) {
+          setRunQueued(false);
+          return;
+        }
+      } catch (err) {
+        if (cancelled) return;
+        setLatestCommitError((err as Error).message);
+        nextDelay = 6000;
+      }
+
+      timeoutId = setTimeout(poll, nextDelay);
+    };
+
+    poll();
+
+    return () => {
+      cancelled = true;
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [previousCommitId, runQueued, workspaceMgr]);
 
   const hasWorkspaceCloud = !!workspaceCloud?.Details;
   const isManagingFoundation = foundationView === 'manage';
@@ -403,23 +480,68 @@ const mergeFoundationPartial = (details: EaCFoundationDetails) => {
   const logAnalyticsReady = Boolean(outputsRecord?.LogAnalytics);
   const diagnosticsReady = Boolean(outputsRecord?.Diagnostics);
   const governanceReady = Boolean(outputsRecord?.Governance);
-  const provisioningInFlight = baseBusy;
+  const commitProcessingState = latestCommitStatus?.Processing;
+  const commitStateIsError = commitProcessingState === EaCStatusProcessingTypes.ERROR;
+  const commitStateIsComplete = commitProcessingState === EaCStatusProcessingTypes.COMPLETE;
+  const commitStateIsActive = commitProcessingState
+    ? commitProcessingState !== EaCStatusProcessingTypes.COMPLETE &&
+      commitProcessingState !== EaCStatusProcessingTypes.ERROR
+    : false;
+  const provisioningInFlight = baseBusy || commitStateIsActive;
   const foundationReady = landingZoneReady;
-  const foundationStarted = runQueued || foundationReady;
-  const managementStatusClass = provisioningInFlight
-    ? 'text-sky-300'
-    : foundationReady
-    ? 'text-emerald-300'
-    : foundationStarted
-    ? 'text-slate-300'
-    : 'text-slate-500';
-  const managementStatusText = provisioningInFlight
-    ? 'Provisioning...'
-    : foundationReady
-    ? 'Foundation ready'
-    : foundationStarted
-    ? 'Queued'
-    : 'Not started';
+  const foundationStarted = Boolean(
+    commitStateIsActive ||
+      commitProcessingState === EaCStatusProcessingTypes.QUEUED ||
+      runQueued ||
+      baseBusy ||
+      foundationReady,
+  );
+  const managementStatusClass = (() => {
+    if (commitStateIsError) return 'text-rose-300';
+    if (commitStateIsComplete) return 'text-emerald-300';
+    if (commitStateIsActive || baseBusy) return 'text-sky-300';
+    if (foundationReady) return 'text-emerald-300';
+    if (foundationStarted) return 'text-slate-300';
+    return 'text-slate-500';
+  })();
+  const managementStatusText = (() => {
+    if (commitProcessingState) {
+      switch (commitProcessingState) {
+        case EaCStatusProcessingTypes.COMPLETE:
+          return 'Foundation ready';
+        case EaCStatusProcessingTypes.ERROR:
+          return 'Error';
+        case EaCStatusProcessingTypes.PROCESSING:
+          return 'Provisioning...';
+        case EaCStatusProcessingTypes.QUEUED:
+          return 'Queued';
+        default: {
+          const formatted = commitProcessingState.toLowerCase();
+          return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+        }
+      }
+    }
+    if (provisioningInFlight) return 'Provisioning...';
+    if (foundationReady) return 'Foundation ready';
+    if (foundationStarted) return 'Queued';
+    return 'Not started';
+  })();
+  const commitStatusBadgeClass = (() => {
+    if (commitStateIsError) return 'text-rose-300';
+    if (commitStateIsComplete) return 'text-emerald-300';
+    if (commitStateIsActive || baseBusy) return 'text-sky-300';
+    return 'text-slate-400';
+  })();
+  const latestCommitDisplayId = latestCommitStatus?.ID ?? latestCommitStatus?.CommitID ?? previousCommitId ?? '';
+  const latestCommitStageEntries = latestCommitStatus?.StageStates &&
+      typeof latestCommitStatus.StageStates === 'object'
+    ? Object.entries(
+      latestCommitStatus.StageStates as Record<
+        string,
+        { status?: string; message?: string }
+      >,
+    )
+    : [];
   const unitStatus = (
     readyCondition: boolean,
     ready: string,
@@ -427,6 +549,7 @@ const mergeFoundationPartial = (details: EaCFoundationDetails) => {
     queued: string,
     idle: string,
   ) => {
+    if (commitStateIsError) return 'Error';
     if (readyCondition) return ready;
     if (provisioningInFlight) return provisioning;
     if (foundationStarted) return queued;
@@ -826,6 +949,52 @@ const mergeFoundationPartial = (details: EaCFoundationDetails) => {
                         <p class='text-xs text-slate-400'>
                           Last foundation run: {previousCommitId}
                         </p>
+                      )}
+                      {latestCommitStatus && (
+                        <div class='space-y-2 rounded-xl border border-slate-800/60 bg-slate-900/70 p-4'>
+                          <div class='flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between'>
+                            <div class='text-xs text-slate-300'>
+                              Commit ID:{' '}
+                              <span class='font-mono text-slate-100'>
+                                {latestCommitDisplayId || 'Pending assignment'}
+                              </span>
+                            </div>
+                            <span class={`text-xs font-semibold ${commitStatusBadgeClass}`}>
+                              {managementStatusText}
+                            </span>
+                          </div>
+                          {latestCommitError && (
+                            <div class='text-xs text-amber-300'>
+                              {latestCommitError}
+                            </div>
+                          )}
+                          {latestCommitStatus.Messages?.Error && (
+                            <div class='text-xs text-rose-300'>
+                              {String(latestCommitStatus.Messages.Error)}
+                            </div>
+                          )}
+                          {latestCommitStageEntries.length > 0 && (
+                            <div class='space-y-1 text-xs text-slate-400'>
+                              {latestCommitStageEntries.map(([stage, state]) => (
+                                <div key={stage} class='flex flex-col gap-0.5'>
+                                  <span class='text-slate-200 font-semibold uppercase tracking-wide text-[0.65rem]'>
+                                    {stage}
+                                  </span>
+                                  <span>
+                                    {(state?.status ?? 'pending').toString()}
+                                    {state?.message
+                                      ? (
+                                        <span class='text-slate-500'>
+                                          {' '}— {state.message}
+                                        </span>
+                                      )
+                                      : null}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
