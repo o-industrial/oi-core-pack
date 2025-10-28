@@ -447,7 +447,7 @@ export function SurfaceInterfaceModal({
           const currentMode = action.Invocation?.Mode ?? null;
           if (!hasMode) return action;
 
-          const support = resolveActionSurfaceSupport(action.Invocation?.Type);
+          const support = resolveActionSurfaceSupport(action);
           const allowHandler = mode !== 'client';
           const allowClient = mode !== 'server';
 
@@ -529,7 +529,7 @@ export function SurfaceInterfaceModal({
       const nextActions = slice.Actions.map((action) => {
         if (action.Key !== actionKey) return action;
 
-        const support = resolveActionSurfaceSupport(action.Invocation?.Type);
+        const support = resolveActionSurfaceSupport(action);
         const accessMode = slice.AccessMode ?? 'both';
         const allowHandler = accessMode !== 'client';
         const allowClient = accessMode !== 'server';

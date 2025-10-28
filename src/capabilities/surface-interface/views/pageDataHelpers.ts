@@ -28,6 +28,13 @@ type ReconcileContext = {
 
 type DataConnectionFeatures = NonNullable<EaCInterfaceGeneratedDataSlice['DataConnection']>;
 type DataConnectionHistoricSlice = NonNullable<DataConnectionFeatures['PrefetchHistoricSlice']>;
+type PageDataActionWithMeta = EaCInterfacePageDataAction & {
+  ComingSoon?: boolean;
+  SurfaceSupport?: {
+    handler: boolean;
+    client: boolean;
+  };
+};
 
 export function reconcileInterfacePageData(
   pageData: EaCInterfacePageDataType,
@@ -149,20 +156,70 @@ function buildWarmQuerySlice(
       Client: true,
       ...(refreshMs ? { ClientRefreshMs: refreshMs } : {}),
     },
-    Actions: [
-      {
-        Key: `warmQuery:${lookup}:refresh`,
-        Label: 'Refresh warm query',
-        Description: 'Fetch the latest results from this warm query.',
-        Invocation: { Type: 'warmQuery', Lookup: lookup, Mode: 'client' },
-        Output: buildWarmQuerySchema(),
-      },
-    ],
+    Actions: buildWarmQueryActions(lookup) as EaCInterfacePageDataAction[],
     Enabled: true,
     AccessMode: 'both',
   };
 
   return base;
+}
+
+function buildWarmQueryActions(lookup: string): PageDataActionWithMeta[] {
+  const callAction: PageDataActionWithMeta = {
+    Key: `warmQuery:${lookup}:call`,
+    Label: 'Call warm query',
+    Description: 'Execute the warm query and return the latest results.',
+    Invocation: { Type: 'warmQuery', Lookup: lookup, Mode: 'both' },
+    Output: buildWarmQuerySchema(),
+    SurfaceSupport: { handler: true, client: true },
+  };
+
+  const statsAction: PageDataActionWithMeta = {
+    Key: `warmQuery:${lookup}:stats`,
+    Label: 'Warm query stats',
+    Description: 'Retrieve execution statistics for the warm query.',
+    Invocation: { Type: 'warmQuery', Lookup: lookup },
+    ComingSoon: true,
+    SurfaceSupport: { handler: true, client: true },
+    Output: buildWarmQueryStatsSchema(),
+  };
+
+  return [callAction, statsAction];
+}
+
+function buildDataConnectionActions(lookup: string): PageDataActionWithMeta[] {
+  const loadLast: PageDataActionWithMeta = {
+    Key: `dataConnection:${lookup}:loadLast`,
+    Label: 'Load last records',
+    Description: 'Fetch the most recent records up to a specified count.',
+    Invocation: { Type: 'dataConnection', Lookup: lookup, Mode: 'both' },
+    Input: buildLoadLastInputSchema(),
+    Output: buildDataConnectionSchema(),
+    SurfaceSupport: { handler: true, client: true },
+  };
+
+  const download: PageDataActionWithMeta = {
+    Key: `dataConnection:${lookup}:download`,
+    Label: 'Download history',
+    Description:
+      'Generate a bulk export of records between the provided dates (CSV, JSON, JSONL).',
+    Invocation: { Type: 'dataConnection', Lookup: lookup, Mode: 'client' },
+    Input: buildDownloadInputSchema(),
+    Output: buildHistorySchema(),
+    SurfaceSupport: { handler: false, client: true },
+  };
+
+  const stream: PageDataActionWithMeta = {
+    Key: `dataConnection:${lookup}:stream`,
+    Label: 'Stream recent data',
+    Description:
+      'Open a live stream that backfills recent events and pushes new records in real time.',
+    Invocation: { Type: 'dataConnection', Lookup: lookup, Mode: 'client' },
+    Input: buildStreamInputSchema(),
+    SurfaceSupport: { handler: false, client: true },
+  };
+
+  return [loadLast, download, stream];
 }
 
 function buildDataConnectionSlice(
@@ -192,15 +249,7 @@ function buildDataConnectionSlice(
       Client: true,
       ...(refreshSeconds ? { ClientRefreshMs: refreshSeconds * 1000 } : {}),
     },
-    Actions: [
-      {
-        Key: `dataConnection:${lookup}:history`,
-        Label: 'Download history',
-        Description: 'Download historical records for this data connection.',
-        Invocation: { Type: 'dataConnection', Lookup: lookup, Mode: 'server' },
-        Output: buildHistorySchema(),
-      },
-    ],
+    Actions: buildDataConnectionActions(lookup) as EaCInterfacePageDataAction[],
     Enabled: true,
     AccessMode: 'both',
     DataConnection: {
@@ -249,7 +298,8 @@ function buildChildInterfaceSlice(
         Label: 'Hydrate child interface',
         Description: 'Trigger hydration for the child interface view.',
         Invocation: { Type: 'interface', Lookup: lookup, Mode: 'client' },
-      },
+        SurfaceSupport: { handler: false, client: true },
+      } as PageDataActionWithMeta,
     ],
     Enabled: true,
     AccessMode: 'both',
@@ -330,6 +380,10 @@ function mergeActions(
     if (!existing.some((existingAction) => existingAction.Key === action.Key)) {
       merged.push(cloneAction(action));
     }
+  }
+
+  if (baseByKey.size > 0) {
+    return merged.filter((action) => baseByKey.has(action.Key));
   }
 
   return merged;
@@ -422,6 +476,28 @@ function buildWarmQuerySchema(): JSONSchema7 {
   };
 }
 
+function buildWarmQueryStatsSchema(): JSONSchema7 {
+  return {
+    type: 'object',
+    properties: {
+      refreshedAt: {
+        type: 'string',
+        format: 'date-time',
+        description: 'Timestamp when the warm query last refreshed.',
+      },
+      durationMs: {
+        type: 'number',
+        description: 'Time in milliseconds spent executing the query.',
+      },
+      rowsAffected: {
+        type: 'integer',
+        description: 'Number of rows returned by the most recent run.',
+      },
+    },
+    additionalProperties: true,
+  };
+}
+
 function buildDataConnectionSchema(): JSONSchema7 {
   return {
     type: 'object',
@@ -482,3 +558,75 @@ function buildSchemaFallback(): JSONSchema7 {
     additionalProperties: true,
   };
 }
+
+function buildLoadLastInputSchema(): JSONSchema7 {
+  return {
+    type: 'object',
+    properties: {
+      count: {
+        type: 'integer',
+        minimum: 1,
+        maximum: 100,
+        description: 'Number of recent records to return (max 100).',
+      },
+    },
+    required: ['count'],
+    additionalProperties: false,
+  };
+}
+
+function buildDownloadInputSchema(): JSONSchema7 {
+  return {
+    type: 'object',
+    properties: {
+      startDate: {
+        type: 'string',
+        format: 'date-time',
+        description: 'Inclusive start timestamp for the download window.',
+      },
+      endDate: {
+        type: 'string',
+        format: 'date-time',
+        description: 'Exclusive end timestamp for the download window.',
+      },
+      format: {
+        type: 'string',
+        enum: ['csv', 'json', 'jsonl'],
+        default: 'json',
+        description: 'File format to use for the exported data.',
+      },
+    },
+    required: ['startDate'],
+    additionalProperties: false,
+  };
+}
+
+function buildStreamInputSchema(): JSONSchema7 {
+  return {
+    type: 'object',
+    properties: {
+      windowSeconds: {
+        type: 'integer',
+        minimum: 0,
+        maximum: 3600,
+        default: 60,
+        description: 'Number of seconds of history to backfill when the stream connects.',
+      },
+    },
+    additionalProperties: false,
+  };
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -26,12 +26,26 @@ type SurfaceInterfacePageDataTabProps = {
   ) => void;
 };
 
+type EnhancedAction = EaCInterfacePageDataAction & {
+  ComingSoon?: boolean;
+  SurfaceSupport?: {
+    handler: boolean;
+    client: boolean;
+  };
+};
+
 type PageDataActionInvocationType =
   EaCInterfacePageDataAction['Invocation'] extends { Type?: infer T } ? T : string;
 
 export function resolveActionSurfaceSupport(
-  invocationType: PageDataActionInvocationType | undefined,
+  action: EaCInterfacePageDataAction,
 ): { handler: boolean; client: boolean } {
+  const enhanced = action as EnhancedAction;
+  if (enhanced.SurfaceSupport) {
+    return enhanced.SurfaceSupport;
+  }
+
+  const invocationType: PageDataActionInvocationType | undefined = action.Invocation?.Type;
   switch (invocationType) {
     case 'warmQuery':
     case 'interface':
@@ -226,11 +240,12 @@ function GeneratedSliceCard({
           {slice.Actions && slice.Actions.length > 0
             ? (
               <ul class='grid gap-3 text-neutral-200 sm:grid-cols-2'>
-                {slice.Actions.map((action: EaCInterfacePageDataAction) => {
+                {slice.Actions.map((rawAction: EaCInterfacePageDataAction) => {
+                  const action = rawAction as EnhancedAction;
                   const rawInvocationMode = action.Invocation?.Mode ?? null;
                   const isEnabled = rawInvocationMode !== null;
                   const { handler: baseHandlerSupport, client: baseClientSupport } =
-                    resolveActionSurfaceSupport(action.Invocation?.Type);
+                    resolveActionSurfaceSupport(action);
 
                   const handlerPossible = baseHandlerSupport && sliceAllowsHandler;
                   const clientPossible = baseClientSupport && sliceAllowsClient;
@@ -311,7 +326,8 @@ function GeneratedSliceCard({
                       : 'border-neutral-900'
                   } ${isEnabled ? 'bg-neutral-950/70' : 'bg-neutral-950/40'} p-3 transition`;
 
-                  const toggleDisabled = !handlerPossible && !clientPossible;
+                  const comingSoon = action.ComingSoon ?? false;
+                  const toggleDisabled = comingSoon || (!handlerPossible && !clientPossible);
 
                   const handleEnabledToggle = (checked: boolean) => {
                     if (checked) {
@@ -353,6 +369,11 @@ function GeneratedSliceCard({
                         </div>
                         {action.Description && (
                           <p class='text-[11px] text-neutral-500'>{action.Description}</p>
+                        )}
+                        {comingSoon && (
+                          <p class='rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[11px] uppercase tracking-wide text-amber-300'>
+                            Coming soon
+                          </p>
                         )}
                         <div class='flex flex-wrap gap-2'>
                           <button

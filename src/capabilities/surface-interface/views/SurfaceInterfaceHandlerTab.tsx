@@ -1055,7 +1055,7 @@ function buildBasePlanFromSlices(
 
     for (const action of slice.Actions ?? []) {
       if (!action?.Key) continue;
-      const support = resolveActionSurfaceSupport(action.Invocation?.Type);
+      const support = resolveActionSurfaceSupport(action);
       if (!support.handler) continue;
       const invocationMode = action.Invocation?.Mode;
       if (!invocationMode || invocationMode === 'client') continue;
