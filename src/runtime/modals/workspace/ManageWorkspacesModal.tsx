@@ -17,14 +17,56 @@ export type ManageWorkspacesModalProps = {
 export function ManageWorkspacesModal(
   { workspaceMgr, onClose }: ManageWorkspacesModalProps,
 ): JSX.Element {
-  const { currentWorkspace, workspaces, switchToWorkspace, createWorkspace, listWorkspaces } =
-    workspaceMgr.UseWorkspaceSettings();
+  const {
+    currentWorkspace,
+    workspaces,
+    switchToWorkspace,
+    createWorkspace,
+    listWorkspaces,
+  } = workspaceMgr.UseWorkspaceSettings();
 
   const [filter, setFilter] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [creating, setCreating] = useState(false);
+  const [archivingLookup, setArchivingLookup] = useState<string | null>(null);
+
+  const handleArchiveWorkspace = async (ws: (typeof workspaces)[number]) => {
+    const activeLookup = currentWorkspace?.Lookup;
+    if (ws.Lookup === activeLookup) {
+      alert('Switch to a different workspace before archiving this one.');
+      return;
+    }
+
+    const name = ws.Details.Name ?? ws.Lookup;
+    const ok = confirm(
+      `Archive workspace "${name}"? This will remove it from your catalogue.`,
+    );
+    if (!ok) return;
+
+    try {
+      setArchivingLookup(ws.Lookup);
+      const res = await fetch('/workspace/api/workspaces/archive', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ WorkspaceLookup: ws.Lookup }),
+      });
+
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || `Failed to archive workspace (${res.status})`);
+      }
+
+      listWorkspaces();
+    } catch (err) {
+      console.error('Archive workspace failed', err);
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      alert(`Failed to archive workspace: ${msg}`);
+    } finally {
+      setArchivingLookup(null);
+    }
+  };
 
   const filtered = workspaces.filter((ws) =>
     ws.Details.Name?.toLowerCase().includes(filter.toLowerCase())
@@ -33,7 +75,10 @@ export function ManageWorkspacesModal(
   const active = filtered.filter((ws) => !ws.Archived);
   const archived = filtered.filter((ws) => ws.Archived);
 
-  const renderRows = (rows: typeof workspaces) => (
+  const renderRows = (
+    rows: typeof workspaces,
+    opts: { archived?: boolean } = {},
+  ) => (
     <tbody>
       {rows.map((ws) => (
         <tr key={ws.Lookup} class='border-t border-slate-800/60 hover:bg-neutral-900/80'>
@@ -43,63 +88,35 @@ export function ManageWorkspacesModal(
                 <span class='font-medium'>{ws.Details.Name ?? 'Untitled'}</span>
                 <p class='text-xs text-slate-400'>{ws.Details.Description || 'No description'}</p>
               </div>
-              {ws.Lookup === currentWorkspace.Lookup && (
+              {!opts.archived && ws.Lookup === currentWorkspace.Lookup && (
                 <span class='rounded-full border border-sky-400/60 bg-sky-500/15 px-2 py-0.5 text-[0.65rem] uppercase tracking-wide text-sky-200'>
                   Current
+                </span>
+              )}
+              {opts.archived && (
+                <span class='rounded-full border border-amber-400/60 bg-amber-500/10 px-2 py-0.5 text-[0.65rem] uppercase tracking-wide text-amber-200'>
+                  Archived
                 </span>
               )}
             </div>
           </td>
           <td class='p-3 align-middle'>
             <div class='flex flex-wrap gap-2 text-sm'>
-              <Action
-                styleType={ActionStyleTypes.Link}
-                onClick={() =>
-                  alert('Archive not implemented')}
-              >
-                Archive
-              </Action>
-              {ws.Lookup !== currentWorkspace.Lookup && (
+              {!opts.archived && (
                 <Action
                   styleType={ActionStyleTypes.Link}
-                  intentType={IntentTypes.Error}
-                  onClick={async () => {
-                    const name = ws.Details.Name ?? ws.Lookup;
-                    const ok = confirm(
-                      `Are you sure you want to delete workspace "${name}"? This action cannot be undone.`,
-                    );
-                    if (!ok) return;
-
-                    try {
-                      const res = await fetch('/workspace/api/workspaces/delete', {
-                        method: 'POST',
-                        headers: { 'content-type': 'application/json' },
-                        body: JSON.stringify({ WorkspaceLookup: ws.Lookup }),
-                      });
-
-                      if (!res.ok) {
-                        const msg = await res.text();
-                        alert(`Failed to delete workspace: ${msg || res.status}`);
-                        return;
-                      }
-
-                      // Refresh list
-                      listWorkspaces();
-                    } catch (err) {
-                      console.error('Delete workspace failed', err);
-                      alert('Failed to delete workspace.');
-                    }
-                  }}
+                  onClick={() => handleArchiveWorkspace(ws)}
+                  disabled={archivingLookup === ws.Lookup}
                 >
-                  Delete
+                  {archivingLookup === ws.Lookup ? 'Archiving...' : 'Archive'}
                 </Action>
               )}
-              {ws.Lookup !== currentWorkspace.Lookup && (
+              {(opts.archived || ws.Lookup !== currentWorkspace.Lookup) && (
                 <Action
                   styleType={ActionStyleTypes.Link}
                   onClick={() => switchToWorkspace(ws.Lookup)}
                 >
-                  Set Active
+                  {opts.archived ? 'Restore' : 'Set Active'}
                 </Action>
               )}
             </div>
@@ -169,25 +186,31 @@ export function ManageWorkspacesModal(
             )}
           </section>
 
-          {archived.length > 0 && (
-            <section class='relative overflow-hidden rounded-3xl border border-slate-700/60 bg-neutral-900/80 p-4 shadow-xl'>
-              <div
-                class={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-400/70 via-orange-500/70 to-pink-500/70 opacity-80`}
-              />
-              <h4 class='text-sm font-semibold text-white'>Archived workspaces</h4>
-              <div class='mt-3 overflow-x-auto rounded-2xl border border-slate-800/40'>
-                <table class='w-full text-left text-sm text-slate-200'>
-                  <thead class='bg-neutral-900/80 text-xs uppercase tracking-wide text-slate-400'>
-                    <tr>
-                      <th class='p-2'>Workspace</th>
-                      <th class='p-2'>Actions</th>
-                    </tr>
-                  </thead>
-                  {renderRows(archived)}
-                </table>
-              </div>
-            </section>
-          )}
+          <section class='relative overflow-hidden rounded-3xl border border-slate-700/60 bg-neutral-900/80 p-4 shadow-xl'>
+            <div
+              class={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-400/70 via-orange-500/70 to-pink-500/70 opacity-80`}
+            />
+            <h4 class='text-sm font-semibold text-white'>Archived workspaces</h4>
+            {archived.length > 0
+              ? (
+                <div class='mt-3 overflow-x-auto rounded-2xl border border-slate-800/40'>
+                  <table class='w-full text-left text-sm text-slate-200'>
+                    <thead class='bg-neutral-900/80 text-xs uppercase tracking-wide text-slate-400'>
+                      <tr>
+                        <th class='p-2'>Workspace</th>
+                        <th class='p-2'>Actions</th>
+                      </tr>
+                    </thead>
+                    {renderRows(archived, { archived: true })}
+                  </table>
+                </div>
+              )
+              : (
+                <p class='mt-4 rounded-xl border border-dashed border-slate-700/60 bg-neutral-950/50 p-4 text-center text-xs text-slate-400'>
+                  No archived workspaces yet.
+                </p>
+              )}
+          </section>
 
           <div class='flex justify-end gap-2'>
             <Action
