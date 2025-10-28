@@ -440,8 +440,10 @@ export function SurfaceInterfaceModal({
 
       if (slice.Actions && slice.Actions.length > 0) {
         nextSlice.Actions = slice.Actions.map((action) => {
-          const currentMode = action.Invocation?.Mode ?? 'both';
-          let nextMode = currentMode;
+          const currentMode = action.Invocation?.Mode;
+          if (!currentMode) return action;
+
+          let nextMode: EaCInterfacePageDataActionInvocationMode = currentMode;
 
           if (mode === 'server' && currentMode === 'both') {
             nextMode = 'server';
@@ -453,7 +455,7 @@ export function SurfaceInterfaceModal({
             ...action,
             Invocation: {
               ...(action.Invocation ?? {}),
-              ...(nextMode ? { Mode: nextMode } : {}),
+              Mode: nextMode,
             },
           };
         });
@@ -476,7 +478,7 @@ export function SurfaceInterfaceModal({
   const handleActionModeChange = (
     sliceKey: string,
     actionKey: string,
-    mode: EaCInterfacePageDataActionInvocationMode,
+    mode: EaCInterfacePageDataActionInvocationMode | null,
   ) => {
     updateGeneratedSlice(sliceKey, (slice) => {
       if (!slice.Actions || slice.Actions.length === 0) return slice;
@@ -484,14 +486,20 @@ export function SurfaceInterfaceModal({
       const nextActions = slice.Actions.map((action) => {
         if (action.Key !== actionKey) return action;
 
-        const nextInvocation = {
-          ...(action.Invocation ?? {}),
-          Mode: mode,
-        };
+        const nextInvocation = { ...(action.Invocation ?? {}) };
+
+        if (mode) {
+          nextInvocation.Mode = mode;
+        } else {
+          delete nextInvocation.Mode;
+        }
+
+        const normalizedInvocation =
+          Object.keys(nextInvocation).length > 0 ? nextInvocation : undefined;
 
         return {
           ...action,
-          Invocation: nextInvocation,
+          Invocation: normalizedInvocation,
         };
       });
 

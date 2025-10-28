@@ -1052,8 +1052,8 @@ function buildBasePlanFromSlices(
 
     for (const action of slice.Actions ?? []) {
       if (!action?.Key) continue;
-      const invocationMode = action.Invocation?.Mode ?? 'both';
-      if (invocationMode === 'client') continue;
+      const invocationMode = action.Invocation?.Mode;
+      if (!invocationMode || invocationMode === 'client') continue;
 
       steps.push({
         id: `${sliceKey}:${action.Key}`,

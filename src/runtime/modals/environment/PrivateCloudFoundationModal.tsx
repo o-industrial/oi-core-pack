@@ -1,19 +1,20 @@
 import {
   Action,
   ActionStyleTypes,
+  EaCFoundationAsCode,
+  EaCFoundationDetails,
+  EaCServiceDefinitions,
+  EaCStatus,
+  EaCStatusProcessingTypes,
   JSX,
   LoadingIcon,
   Modal,
   Select,
   useEffect,
+  useMemo,
   useRef,
   useState,
   WorkspaceManager,
-  EaCStatus,
-  EaCStatusProcessingTypes,
-  EaCFoundationAsCode,
-  EaCFoundationDetails,
-  EaCServiceDefinitions,
 } from '../../../.deps.ts';
 
 type FoundationHighlight = {
@@ -86,6 +87,315 @@ type FoundationCommitStatus = Partial<EaCStatus> & {
   ID?: string;
   Processing: EaCStatus['Processing'];
 };
+
+type FoundationStageStatus =
+  | 'pending'
+  | 'running'
+  | 'succeeded'
+  | 'error'
+  | 'skipped';
+
+type FoundationStageUpdateView = {
+  at?: string;
+  message?: string;
+  data?: Record<string, unknown>;
+};
+
+type FoundationStageStateView = {
+  status?: FoundationStageStatus;
+  summary?: string;
+  message?: string;
+  startedAt?: string;
+  finishedAt?: string;
+  error?: string;
+  metrics?: Record<string, number>;
+  details?: Record<string, unknown>;
+  updates?: FoundationStageUpdateView[];
+};
+
+type FoundationSecureOperationStatusView = {
+  planned?: unknown;
+  status?: FoundationStageStatus;
+  summary?: string;
+  message?: string;
+  metrics?: Record<string, number>;
+  details?: Record<string, unknown>;
+  outputs?: unknown;
+  error?: string;
+  updates?: FoundationStageUpdateView[];
+};
+
+type FoundationSecureOperationsSnapshotView = {
+  keyVault: FoundationSecureOperationStatusView;
+  logAnalytics: FoundationSecureOperationStatusView;
+  diagnostics: FoundationSecureOperationStatusView;
+  governance: FoundationSecureOperationStatusView;
+};
+
+type FoundationStageKey =
+  | 'providers'
+  | 'landingZone'
+  | 'keyVault'
+  | 'logAnalytics'
+  | 'diagnostics'
+  | 'governance';
+
+type FoundationStageStateMap = Record<
+  FoundationStageKey,
+  FoundationStageStateView | undefined
+>;
+
+const FOUNDATION_STAGE_SEQUENCE: FoundationStageKey[] = [
+  'providers',
+  'landingZone',
+  'keyVault',
+  'logAnalytics',
+  'diagnostics',
+  'governance',
+];
+
+const FOUNDATION_STAGE_LABELS: Record<FoundationStageKey, string> = {
+  providers: 'Provider Registration',
+  landingZone: 'Landing Zone',
+  keyVault: 'Azure Key Vault',
+  logAnalytics: 'Log Analytics',
+  diagnostics: 'Diagnostics Wiring',
+  governance: 'Governance Guardrails',
+};
+
+const SECURE_OPERATION_CONFIG: Array<{
+  key: 'keyVault' | 'logAnalytics' | 'diagnostics' | 'governance';
+  title: string;
+  body: string;
+}> = [
+  {
+    key: 'keyVault',
+    title: 'Azure Key Vault',
+    body:
+      'Import certificates, set access policies, and confirm rotation cadence for shared secrets.',
+  },
+  {
+    key: 'logAnalytics',
+    title: 'Log Analytics Workspace',
+    body:
+      'Map resource diagnostic settings and define retention so operations insights stay actionable.',
+  },
+  {
+    key: 'diagnostics',
+    title: 'Monitor & Alerts',
+    body: 'Review default metric alerts and wire them into your on-call tooling.',
+  },
+  {
+    key: 'governance',
+    title: 'Policy & RBAC',
+    body:
+      'Confirm role assignments and Azure Policy definitions align to your compliance baseline.',
+  },
+];
+
+const METRIC_LABELS: Record<string, string> = {
+  accessPolicyCount: 'Access policies',
+  tagCount: 'Tags applied',
+  retentionInDays: 'Retention (days)',
+  solutionCount: 'Solutions linked',
+  targetsConfigured: 'Diagnostic targets',
+  policyDefinitionCount: 'Policy definitions',
+  roleAssignmentCount: 'Role assignments',
+  providersRegistered: 'Providers registered',
+  regionsDiscovered: 'Regions surfaced',
+  subnetCount: 'Subnets created',
+};
+
+function shouldPlanRunDiagnostics(
+  diagnostics: EaCFoundationDetails['Diagnostics'],
+): boolean {
+  if (!diagnostics) return false;
+  if (Array.isArray(diagnostics.Targets) && diagnostics.Targets.length > 0) {
+    return true;
+  }
+
+  return Boolean(diagnostics.WorkspaceResourceId);
+}
+
+function buildFallbackStageStates(
+  details?: EaCFoundationDetails,
+): FoundationStageStateMap {
+  const resourceGroupName = details?.ResourceGroup?.Name?.trim() || 'workspace resource group';
+  const resourceGroupLocation = details?.ResourceGroup?.Location?.trim() || 'configured region';
+
+  const includeKeyVault = Boolean(details?.KeyVault);
+  const includeLogAnalytics = Boolean(details?.LogAnalytics);
+  const includeDiagnostics = shouldPlanRunDiagnostics(details?.Diagnostics);
+  const includeGovernance = Boolean(details?.Governance);
+
+  return {
+    providers: {
+      status: 'pending',
+      summary:
+        'Register Azure provider namespaces required for the landing zone and surface available subscription regions.',
+    },
+    landingZone: {
+      status: 'pending',
+      summary:
+        `Provision landing zone resource group ${resourceGroupName} in ${resourceGroupLocation} with networking scaffolding.`,
+    },
+    keyVault: includeKeyVault
+      ? {
+        status: 'pending',
+        summary: `Bootstrap Key Vault ${details?.KeyVault?.VaultName ?? ''} for secret management.`,
+      }
+      : {
+        status: 'skipped',
+        summary: 'Key Vault setup not requested by this foundation plan.',
+      },
+    logAnalytics: includeLogAnalytics
+      ? {
+        status: 'pending',
+        summary: `Deploy Log Analytics workspace ${
+          details?.LogAnalytics?.WorkspaceName ?? ''
+        } with retention policies for diagnostics.`,
+      }
+      : {
+        status: 'skipped',
+        summary: 'Log Analytics workspace setup not requested by this foundation plan.',
+      },
+    diagnostics: includeDiagnostics
+      ? {
+        status: 'pending',
+        summary: 'Wire Azure resource diagnostics into Log Analytics for ongoing observability.',
+      }
+      : {
+        status: 'skipped',
+        summary: 'Diagnostics wiring not requested by this foundation plan.',
+      },
+    governance: includeGovernance
+      ? {
+        status: 'pending',
+        summary:
+          'Apply Azure Policy definitions and RBAC role assignments for governance guardrails.',
+      }
+      : {
+        status: 'skipped',
+        summary: 'Governance guardrails not requested by this foundation plan.',
+      },
+  };
+}
+
+function mergeUpdatesView(
+  base?: FoundationStageUpdateView[],
+  extra?: FoundationStageUpdateView[],
+): FoundationStageUpdateView[] | undefined {
+  const merged = [
+    ...(base ?? []),
+    ...(extra ?? []),
+  ];
+
+  if (!merged.length) {
+    return undefined;
+  }
+
+  const seen = new Set<string>();
+  const dedup: FoundationStageUpdateView[] = [];
+
+  for (const update of merged) {
+    const key = `${update.at ?? ''}|${update.message ?? ''}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    dedup.push(update);
+  }
+
+  return dedup.length ? dedup : undefined;
+}
+
+function combineSecureEntryView(
+  plan: unknown,
+  fallbackSummary: string,
+  existing: FoundationSecureOperationStatusView | undefined,
+  state: FoundationStageStateView | undefined,
+  outputs?: unknown,
+): FoundationSecureOperationStatusView {
+  const metrics = {
+    ...(existing?.metrics ?? {}),
+    ...(state?.metrics ?? {}),
+  };
+  const details = {
+    ...(existing?.details ?? {}),
+    ...(state?.details ?? {}),
+  };
+
+  return {
+    planned: plan ?? existing?.planned ?? null,
+    status: state?.status ?? existing?.status,
+    summary: state?.summary ?? existing?.summary ?? fallbackSummary,
+    message: state?.message ?? existing?.message ?? fallbackSummary,
+    metrics: Object.keys(metrics).length ? metrics : undefined,
+    details: Object.keys(details).length ? details : undefined,
+    outputs: outputs ?? existing?.outputs,
+    error: state?.error ?? existing?.error,
+    updates: mergeUpdatesView(existing?.updates, state?.updates),
+  };
+}
+
+function secureStatusLabel(status?: FoundationStageStatus): string {
+  switch (status) {
+    case 'succeeded':
+      return 'Ready';
+    case 'running':
+      return 'Provisioning...';
+    case 'error':
+      return 'Error';
+    case 'skipped':
+      return 'Not requested';
+    case 'pending':
+    default:
+      return 'Queued';
+  }
+}
+
+function secureStatusClass(status?: FoundationStageStatus): string {
+  switch (status) {
+    case 'succeeded':
+      return 'text-emerald-300';
+    case 'running':
+      return 'text-sky-300';
+    case 'error':
+      return 'text-rose-300';
+    case 'skipped':
+      return 'text-slate-500';
+    case 'pending':
+    default:
+      return 'text-slate-300';
+  }
+}
+
+function stageStatusLabel(state?: FoundationStageStateView): string {
+  if (!state) return secureStatusLabel();
+  if (state.status === 'error' && state.error) {
+    return state.error;
+  }
+  if (state.message) {
+    return state.message;
+  }
+  return secureStatusLabel(state.status);
+}
+
+function formatMetricLabel(key: string, value: unknown): string {
+  const label = METRIC_LABELS[key] ??
+    key
+      .replace(/([A-Z])/g, ' $1')
+      .replace(/[_-]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  return `${label}: ${value ?? 0}`;
+}
+
+function formatTimestamp(value?: string): string | undefined {
+  if (!value) return undefined;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
+}
 
 const preconnectHighlights: PreconnectHighlight[] = [
   {
@@ -200,6 +510,14 @@ export function PrivateCloudFoundationModal({
   const [latestCommitStatus, setLatestCommitStatus] = useState<FoundationCommitStatus | null>(null);
   const [latestCommitError, setLatestCommitError] = useState<string | null>(null);
 
+  const commitProcessingState = latestCommitStatus?.Processing;
+  const commitStateIsError = commitProcessingState === EaCStatusProcessingTypes.ERROR;
+  const commitStateIsComplete = commitProcessingState === EaCStatusProcessingTypes.COMPLETE;
+  const commitStateIsActive = commitProcessingState
+    ? commitProcessingState !== EaCStatusProcessingTypes.COMPLETE &&
+      commitProcessingState !== EaCStatusProcessingTypes.ERROR
+    : false;
+
   const setFoundationView = (view: 'plan' | 'manage', manual = false) => {
     if (manual) viewManuallyChanged.current = true;
     setFoundationViewInternal(view);
@@ -231,18 +549,281 @@ export function PrivateCloudFoundationModal({
   ]);
 
   useEffect(() => {
-    const landingZone = Boolean((foundationOutputs as Record<string, unknown> | undefined)?.LandingZone);
+    const landingZone = Boolean(
+      (foundationOutputs as Record<string, unknown> | undefined)?.LandingZone,
+    );
     setBaseDone(landingZone);
     if (landingZone) {
       setRunQueued(false);
     }
   }, [foundationOutputs?.LandingZone]);
 
-const buildFoundationDetails = (
-  overrides: FoundationPlanDraft = {},
-): EaCFoundationDetails => ({
-  Type: overrides.Type ?? foundationDetails?.Type ?? 'CloudFoundationPlan',
-  Name: overrides.Name ?? foundationDetails?.Name ?? DEFAULT_FOUNDATION_NAME,
+  const fallbackStageStates = useMemo(
+    () => buildFallbackStageStates(foundationDetails),
+    [foundationDetails],
+  );
+
+  const outputsRecord = foundationOutputs as Record<string, unknown> | undefined;
+
+  const latestFoundationsMessage = useMemo(() => {
+    const messages = latestCommitStatus?.Messages as
+      | Record<string, unknown>
+      | undefined;
+
+    if (messages && typeof messages === 'object') {
+      const foundations = messages.Foundations;
+      if (foundations && typeof foundations === 'object') {
+        return foundations as Record<string, unknown>;
+      }
+    }
+
+    return undefined;
+  }, [latestCommitStatus]);
+
+  const stageStatesFromCommit = useMemo<
+    Partial<FoundationStageStateMap> | undefined
+  >(() => {
+    const source = (latestFoundationsMessage?.StageStates as
+      | Record<string, unknown>
+      | undefined) ??
+      ((latestCommitStatus as Record<string, unknown> | null)?.StageStates as
+        | Record<string, unknown>
+        | undefined);
+
+    if (!source || typeof source !== 'object') return undefined;
+
+    const map: Partial<FoundationStageStateMap> = {};
+
+    for (const [key, value] of Object.entries(source)) {
+      if (FOUNDATION_STAGE_SEQUENCE.includes(key as FoundationStageKey)) {
+        map[key as FoundationStageKey] = value as FoundationStageStateView;
+      }
+    }
+
+    return Object.keys(map).length ? map : undefined;
+  }, [latestFoundationsMessage, latestCommitStatus]);
+
+  const combinedStageStates = useMemo<FoundationStageStateMap>(() => {
+    const combined: Partial<FoundationStageStateMap> = { ...fallbackStageStates };
+
+    if (stageStatesFromCommit) {
+      for (const stage of FOUNDATION_STAGE_SEQUENCE) {
+        const base = combined[stage];
+        const incoming = stageStatesFromCommit[stage];
+
+        if (incoming) {
+          combined[stage] = {
+            ...(base ?? {}),
+            ...incoming,
+            status: incoming.status ?? base?.status,
+            summary: incoming.summary ?? base?.summary,
+            message: incoming.message ?? base?.message ?? incoming.summary,
+            metrics: {
+              ...(base?.metrics ?? {}),
+              ...(incoming.metrics ?? {}),
+            },
+            details: {
+              ...(base?.details ?? {}),
+              ...(incoming.details ?? {}),
+            },
+            updates: mergeUpdatesView(base?.updates, incoming.updates),
+            error: incoming.error ?? base?.error,
+          };
+        }
+      }
+    }
+
+    for (const stage of FOUNDATION_STAGE_SEQUENCE) {
+      if (!combined[stage]) {
+        combined[stage] = fallbackStageStates[stage];
+      }
+    }
+
+    return combined as FoundationStageStateMap;
+  }, [fallbackStageStates, stageStatesFromCommit]);
+
+  const outputsFromCommit = latestFoundationsMessage?.Outputs as
+    | Record<string, unknown>
+    | undefined;
+
+  const secureOpsFromCommit = outputsFromCommit?.SecureOperations as
+    | FoundationSecureOperationsSnapshotView
+    | undefined;
+
+  const secureOpsFromFoundation = outputsRecord?.SecureOperations as
+    | FoundationSecureOperationsSnapshotView
+    | undefined;
+
+  const secureOpsSnapshot = useMemo<FoundationSecureOperationsSnapshotView>(() => {
+    const stageOutputsCommit = (outputsFromCommit ?? {}) as Record<string, unknown>;
+    const stageOutputsFoundation = (outputsRecord ?? {}) as Record<string, unknown>;
+
+    const getFallbackSummary = (
+      key: 'keyVault' | 'logAnalytics' | 'diagnostics' | 'governance',
+    ) =>
+      fallbackStageStates[key]?.summary ??
+        SECURE_OPERATION_CONFIG.find((config) => config.key === key)?.body ??
+        '';
+
+    return {
+      keyVault: combineSecureEntryView(
+        foundationDetails?.KeyVault ?? null,
+        getFallbackSummary('keyVault'),
+        secureOpsFromCommit?.keyVault ?? secureOpsFromFoundation?.keyVault,
+        combinedStageStates.keyVault,
+        stageOutputsCommit.KeyVault ?? stageOutputsFoundation.KeyVault,
+      ),
+      logAnalytics: combineSecureEntryView(
+        foundationDetails?.LogAnalytics ?? null,
+        getFallbackSummary('logAnalytics'),
+        secureOpsFromCommit?.logAnalytics ?? secureOpsFromFoundation?.logAnalytics,
+        combinedStageStates.logAnalytics,
+        stageOutputsCommit.LogAnalytics ?? stageOutputsFoundation.LogAnalytics,
+      ),
+      diagnostics: combineSecureEntryView(
+        foundationDetails?.Diagnostics ?? null,
+        getFallbackSummary('diagnostics'),
+        secureOpsFromCommit?.diagnostics ?? secureOpsFromFoundation?.diagnostics,
+        combinedStageStates.diagnostics,
+        stageOutputsCommit.Diagnostics ?? stageOutputsFoundation.Diagnostics,
+      ),
+      governance: combineSecureEntryView(
+        foundationDetails?.Governance ?? null,
+        getFallbackSummary('governance'),
+        secureOpsFromCommit?.governance ?? secureOpsFromFoundation?.governance,
+        combinedStageStates.governance,
+        stageOutputsCommit.Governance ?? stageOutputsFoundation.Governance,
+      ),
+    };
+  }, [
+    foundationDetails,
+    fallbackStageStates,
+    secureOpsFromCommit,
+    secureOpsFromFoundation,
+    combinedStageStates,
+    outputsFromCommit,
+    outputsRecord,
+  ]);
+
+  const stageTimeline = useMemo(
+    () =>
+      FOUNDATION_STAGE_SEQUENCE.map((stage) => ({
+        key: stage,
+        label: FOUNDATION_STAGE_LABELS[stage],
+        state: combinedStageStates[stage],
+      })),
+    [combinedStageStates],
+  );
+
+  const actionableStages = useMemo(
+    () =>
+      FOUNDATION_STAGE_SEQUENCE.filter(
+        (stage) => combinedStageStates[stage]?.status !== 'skipped',
+      ),
+    [combinedStageStates],
+  );
+
+  const foundationHasErrors = actionableStages.some(
+    (stage) => combinedStageStates[stage]?.status === 'error',
+  );
+  const foundationReady = actionableStages.length > 0 &&
+    actionableStages.every(
+      (stage) => combinedStageStates[stage]?.status === 'succeeded',
+    );
+  const foundationHasProgress = actionableStages.some((stage) => {
+    const status = combinedStageStates[stage]?.status;
+    return status === 'running' || status === 'succeeded';
+  });
+  const foundationInProgress = actionableStages.some(
+    (stage) => combinedStageStates[stage]?.status === 'running',
+  );
+  const provisioningInFlight = baseBusy || commitStateIsActive || foundationInProgress;
+  const foundationStarted = runQueued || foundationHasProgress || foundationReady;
+
+  const managementStatusClass = (() => {
+    if (commitStateIsError || foundationHasErrors) return 'text-rose-300';
+    if (commitStateIsComplete || foundationReady) return 'text-emerald-300';
+    if (commitStateIsActive || baseBusy || foundationInProgress) {
+      return 'text-sky-300';
+    }
+    if (foundationStarted) return 'text-slate-300';
+    return 'text-slate-500';
+  })();
+
+  const managementStatusText = (() => {
+    if (commitProcessingState) {
+      switch (commitProcessingState) {
+        case EaCStatusProcessingTypes.COMPLETE:
+          return 'Foundation ready';
+        case EaCStatusProcessingTypes.ERROR:
+          return 'Error';
+        case EaCStatusProcessingTypes.PROCESSING:
+          return 'Provisioning...';
+        case EaCStatusProcessingTypes.QUEUED:
+          return 'Queued';
+        default: {
+          const formatted = String(commitProcessingState).toLowerCase();
+          return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+        }
+      }
+    }
+    if (foundationHasErrors) return 'Error';
+    if (provisioningInFlight) return 'Provisioning...';
+    if (foundationReady) return 'Foundation ready';
+    if (foundationStarted) return 'Queued';
+    return 'Not started';
+  })();
+
+  const commitStatusBadgeClass = (() => {
+    if (commitStateIsError || foundationHasErrors) return 'text-rose-300';
+    if (commitStateIsComplete || foundationReady) return 'text-emerald-300';
+    if (commitStateIsActive || baseBusy || foundationInProgress) {
+      return 'text-sky-300';
+    }
+    return 'text-slate-400';
+  })();
+
+  const latestCommitDisplayId = latestCommitStatus?.ID ??
+    latestCommitStatus?.CommitID ??
+    previousCommitId ??
+    '';
+
+  const lastCommitId =
+    typeof (foundationOutputs as { CommitID?: unknown } | undefined)?.CommitID ===
+        'string'
+      ? (foundationOutputs as { CommitID?: string }).CommitID
+      : undefined;
+
+  const managementCards = SECURE_OPERATION_CONFIG.map(({ key, title, body }) => {
+    const entry = secureOpsSnapshot[key];
+    const fallbackSummary = fallbackStageStates[key]?.summary ?? body;
+    const statusLabel = entry?.message ?? secureStatusLabel(entry?.status);
+    const statusClass = secureStatusClass(entry?.status);
+    const summary = entry?.summary ?? fallbackSummary;
+    const message = entry?.message && entry.message !== summary ? entry.message : undefined;
+    const metricsEntries = entry?.metrics ? Object.entries(entry.metrics) : [];
+    const latestUpdate = entry?.updates ? entry.updates[entry.updates.length - 1] : undefined;
+
+    return {
+      key,
+      title,
+      statusLabel,
+      statusClass,
+      summary,
+      message,
+      body,
+      error: entry?.error,
+      metricsEntries,
+      latestUpdate,
+      updates: entry?.updates ?? [],
+    };
+  });
+
+  const buildFoundationDetails = (
+    overrides: FoundationPlanDraft = {},
+  ): EaCFoundationDetails => ({
+    Type: overrides.Type ?? foundationDetails?.Type ?? 'CloudFoundationPlan',
+    Name: overrides.Name ?? foundationDetails?.Name ?? DEFAULT_FOUNDATION_NAME,
     Description: overrides.Description ??
       foundationDetails?.Description ??
       DEFAULT_FOUNDATION_DESCRIPTION,
@@ -269,11 +850,11 @@ const buildFoundationDetails = (
     Outputs: foundationDetails?.Outputs,
   });
 
-const mergeFoundationPartial = (details: EaCFoundationDetails) => {
-  workspaceMgr.EaC.MergePartial({
-    Foundations: {
-      [workspaceFoundationLookup]: {
-        CloudLookup: WORKSPACE_CLOUD_LOOKUP,
+  const mergeFoundationPartial = (details: EaCFoundationDetails) => {
+    workspaceMgr.EaC.MergePartial({
+      Foundations: {
+        [workspaceFoundationLookup]: {
+          CloudLookup: WORKSPACE_CLOUD_LOOKUP,
           Details: details,
         },
       },
@@ -317,7 +898,9 @@ const mergeFoundationPartial = (details: EaCFoundationDetails) => {
       }
     } catch (err) {
       console.error('Failed to load locations', err);
-      setLocationError('Unable to load Azure regions automatically. Select or enter a region manually.');
+      setLocationError(
+        'Unable to load Azure regions automatically. Select or enter a region manually.',
+      );
       setLocations([]);
       setRegion('');
     } finally {
@@ -409,10 +992,11 @@ const mergeFoundationPartial = (details: EaCFoundationDetails) => {
         const status = await workspaceMgr.GetCommitStatus(previousCommitId);
         if (cancelled) return;
 
+        const statusWithCommit = status as FoundationCommitStatus;
         const normalized: FoundationCommitStatus = {
-          ...status,
-          CommitID: status.CommitID ?? status.ID ?? previousCommitId,
-          ID: status.ID ?? status.CommitID ?? previousCommitId,
+          ...statusWithCommit,
+          CommitID: statusWithCommit.CommitID ?? status.ID ?? previousCommitId,
+          ID: status.ID ?? statusWithCommit.CommitID ?? previousCommitId,
           Processing: status.Processing,
         };
 
@@ -466,99 +1050,6 @@ const mergeFoundationPartial = (details: EaCFoundationDetails) => {
   const heroPillText = hasWorkspaceCloud
     ? isManagingFoundation ? 'Foundation Management' : 'Plan Foundation'
     : 'First Step';
-  const outputsRecord = foundationOutputs as
-    | {
-      LandingZone?: unknown;
-      KeyVault?: unknown;
-      LogAnalytics?: unknown;
-      Diagnostics?: unknown;
-      Governance?: unknown;
-    }
-    | undefined;
-  const landingZoneReady = Boolean(outputsRecord?.LandingZone);
-  const keyVaultReady = Boolean(outputsRecord?.KeyVault);
-  const logAnalyticsReady = Boolean(outputsRecord?.LogAnalytics);
-  const diagnosticsReady = Boolean(outputsRecord?.Diagnostics);
-  const governanceReady = Boolean(outputsRecord?.Governance);
-  const commitProcessingState = latestCommitStatus?.Processing;
-  const commitStateIsError = commitProcessingState === EaCStatusProcessingTypes.ERROR;
-  const commitStateIsComplete = commitProcessingState === EaCStatusProcessingTypes.COMPLETE;
-  const commitStateIsActive = commitProcessingState
-    ? commitProcessingState !== EaCStatusProcessingTypes.COMPLETE &&
-      commitProcessingState !== EaCStatusProcessingTypes.ERROR
-    : false;
-  const provisioningInFlight = baseBusy || commitStateIsActive;
-  const foundationReady = landingZoneReady;
-  const foundationStarted = Boolean(
-    commitStateIsActive ||
-      commitProcessingState === EaCStatusProcessingTypes.QUEUED ||
-      runQueued ||
-      baseBusy ||
-      foundationReady,
-  );
-  const managementStatusClass = (() => {
-    if (commitStateIsError) return 'text-rose-300';
-    if (commitStateIsComplete) return 'text-emerald-300';
-    if (commitStateIsActive || baseBusy) return 'text-sky-300';
-    if (foundationReady) return 'text-emerald-300';
-    if (foundationStarted) return 'text-slate-300';
-    return 'text-slate-500';
-  })();
-  const managementStatusText = (() => {
-    if (commitProcessingState) {
-      switch (commitProcessingState) {
-        case EaCStatusProcessingTypes.COMPLETE:
-          return 'Foundation ready';
-        case EaCStatusProcessingTypes.ERROR:
-          return 'Error';
-        case EaCStatusProcessingTypes.PROCESSING:
-          return 'Provisioning...';
-        case EaCStatusProcessingTypes.QUEUED:
-          return 'Queued';
-        default: {
-          const formatted = commitProcessingState.toLowerCase();
-          return formatted.charAt(0).toUpperCase() + formatted.slice(1);
-        }
-      }
-    }
-    if (provisioningInFlight) return 'Provisioning...';
-    if (foundationReady) return 'Foundation ready';
-    if (foundationStarted) return 'Queued';
-    return 'Not started';
-  })();
-  const commitStatusBadgeClass = (() => {
-    if (commitStateIsError) return 'text-rose-300';
-    if (commitStateIsComplete) return 'text-emerald-300';
-    if (commitStateIsActive || baseBusy) return 'text-sky-300';
-    return 'text-slate-400';
-  })();
-  const latestCommitDisplayId = latestCommitStatus?.ID ?? latestCommitStatus?.CommitID ?? previousCommitId ?? '';
-  const latestCommitStageEntries = latestCommitStatus?.StageStates &&
-      typeof latestCommitStatus.StageStates === 'object'
-    ? Object.entries(
-      latestCommitStatus.StageStates as Record<
-        string,
-        { status?: string; message?: string }
-      >,
-    )
-    : [];
-  const unitStatus = (
-    readyCondition: boolean,
-    ready: string,
-    provisioning: string,
-    queued: string,
-    idle: string,
-  ) => {
-    if (commitStateIsError) return 'Error';
-    if (readyCondition) return ready;
-    if (provisioningInFlight) return provisioning;
-    if (foundationStarted) return queued;
-    return idle;
-  };
-  const lastCommitId = typeof (foundationOutputs as { CommitID?: unknown } | undefined)?.CommitID ===
-      'string'
-    ? (foundationOutputs as { CommitID?: string }).CommitID
-    : undefined;
   useEffect(() => {
     if (lastCommitId) {
       setPreviousCommitId(lastCommitId);
@@ -594,56 +1085,6 @@ const mergeFoundationPartial = (details: EaCFoundationDetails) => {
         'Ensures governance and compliance requirements are enforced automatically as apps land.',
     },
   ];
-  const managementCards = [
-    {
-      title: 'Azure Key Vault',
-      status: unitStatus(
-        keyVaultReady,
-        'Ready for secrets',
-        'Provisioning vault resources...',
-        'Waiting for foundation start',
-        'Not yet started',
-      ),
-      description:
-        'Import certificates, set access policies, and confirm rotation cadence for shared secrets.',
-    },
-    {
-      title: 'Log Analytics Workspace',
-      status: unitStatus(
-        logAnalyticsReady,
-        'Connected to RG',
-        'Linking diagnostic settings...',
-        'Awaiting base resources',
-        'Not yet started',
-      ),
-      description:
-        'Map resource diagnostic settings and define retention so operations insights stay actionable.',
-    },
-    {
-      title: 'Monitor & Alerts',
-      status: unitStatus(
-        diagnosticsReady,
-        'Baseline rules queued',
-        'Syncing default alerts...',
-        'Activate after foundation deploy',
-        'Not yet started',
-      ),
-      description: 'Review default metric alerts and wire them into your on-call tooling.',
-    },
-    {
-      title: 'Policy & RBAC',
-      status: unitStatus(
-        governanceReady,
-        'Assignments staged',
-        'Applying governance guardrails...',
-        'Compile requirements',
-        'Not yet started',
-      ),
-      description:
-        'Confirm role assignments and Azure Policy definitions align to your compliance baseline.',
-    },
-  ];
-
   return (
     <Modal title='Private Cloud Foundation' onClose={onClose}>
       <div class='space-y-10 text-sm text-slate-200'>
@@ -736,7 +1177,9 @@ const mergeFoundationPartial = (details: EaCFoundationDetails) => {
             {foundationView === 'plan' && (
               <>
                 <div class='relative overflow-hidden rounded-3xl border border-slate-700/60 bg-slate-900/70 p-6 shadow-xl space-y-6'>
-                  <div class={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${baseHighlight.accent} opacity-80 rounded-t-3xl`}>
+                  <div
+                    class={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${baseHighlight.accent} opacity-80 rounded-t-3xl`}
+                  >
                   </div>
                   <div class='relative space-y-6'>
                     <div class='flex items-start gap-4'>
@@ -752,12 +1195,14 @@ const mergeFoundationPartial = (details: EaCFoundationDetails) => {
                         </p>
                         <div class='space-y-1 text-xs leading-relaxed text-slate-400'>
                           <p>
-                            Choose the resource group and default region. These anchor the landing zone
-                            templates the automation will apply for your private cloud foundation.
+                            Choose the resource group and default region. These anchor the landing
+                            zone templates the automation will apply for your private cloud
+                            foundation.
                           </p>
                           <p>
-                            Adjust these inputs anytime before you start provisioning. The live review
-                            below mirrors every change so stakeholders can see exactly what will deploy.
+                            Adjust these inputs anytime before you start provisioning. The live
+                            review below mirrors every change so stakeholders can see exactly what
+                            will deploy.
                           </p>
                         </div>
                       </div>
@@ -779,39 +1224,40 @@ const mergeFoundationPartial = (details: EaCFoundationDetails) => {
                           </div>
                           <div>
                             <label class='mb-1 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-400'>
-                          Region
-                        </label>
-                        <Select
-                          searchable
-                          searchPlaceholder='Search regions...'
-                          noResultsText='No matching regions'
-                          value={region}
-                          disabled={loadingLocs}
-                          onChange={(event) =>
-                            setRegion((event.target as HTMLSelectElement).value)}
-                        >
-                          {locations.length > 0
-                            ? locations.map((l) => (
-                              <option value={l.Name} key={l.Name}>
-                                {l.Name}
-                              </option>
-                            ))
-                            : (
-                              <option value=''>
-                                {locationError ?? 'No regions available'}
-                              </option>
+                              Region
+                            </label>
+                            <Select
+                              searchable
+                              searchPlaceholder='Search regions...'
+                              noResultsText='No matching regions'
+                              value={region}
+                              disabled={loadingLocs}
+                              onChange={(event) =>
+                                setRegion((event.target as HTMLSelectElement).value)}
+                            >
+                              {locations.length > 0
+                                ? locations.map((l) => (
+                                  <option value={l.Name} key={l.Name}>
+                                    {l.Name}
+                                  </option>
+                                ))
+                                : (
+                                  <option value=''>
+                                    {locationError ?? 'No regions available'}
+                                  </option>
+                                )}
+                            </Select>
+                            {locationError && (
+                              <p class='mt-2 text-xs text-amber-300'>{locationError}</p>
                             )}
-                        </Select>
-                        {locationError && (
-                          <p class='mt-2 text-xs text-amber-300'>{locationError}</p>
-                        )}
                             <div class='mt-2 space-y-1'>
                               <div class='flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400'>
                                 <span>
                                   {loadingLocs
                                     ? (
                                       <span class='inline-flex items-center gap-2'>
-                                        <LoadingIcon class='h-4 w-4 animate-spin text-sky-300' />{' '}
+                                        <LoadingIcon class='h-4 w-4 animate-spin text-sky-300' />
+                                        {' '}
                                         Loading available regions...
                                       </span>
                                     )
@@ -830,8 +1276,8 @@ const mergeFoundationPartial = (details: EaCFoundationDetails) => {
                               </div>
                               {!loadingLocs && locations.length === 0 && (
                                 <div class='text-xs text-amber-300'>
-                                  No regions returned. Refresh after your subscription permissions are
-                                  confirmed.
+                                  No regions returned. Refresh after your subscription permissions
+                                  are confirmed.
                                 </div>
                               )}
                             </div>
@@ -861,7 +1307,9 @@ const mergeFoundationPartial = (details: EaCFoundationDetails) => {
                 </div>
 
                 <div class='relative overflow-hidden rounded-3xl border border-slate-700/60 bg-slate-900/70 p-6 shadow-xl space-y-6'>
-                  <div class={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${secureHighlight.accent} opacity-80 rounded-t-3xl`}>
+                  <div
+                    class={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${secureHighlight.accent} opacity-80 rounded-t-3xl`}
+                  >
                   </div>
                   <div class='relative space-y-5'>
                     <div class='flex items-start gap-4'>
@@ -876,7 +1324,8 @@ const mergeFoundationPartial = (details: EaCFoundationDetails) => {
                           {secureHighlight.description}
                         </p>
                         <p class='text-xs text-slate-400 leading-relaxed'>
-                          Confirm the resources and guardrails that will deploy with this foundation.
+                          Confirm the resources and guardrails that will deploy with this
+                          foundation.
                         </p>
                       </div>
                     </div>
@@ -916,7 +1365,9 @@ const mergeFoundationPartial = (details: EaCFoundationDetails) => {
             {foundationView === 'manage' && (
               <>
                 <div class='relative overflow-hidden rounded-3xl border border-slate-700/60 bg-slate-900/70 p-6 shadow-xl space-y-5'>
-                  <div class={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${baseHighlight.accent} opacity-80 rounded-t-3xl`}>
+                  <div
+                    class={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${baseHighlight.accent} opacity-80 rounded-t-3xl`}
+                  >
                   </div>
                   <div class='relative space-y-5'>
                     <div class='flex items-start gap-4'>
@@ -928,8 +1379,8 @@ const mergeFoundationPartial = (details: EaCFoundationDetails) => {
                       <div class='space-y-2'>
                         <h4 class='text-xl font-semibold text-white'>{baseHighlight.title}</h4>
                         <p class='text-sm leading-relaxed text-slate-300'>
-                          Keep this view open while automation runs. We will extend it with live activity
-                          and hand-offs for security operations next.
+                          Keep this view open while automation runs. We will extend it with live
+                          activity and hand-offs for security operations next.
                         </p>
                       </div>
                     </div>
@@ -973,25 +1424,96 @@ const mergeFoundationPartial = (details: EaCFoundationDetails) => {
                               {String(latestCommitStatus.Messages.Error)}
                             </div>
                           )}
-                          {latestCommitStageEntries.length > 0 && (
-                            <div class='space-y-1 text-xs text-slate-400'>
-                              {latestCommitStageEntries.map(([stage, state]) => (
-                                <div key={stage} class='flex flex-col gap-0.5'>
-                                  <span class='text-slate-200 font-semibold uppercase tracking-wide text-[0.65rem]'>
-                                    {stage}
-                                  </span>
-                                  <span>
-                                    {(state?.status ?? 'pending').toString()}
-                                    {state?.message
-                                      ? (
-                                        <span class='text-slate-500'>
-                                          {' '}— {state.message}
+                          {stageTimeline.length > 0 && (
+                            <div class='space-y-3'>
+                              <div class='text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-500'>
+                                Stage timeline
+                              </div>
+                              <ol class='space-y-3'>
+                                {stageTimeline.map(({ key, label, state }) => {
+                                  const statusClass = secureStatusClass(state?.status);
+                                  const statusLabel = stageStatusLabel(state);
+                                  const fallbackSummary = fallbackStageStates[key]?.summary ?? '';
+                                  const summary = state?.summary ?? fallbackSummary;
+                                  const message = state?.message && state.message !== summary
+                                    ? state.message
+                                    : undefined;
+                                  const metrics = state?.metrics
+                                    ? Object.entries(state.metrics)
+                                    : [];
+                                  const latestUpdate = state?.updates
+                                    ? state.updates[state.updates.length - 1]
+                                    : undefined;
+                                  const startedAt = formatTimestamp(state?.startedAt);
+                                  const finishedAt = formatTimestamp(state?.finishedAt);
+
+                                  return (
+                                    <li
+                                      key={key}
+                                      class='rounded-xl border border-slate-800/60 bg-slate-900/60 p-3 text-xs text-slate-300'
+                                    >
+                                      <div class='flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between'>
+                                        <div class='font-semibold text-slate-200'>{label}</div>
+                                        <span class={`text-[0.7rem] font-semibold ${statusClass}`}>
+                                          {statusLabel}
                                         </span>
-                                      )
-                                      : null}
-                                  </span>
-                                </div>
-                              ))}
+                                      </div>
+                                      {summary && (
+                                        <p class='mt-1 text-[0.7rem] leading-relaxed text-slate-400'>
+                                          {summary}
+                                        </p>
+                                      )}
+                                      {message && (
+                                        <p class='mt-1 text-[0.7rem] leading-relaxed text-slate-300'>
+                                          {message}
+                                        </p>
+                                      )}
+                                      {metrics.length > 0 && (
+                                        <ul class='mt-2 grid gap-1 text-[0.7rem] text-slate-400 sm:grid-cols-2'>
+                                          {metrics.map(([metricKey, metricValue]) => (
+                                            <li
+                                              key={metricKey}
+                                              class='flex items-center justify-between gap-2'
+                                            >
+                                              <span>
+                                                {formatMetricLabel(metricKey, metricValue)}
+                                              </span>
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      )}
+                                      {(startedAt || finishedAt) && (
+                                        <div class='mt-2 flex flex-wrap gap-3 text-[0.65rem] uppercase tracking-wide text-slate-500'>
+                                          {startedAt && <span>Start: {startedAt}</span>}
+                                          {finishedAt && <span>End: {finishedAt}</span>}
+                                        </div>
+                                      )}
+                                      {latestUpdate && (
+                                        <div class='mt-2 rounded-lg border border-slate-800/60 bg-slate-900/70 p-2 text-[0.7rem] text-slate-300'>
+                                          <div class='flex items-center justify-between gap-2 text-slate-400'>
+                                            <span class='font-semibold text-slate-200'>
+                                              Latest update
+                                            </span>
+                                            {latestUpdate.at && (
+                                              <span>{formatTimestamp(latestUpdate.at)}</span>
+                                            )}
+                                          </div>
+                                          {latestUpdate.message && (
+                                            <p class='mt-1 leading-relaxed text-slate-300'>
+                                              {latestUpdate.message}
+                                            </p>
+                                          )}
+                                        </div>
+                                      )}
+                                      {state?.error && (
+                                        <div class='mt-2 rounded-lg border border-rose-500/40 bg-rose-500/10 p-2 text-[0.7rem] text-rose-200'>
+                                          {state.error}
+                                        </div>
+                                      )}
+                                    </li>
+                                  );
+                                })}
+                              </ol>
                             </div>
                           )}
                         </div>
@@ -1001,7 +1523,9 @@ const mergeFoundationPartial = (details: EaCFoundationDetails) => {
                 </div>
 
                 <div class='relative overflow-hidden rounded-3xl border border-slate-700/60 bg-slate-900/70 p-6 shadow-xl space-y-5'>
-                  <div class={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${secureHighlight.accent} opacity-80 rounded-t-3xl`}>
+                  <div
+                    class={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${secureHighlight.accent} opacity-80 rounded-t-3xl`}
+                  >
                   </div>
                   <div class='relative space-y-5'>
                     <div class='flex items-start gap-4'>
@@ -1020,18 +1544,59 @@ const mergeFoundationPartial = (details: EaCFoundationDetails) => {
                     <div class='grid gap-4 md:grid-cols-2'>
                       {managementCards.map((item) => (
                         <div
-                          key={item.title}
-                          class='rounded-2xl border border-slate-700/60 bg-slate-900/70 p-4'
+                          key={item.key}
+                          class='space-y-3 rounded-2xl border border-slate-700/60 bg-slate-900/70 p-5'
                         >
-                          <div class='flex items-center justify-between gap-3 text-sm'>
-                            <h5 class='font-semibold text-white'>{item.title}</h5>
-                            <span class={`text-xs ${managementStatusClass}`}>
-                              {item.status}
+                          <div class='flex items-start justify-between gap-3'>
+                            <div class='space-y-1'>
+                              <h5 class='text-sm font-semibold text-white'>{item.title}</h5>
+                              {item.summary && (
+                                <p class='text-xs leading-relaxed text-slate-300'>
+                                  {item.summary}
+                                </p>
+                              )}
+                            </div>
+                            <span class={`text-[0.7rem] font-semibold ${item.statusClass}`}>
+                              {item.statusLabel}
                             </span>
                           </div>
-                          <p class='mt-2 text-xs text-slate-400 leading-relaxed'>
-                            {item.description}
+                          {item.message && (
+                            <p class='text-xs leading-relaxed text-slate-300'>
+                              {item.message}
+                            </p>
+                          )}
+                          <p class='text-[0.7rem] leading-relaxed text-slate-500'>
+                            {item.body}
                           </p>
+                          {item.metricsEntries.length > 0 && (
+                            <ul class='mt-1 space-y-1 text-[0.7rem] text-slate-400'>
+                              {item.metricsEntries.map(([metricKey, metricValue]) => (
+                                <li key={metricKey} class='flex items-center justify-between gap-2'>
+                                  <span>{formatMetricLabel(metricKey, metricValue)}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          {item.latestUpdate && (
+                            <div class='rounded-lg border border-slate-800/60 bg-slate-900/70 p-3 text-[0.7rem] text-slate-300'>
+                              <div class='flex items-center justify-between gap-2 text-slate-400'>
+                                <span class='font-semibold text-slate-200'>Latest update</span>
+                                {item.latestUpdate.at && (
+                                  <span>{formatTimestamp(item.latestUpdate.at)}</span>
+                                )}
+                              </div>
+                              {item.latestUpdate.message && (
+                                <p class='mt-1 leading-relaxed text-slate-300'>
+                                  {item.latestUpdate.message}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                          {item.error && (
+                            <div class='rounded-lg border border-rose-500/40 bg-rose-500/10 p-2 text-[0.7rem] text-rose-200'>
+                              {item.error}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>

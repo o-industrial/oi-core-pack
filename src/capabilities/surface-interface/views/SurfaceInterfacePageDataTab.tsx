@@ -1,4 +1,4 @@
-import { Badge, IntentTypes, type JSX } from '../../../.deps.ts';
+import { Badge, IntentTypes, ToggleCheckbox, type JSX } from '../../../.deps.ts';
 import type {
   EaCInterfaceDataConnectionFeatures,
   EaCInterfaceGeneratedDataSlice,
@@ -22,7 +22,7 @@ type SurfaceInterfacePageDataTabProps = {
   onActionModeChange: (
     sliceKey: string,
     actionKey: string,
-    mode: EaCInterfacePageDataActionInvocationMode,
+    mode: EaCInterfacePageDataActionInvocationMode | null,
   ) => void;
 };
 
@@ -85,7 +85,7 @@ type GeneratedSliceCardProps = {
   onActionModeChange: (
     sliceKey: string,
     actionKey: string,
-    mode: EaCInterfacePageDataActionInvocationMode,
+    mode: EaCInterfacePageDataActionInvocationMode | null,
   ) => void;
 };
 
@@ -116,25 +116,55 @@ function GeneratedSliceCard({
     onDataConnectionChange(sliceKey, normalizeDataConnectionFeatures(next));
   };
 
+  const rawSource = slice.SourceCapability?.trim() ?? '';
+  const [sourceType, ...sourceRest] = rawSource.split(':');
+  const sourceIdentifier = sourceRest.join(':').trim() || slice.SourceLookup?.trim() || '';
+
+  const availabilityLabel =
+    accessMode === 'both'
+      ? 'Handler & client'
+      : accessMode === 'server'
+      ? 'Handler only'
+      : 'Client only';
+  const availabilityIntent =
+    accessMode === 'both' ? IntentTypes.Primary : IntentTypes.Secondary;
+  const actionsCount = slice.Actions?.length ?? 0;
+
   return (
-    <div class='rounded-lg border border-neutral-800 bg-neutral-950 px-4 py-4 text-sm text-neutral-100'>
-      <div class='space-y-2'>
-        <div class='flex flex-wrap items-center gap-2'>
-          <p class='text-base font-semibold text-neutral-100'>
+    <details open class='rounded-lg border border-neutral-800 bg-neutral-950 text-sm text-neutral-200'>
+      <summary class='flex cursor-pointer items-start justify-between gap-3 px-4 py-3'>
+        <div class='space-y-1'>
+          <p class='text-sm font-semibold text-neutral-100'>
             {slice.Label ?? sliceKey}
           </p>
+          <div class='flex flex-wrap gap-2 text-[11px] uppercase tracking-wide text-neutral-500'>
+            {sourceType?.trim() && <span>Source: {sourceType.trim()}</span>}
+            {sourceIdentifier && <span>{sourceIdentifier}</span>}
+            {hydrationSummary && <span>{hydrationSummary}</span>}
+            {schemaSummary && <span>Fields: {schemaSummary}</span>}
+          </div>
         </div>
-        {slice.Description && <p class='text-xs text-neutral-400'>{slice.Description}</p>}
-        <div class='flex flex-wrap gap-2 text-[11px] uppercase tracking-wide text-neutral-500'>
-          {hydrationSummary && <span>{hydrationSummary}</span>}
-          {schemaSummary && <span>Fields: {schemaSummary}</span>}
+        <div class='flex flex-wrap items-center gap-2'>
+          <Badge intentType={availabilityIntent}>{availabilityLabel}</Badge>
+          <Badge intentType={IntentTypes.Secondary}>
+            {actionsCount} {actionsCount === 1 ? 'action' : 'actions'}
+          </Badge>
+          {isDataConnection && (
+            <Badge intentType={IntentTypes.Secondary}>Data connection</Badge>
+          )}
         </div>
-      </div>
+      </summary>
 
-      <div class='mt-3 space-y-3 text-xs text-neutral-200'>
-        <div>
-          <p class='font-semibold text-neutral-200'>Availability</p>
-          <div class='mt-2 flex flex-wrap gap-2'>
+      <div class='flex flex-col gap-6 border-t border-neutral-800 p-4 text-xs text-neutral-200'>
+        {slice.Description && (
+          <p class='text-[11px] text-neutral-400'>{slice.Description}</p>
+        )}
+
+        <section class='space-y-2'>
+          <h4 class='text-xs font-semibold uppercase tracking-wide text-neutral-500'>
+            Exposure
+          </h4>
+          <div class='flex flex-wrap gap-2'>
             {([
               ['server', 'Handler only'],
               ['client', 'Client only'],
@@ -154,135 +184,191 @@ function GeneratedSliceCard({
               </button>
             ))}
           </div>
-          <p class='mt-1 text-[11px] text-neutral-500'>
-            Choose where this slice hydrates data for your interface.
+          <p class='text-[11px] text-neutral-500'>
+            Choose the surfaces that can hydrate or consume this slice. Access also impacts which
+            actions remain available.
           </p>
-        </div>
+        </section>
 
         {isDataConnection && (
-          <DataConnectionSettings
-            features={slice.DataConnection}
-            handleFeaturesUpdate={handleFeaturesUpdate}
-          />
+          <section class='space-y-3'>
+            <h4 class='text-xs font-semibold uppercase tracking-wide text-neutral-500'>
+              Historic downloads
+            </h4>
+            <DataConnectionSettings
+              features={slice.DataConnection}
+              handleFeaturesUpdate={handleFeaturesUpdate}
+            />
+          </section>
         )}
 
-        {slice.Actions && slice.Actions.length > 0 && (
-          <div class='space-y-2 text-xs text-neutral-200'>
-            <p class='font-semibold text-neutral-200'>Actions</p>
-            <ul class='space-y-2'>
-              {slice.Actions.map((action: EaCInterfacePageDataAction) => {
-                const invocationMode = action.Invocation?.Mode ?? 'both';
+        <section class='space-y-3'>
+          <h4 class='text-xs font-semibold uppercase tracking-wide text-neutral-500'>
+            Actions
+          </h4>
+          {slice.Actions && slice.Actions.length > 0
+            ? (
+              <ul class='grid gap-3 text-neutral-200 sm:grid-cols-2'>
+                {slice.Actions.map((action: EaCInterfacePageDataAction) => {
+                  const rawInvocationMode = action.Invocation?.Mode ?? null;
+                  const isEnabled = rawInvocationMode !== null;
+                  const invocationMode: EaCInterfacePageDataActionInvocationMode =
+                    rawInvocationMode ?? 'both';
 
-                const supportsHandler = invocationMode !== 'client';
-                const supportsClient = invocationMode !== 'server';
+                  const supportsHandler = invocationMode !== 'client';
+                  const supportsClient = invocationMode !== 'server';
 
-                const handlerSelectable = supportsHandler && sliceAllowsHandler;
-                const clientSelectable = supportsClient && sliceAllowsClient;
+                  const handlerSelectable = isEnabled && supportsHandler && sliceAllowsHandler;
+                  const clientSelectable = isEnabled && supportsClient && sliceAllowsClient;
 
-                const handlerSelected = invocationMode === 'server' || invocationMode === 'both';
-                const clientSelected = invocationMode === 'client' || invocationMode === 'both';
+                  const handlerSelected =
+                    isEnabled && (invocationMode === 'server' || invocationMode === 'both');
+                  const clientSelected =
+                    isEnabled && (invocationMode === 'client' || invocationMode === 'both');
 
-                const handlerActive = handlerSelectable && handlerSelected;
-                const clientActive = clientSelectable && clientSelected;
+                  const handlerActive = handlerSelectable && handlerSelected;
+                  const clientActive = clientSelectable && clientSelected;
 
-                const chipClass = (active: boolean, disabled: boolean) =>
-                  `rounded border px-2 py-1 text-xs transition ${
-                    disabled
-                      ? 'border-neutral-800 bg-neutral-900 text-neutral-500 opacity-60 cursor-not-allowed'
-                      : active
-                      ? 'border-emerald-400 bg-emerald-500/10 text-emerald-200'
-                      : 'border-neutral-700 bg-neutral-900 text-neutral-300 hover:border-neutral-500'
+                  const chipClass = (active: boolean, disabled: boolean) =>
+                    `rounded border px-2 py-1 text-xs transition ${
+                      disabled
+                        ? 'border-neutral-800 bg-neutral-900 text-neutral-500 opacity-60 cursor-not-allowed'
+                        : active
+                        ? 'border-emerald-400 bg-emerald-500/10 text-emerald-200'
+                        : 'border-neutral-700 bg-neutral-900 text-neutral-300 hover:border-neutral-500'
                   }`;
 
-                const toggleSurface = (surface: 'server' | 'client') => {
-                  const isHandler = surface === 'server';
-                  const selectable = isHandler ? handlerSelectable : clientSelectable;
-                  if (!selectable) return;
+                  const toggleSurface = (surface: 'server' | 'client') => {
+                    const isHandler = surface === 'server';
+                    const selectable = isHandler ? handlerSelectable : clientSelectable;
+                    if (!selectable) return;
 
-                  if (accessMode === 'server') {
-                    if (isHandler) onActionModeChange(sliceKey, action.Key, 'server');
-                    return;
-                  }
+                    if (accessMode === 'server') {
+                      if (isHandler) onActionModeChange(sliceKey, action.Key, 'server');
+                      return;
+                    }
 
-                  if (accessMode === 'client') {
-                    if (!isHandler) onActionModeChange(sliceKey, action.Key, 'client');
-                    return;
-                  }
+                    if (accessMode === 'client') {
+                      if (!isHandler) onActionModeChange(sliceKey, action.Key, 'client');
+                      return;
+                    }
 
-                  let nextHandler = handlerSelected;
-                  let nextClient = clientSelected;
+                    let nextHandler = handlerSelected;
+                    let nextClient = clientSelected;
 
-                  if (isHandler) {
-                    nextHandler = !nextHandler;
-                  } else {
-                    nextClient = !nextClient;
-                  }
+                    if (isHandler) {
+                      nextHandler = !nextHandler;
+                    } else {
+                      nextClient = !nextClient;
+                    }
 
-                  if (!nextHandler && !nextClient) {
-                    return;
-                  }
+                    if (!nextHandler && !nextClient) {
+                      return;
+                    }
 
-                  let nextMode: EaCInterfacePageDataActionInvocationMode;
-                  if (nextHandler && nextClient) nextMode = 'both';
-                  else if (nextHandler) nextMode = 'server';
-                  else nextMode = 'client';
+                    let nextMode: EaCInterfacePageDataActionInvocationMode;
+                    if (nextHandler && nextClient) nextMode = 'both';
+                    else if (nextHandler) nextMode = 'server';
+                    else nextMode = 'client';
 
-                  onActionModeChange(sliceKey, action.Key, nextMode);
-                };
+                    onActionModeChange(sliceKey, action.Key, nextMode);
+                  };
 
-                const actionUnavailable = !handlerSelectable && !clientSelectable;
+                  const actionUnavailable =
+                    isEnabled && !handlerSelectable && !clientSelectable;
+                  const actionCardClass = `h-full rounded border ${
+                    isEnabled
+                      ? 'border-emerald-400 shadow-[0_0_0_1px_rgba(45,212,191,0.25)]'
+                      : 'border-neutral-900'
+                  } bg-neutral-950/70 p-3 transition`;
 
-                return (
-                  <li
-                    key={action.Key}
-                    class='rounded border border-neutral-900 bg-neutral-950/70 px-3 py-2 text-neutral-200'
-                  >
-                    <div class='flex flex-col gap-2'>
-                      <div class='flex flex-wrap items-center gap-2'>
-                        <span class='font-medium text-neutral-100'>
-                          {action.Label ?? action.Key}
-                        </span>
-                        {action.Invocation?.Type && (
-                          <span class='rounded border border-blue-500/30 bg-blue-500/10 px-2 py-[1px] text-[10px] uppercase tracking-wide text-blue-200'>
-                            {action.Invocation.Type}
-                          </span>
+                  const handleEnabledToggle = (checked: boolean) => {
+                    if (checked) {
+                      onActionModeChange(sliceKey, action.Key, rawInvocationMode ?? 'both');
+                    } else {
+                      onActionModeChange(sliceKey, action.Key, null);
+                    }
+                  };
+
+                  return (
+                    <li
+                      key={action.Key}
+                      class={actionCardClass}
+                    >
+                      <div class='flex flex-col gap-2'>
+                        <div class='flex flex-wrap items-start justify-between gap-2'>
+                          <div class='flex flex-wrap items-center gap-2'>
+                            <span class='font-medium text-neutral-100'>
+                              {action.Label ?? action.Key}
+                            </span>
+                            {action.Invocation?.Type && (
+                              <span class='rounded border border-blue-500/30 bg-blue-500/10 px-2 py-[1px] text-[10px] uppercase tracking-wide text-blue-200'>
+                                {action.Invocation.Type}
+                              </span>
+                            )}
+                          </div>
+                          <ToggleCheckbox
+                            checked={isEnabled}
+                            onToggle={handleEnabledToggle}
+                            title={isEnabled ? 'Disable action' : 'Enable action'}
+                            checkedIntentType={IntentTypes.Primary}
+                            uncheckedIntentType={IntentTypes.Secondary}
+                          />
+                        </div>
+                        {action.Description && (
+                          <p class='text-[11px] text-neutral-500'>{action.Description}</p>
+                        )}
+                        <div class='flex flex-wrap gap-2'>
+                          <button
+                            type='button'
+                            class={chipClass(handlerActive, !handlerSelectable)}
+                            disabled={!handlerSelectable}
+                            onClick={() => toggleSurface('server')}
+                          >
+                            Handler
+                          </button>
+                          <button
+                            type='button'
+                            class={chipClass(clientActive, !clientSelectable)}
+                            disabled={!clientSelectable}
+                            onClick={() => toggleSurface('client')}
+                          >
+                            Client
+                          </button>
+                        </div>
+                        {actionUnavailable && (
+                          <p class='text-[11px] text-amber-400'>
+                            This action is unavailable with the current availability settings.
+                          </p>
+                        )}
+                        {!isEnabled && (
+                          <p class='text-[11px] text-neutral-500'>
+                            Enable this action to configure handler or client execution.
+                          </p>
                         )}
                       </div>
-                      {action.Description && (
-                        <p class='text-[11px] text-neutral-500'>{action.Description}</p>
-                      )}
-                      <div class='flex flex-wrap gap-2'>
-                        <button
-                          type='button'
-                          class={chipClass(handlerActive, !handlerSelectable)}
-                          disabled={!handlerSelectable}
-                          onClick={() => toggleSurface('server')}
-                        >
-                          Handler
-                        </button>
-                        <button
-                          type='button'
-                          class={chipClass(clientActive, !clientSelectable)}
-                          disabled={!clientSelectable}
-                          onClick={() => toggleSurface('client')}
-                        >
-                          Client
-                        </button>
-                      </div>
-                      {actionUnavailable && (
-                        <p class='text-[11px] text-amber-400'>
-                          This action is unavailable with the current availability settings.
-                        </p>
-                      )}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )
+            : (
+              <p class='rounded border border-dashed border-neutral-800 bg-neutral-950/50 p-3 text-[11px] text-neutral-500'>
+                No actions are exposed for this slice.
+              </p>
+            )}
+        </section>
+
+        <section class='space-y-2'>
+          <h4 class='text-xs font-semibold uppercase tracking-wide text-neutral-500'>
+            Schema
+          </h4>
+          <p class='text-[11px] text-neutral-400'>
+            {schemaSummary ? `Fields: ${schemaSummary}` : 'Schema information unavailable.'}
+          </p>
+        </section>
       </div>
-    </div>
+    </details>
   );
 }
 
@@ -321,8 +407,6 @@ function DataConnectionSettings({
 
   return (
     <div class='space-y-3 rounded border border-neutral-800 bg-neutral-950/80 p-3'>
-      <p class='font-semibold text-neutral-200'>Data connection settings</p>
-
       <label class='flex items-start gap-3 text-xs text-neutral-300'>
         <input
           type='checkbox'
