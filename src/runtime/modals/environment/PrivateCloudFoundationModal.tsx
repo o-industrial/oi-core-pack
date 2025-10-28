@@ -6,8 +6,12 @@ import {
   LoadingIcon,
   Modal,
   useEffect,
+  useRef,
   useState,
   WorkspaceManager,
+  EaCFoundationAsCode,
+  EaCFoundationDetails,
+  EaCServiceDefinitions,
 } from '../../../.deps.ts';
 
 type FoundationHighlight = {
@@ -60,61 +64,13 @@ const foundationHighlights: FoundationHighlight[] = [
 
 const [baseHighlight, secureHighlight] = foundationHighlights;
 
-type CloudFoundationPlanNetwork = {
-  Name: string;
-  AddressSpace: string;
-  Subnets: Array<{ Name: string; AddressPrefix: string }>;
-};
+const WORKSPACE_CLOUD_LOOKUP = 'Workspace';
+const WORKSPACE_FOUNDATION_LOOKUP = 'cloud-foundation-plan';
+const DEFAULT_FOUNDATION_NAME = 'Private Cloud Foundation Plan';
+const DEFAULT_FOUNDATION_DESCRIPTION =
+  'Blueprint inputs for provisioning the workspace landing zone and guardrails.';
 
-type CloudFoundationPlanKeyVaultPolicy = {
-  TenantId: string;
-  ObjectId: string;
-  Permissions: {
-    Keys?: string[];
-    Secrets?: string[];
-    Certificates?: string[];
-    Storage?: string[];
-  };
-};
-
-type CloudFoundationPlanData = {
-  WorkspaceLookup: string;
-  Providers?: string[];
-  ResourceGroup: {
-    Name: string;
-    Location: string;
-    Tags?: Record<string, string>;
-  };
-  Network?: CloudFoundationPlanNetwork;
-  KeyVault?: {
-    VaultName: string;
-    AccessPolicies?: CloudFoundationPlanKeyVaultPolicy[];
-    Tags?: Record<string, string>;
-  };
-  LogAnalytics?: {
-    WorkspaceName: string;
-    RetentionInDays?: number;
-    Tags?: Record<string, string>;
-  };
-  Diagnostics?: {
-    WorkspaceResourceId?: string;
-    Targets: Array<{
-      ResourceId: string;
-      Logs?: string[];
-      Metrics?: string[];
-    }>;
-  };
-  Governance?: {
-    Scope: string;
-    PolicyDefinitions?: Array<{ Id: string; Parameters?: Record<string, unknown> }>;
-    RoleAssignments?: Array<{
-      RoleDefinitionId: string;
-      PrincipalId: string;
-      Condition?: string;
-      ConditionVersion?: string;
-    }>;
-  };
-};
+type FoundationPlanDraft = Partial<EaCFoundationDetails>;
 
 type PreconnectHighlight = {
   title: string;
@@ -199,24 +155,185 @@ export function PrivateCloudFoundationModal({
   onClose,
 }: PrivateCloudFoundationModalProps): JSX.Element {
   const eac = workspaceMgr.UseEaC();
-  const workspaceCloud = (eac?.Clouds || {})['Workspace'];
+  const workspaceCloud = (eac?.Clouds || {})[WORKSPACE_CLOUD_LOOKUP];
+  const foundationEntries = Object.entries(eac?.Foundations ?? {}) as Array<
+    [string, EaCFoundationAsCode]
+  >;
+  const workspaceFoundationEntry = foundationEntries.find(([, foundation]) =>
+    foundation?.CloudLookup === WORKSPACE_CLOUD_LOOKUP
+  );
+  const workspaceFoundationLookup = workspaceFoundationEntry?.[0] ??
+    WORKSPACE_FOUNDATION_LOOKUP;
+  const workspaceFoundation = workspaceFoundationEntry?.[1];
+  const foundationDetails = workspaceFoundation?.Details as
+    | EaCFoundationDetails
+    | undefined;
+  const foundationOutputs = foundationDetails?.Outputs as
+    | Record<string, unknown>
+    | undefined;
   const [locations, setLocations] = useState<{ Name: string }[]>([]);
+  const [locationError, setLocationError] = useState<string | undefined>(undefined);
   const [loadingLocs, setLoadingLocs] = useState(false);
-  const [foundationView, setFoundationView] = useState<'plan' | 'manage'>('plan');
+  const [foundationViewInternal, setFoundationViewInternal] = useState<'plan' | 'manage'>('plan');
+  const viewManuallyChanged = useRef(false);
   const isLocalPreview = IS_BROWSER && globalThis.location?.hostname === 'localhost';
 
-  // Step 1: Base inputs
-  const [region, setRegion] = useState('');
-  const [rgName, setRgName] = useState('oi-workspace-rg');
+  const [region, setRegion] = useState(
+    foundationDetails?.ResourceGroup?.Location ?? '',
+  );
+  const [rgName, setRgName] = useState(
+    foundationDetails?.ResourceGroup?.Name ?? 'oi-workspace-rg',
+  );
   const [baseBusy, setBaseBusy] = useState(false);
-  const [baseDone, setBaseDone] = useState(false);
+  const [baseDone, setBaseDone] = useState(
+    Boolean(foundationOutputs && 'LandingZone' in foundationOutputs),
+  );
   const [baseErr, setBaseErr] = useState<string | undefined>(undefined);
+  const [runQueued, setRunQueued] = useState(false);
+  const [previousCommitId, setPreviousCommitId] = useState<string | null>(null);
+
+  const setFoundationView = (view: 'plan' | 'manage', manual = false) => {
+    if (manual) viewManuallyChanged.current = true;
+    setFoundationViewInternal(view);
+  };
+
+  const handleViewChange = (view: 'plan' | 'manage') => {
+    setFoundationView(view, true);
+  };
+
+  const foundationView = foundationViewInternal;
+
+  useEffect(() => {
+    if ((foundationOutputs || runQueued) && !viewManuallyChanged.current) {
+      setFoundationViewInternal('manage');
+    }
+  }, [foundationOutputs, runQueued]);
+
+  useEffect(() => {
+    if (!foundationDetails) return;
+    if (foundationViewInternal === 'manage') {
+      const group = foundationDetails.ResourceGroup ?? {};
+      if (group.Name) setRgName(group.Name);
+      if (group.Location) setRegion(group.Location);
+    }
+  }, [
+    foundationDetails?.ResourceGroup?.Name,
+    foundationDetails?.ResourceGroup?.Location,
+    foundationViewInternal,
+  ]);
+
+  useEffect(() => {
+    const landingZone = Boolean((foundationOutputs as Record<string, unknown> | undefined)?.LandingZone);
+    setBaseDone(landingZone);
+    if (landingZone) {
+      setRunQueued(false);
+    }
+  }, [foundationOutputs?.LandingZone]);
+
+const buildFoundationDetails = (
+  overrides: FoundationPlanDraft = {},
+): EaCFoundationDetails => ({
+  Type: overrides.Type ?? foundationDetails?.Type ?? 'CloudFoundationPlan',
+  Name: overrides.Name ?? foundationDetails?.Name ?? DEFAULT_FOUNDATION_NAME,
+    Description: overrides.Description ??
+      foundationDetails?.Description ??
+      DEFAULT_FOUNDATION_DESCRIPTION,
+    Order: overrides.Order ?? foundationDetails?.Order ?? 1,
+    WorkspaceLookup: overrides.WorkspaceLookup ??
+      foundationDetails?.WorkspaceLookup ??
+      eac?.EnterpriseLookup ??
+      '',
+    ResourceGroup: {
+      Name: overrides.ResourceGroup?.Name ??
+        foundationDetails?.ResourceGroup?.Name ??
+        rgName,
+      Location: overrides.ResourceGroup?.Location ??
+        foundationDetails?.ResourceGroup?.Location ??
+        region,
+      Tags: overrides.ResourceGroup?.Tags ??
+        foundationDetails?.ResourceGroup?.Tags,
+    },
+    Network: overrides.Network ?? foundationDetails?.Network,
+    KeyVault: overrides.KeyVault ?? foundationDetails?.KeyVault,
+    LogAnalytics: overrides.LogAnalytics ?? foundationDetails?.LogAnalytics,
+    Diagnostics: overrides.Diagnostics ?? foundationDetails?.Diagnostics,
+    Governance: overrides.Governance ?? foundationDetails?.Governance,
+    Outputs: foundationDetails?.Outputs,
+  });
+
+const buildServiceDefinitionsFromDetails = (
+  details: EaCFoundationDetails,
+): EaCServiceDefinitions => {
+  const providers = new Set<string>([
+    'Microsoft.Resources',
+    'Microsoft.Network',
+    'Microsoft.Authorization',
+  ]);
+
+  if (details.KeyVault) {
+    providers.add('Microsoft.KeyVault');
+  }
+
+  if (details.LogAnalytics) {
+    providers.add('Microsoft.OperationalInsights');
+    providers.add('Microsoft.Insights');
+  }
+
+  if (details.Diagnostics) {
+    providers.add('Microsoft.Insights');
+    providers.add('Microsoft.OperationalInsights');
+  }
+
+  if (details.Governance) {
+    providers.add('Microsoft.PolicyInsights');
+  }
+
+  return Array.from(providers).reduce(
+    (acc, provider) => {
+      acc[provider] = acc[provider] ?? { Types: [] };
+      return acc;
+    },
+    {} as EaCServiceDefinitions,
+  );
+};
+
+const mergeFoundationPartial = (details: EaCFoundationDetails) => {
+  workspaceMgr.EaC.MergePartial({
+    Foundations: {
+      [workspaceFoundationLookup]: {
+        CloudLookup: WORKSPACE_CLOUD_LOOKUP,
+          Details: details,
+        },
+      },
+    } as unknown as Record<string, unknown>);
+  };
 
   const loadLocations = async () => {
     try {
       setLoadingLocs(true);
-      const res = await fetch('/workspace/api/azure/locations');
+      setLocationError(undefined);
+
+      const planDetails = buildFoundationDetails();
+      const serviceDefinitions = buildServiceDefinitionsFromDetails(planDetails);
+
+      const res = await fetch('/workspace/api/azure/locations', {
+        method: 'GET',
+        headers: {
+          'content-type': 'application/json',
+          ...workspaceMgr.GetAuthHeaders(),
+        },
+        body: JSON.stringify({
+          cloudLookup: WORKSPACE_CLOUD_LOOKUP,
+          serviceDefinitions,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Unable to load locations (status ${res.status})`);
+      }
+
       const data = await res.json();
+
       const locs = (data?.Locations ?? []) as {
         name?: string;
         displayName?: string;
@@ -233,11 +350,10 @@ export function PrivateCloudFoundationModal({
       }
     } catch (err) {
       console.error('Failed to load locations', err);
-      if (isLocalPreview) {
-        const fallback = [{ Name: 'westus3' }, { Name: 'centralus' }, { Name: 'eastus2' }];
-        setLocations(fallback);
-        if (!region) setRegion(fallback[0].Name);
-      }
+      setLocationError('Unable to load Azure regions automatically. Select or enter a region manually.');
+      const fallback = [{ Name: 'westus3' }, { Name: 'centralus' }, { Name: 'eastus2' }];
+      setLocations((prev) => (prev.length ? prev : fallback));
+      if (!region) setRegion(fallback[0].Name);
     } finally {
       setLoadingLocs(false);
     }
@@ -252,39 +368,45 @@ export function PrivateCloudFoundationModal({
       setBaseBusy(true);
       setBaseErr(undefined);
       setBaseDone(false);
-      setFoundationView('manage');
+      handleViewChange('manage');
       const workspaceLookup = eac?.EnterpriseLookup || '';
-      const defaultProviders = [
-        'Microsoft.Resources',
-        'Microsoft.Network',
-        'Microsoft.KeyVault',
-        'Microsoft.OperationalInsights',
-        'Microsoft.Insights',
-        'Microsoft.Authorization',
-      ];
-      const foundationPlan: CloudFoundationPlanData = {
+      const draftDetails = buildFoundationDetails({
         WorkspaceLookup: workspaceLookup,
-        Providers: defaultProviders,
         ResourceGroup: {
           Name: rgName,
           Location: region,
         },
-      };
+      });
+      const payloadDetails = { ...draftDetails } as EaCFoundationDetails;
+      delete (payloadDetails as Record<string, unknown>).Outputs;
+
       const res = await fetch('/workspace/api/o-industrial/calz/base', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           region,
           rgName,
-          foundationPlan,
+          foundationPlan: payloadDetails,
         }),
       });
+      if (!res.ok) {
+        throw new Error(`Foundation request failed (status ${res.status})`);
+      }
       const data = await res.json();
       if (!data?.status) throw new Error('No status returned');
-      setBaseDone(true);
+      mergeFoundationPartial(payloadDetails);
+      setRunQueued(true);
+      if (typeof data.status.CommitID === 'string' && data.status.CommitID.length > 0) {
+        setPreviousCommitId(data.status.CommitID);
+      } else if (lastCommitId) {
+        setPreviousCommitId(lastCommitId);
+      } else {
+        setPreviousCommitId((prev) => prev ?? 'Pending run');
+      }
     } catch (err) {
       setBaseErr((err as Error).message);
-      setFoundationView('plan');
+      handleViewChange('plan');
+      setRunQueued(false);
     } finally {
       setBaseBusy(false);
     }
@@ -311,22 +433,62 @@ export function PrivateCloudFoundationModal({
   const heroPillText = hasWorkspaceCloud
     ? isManagingFoundation ? 'Foundation Management' : 'Plan Foundation'
     : 'First Step';
-  const managementStatusClass = baseDone
-    ? 'text-emerald-300'
-    : baseBusy
+  const outputsRecord = foundationOutputs as
+    | {
+      LandingZone?: unknown;
+      KeyVault?: unknown;
+      LogAnalytics?: unknown;
+      Diagnostics?: unknown;
+      Governance?: unknown;
+    }
+    | undefined;
+  const landingZoneReady = Boolean(outputsRecord?.LandingZone);
+  const keyVaultReady = Boolean(outputsRecord?.KeyVault);
+  const logAnalyticsReady = Boolean(outputsRecord?.LogAnalytics);
+  const diagnosticsReady = Boolean(outputsRecord?.Diagnostics);
+  const governanceReady = Boolean(outputsRecord?.Governance);
+  const provisioningInFlight = baseBusy;
+  const foundationReady = landingZoneReady;
+  const foundationStarted = runQueued || foundationReady;
+  const managementStatusClass = provisioningInFlight
     ? 'text-sky-300'
-    : 'text-slate-400';
-  const managementStatusText = baseBusy
+    : foundationReady
+    ? 'text-emerald-300'
+    : foundationStarted
+    ? 'text-slate-300'
+    : 'text-slate-500';
+  const managementStatusText = provisioningInFlight
     ? 'Provisioning...'
-    : baseDone
+    : foundationReady
     ? 'Foundation ready'
-    : 'Queued';
-  const managementStatus = (ready: string, progress: string, queued: string) =>
-    baseDone ? ready : baseBusy ? progress : queued;
+    : foundationStarted
+    ? 'Queued'
+    : 'Not started';
+  const unitStatus = (
+    readyCondition: boolean,
+    ready: string,
+    provisioning: string,
+    queued: string,
+    idle: string,
+  ) => {
+    if (readyCondition) return ready;
+    if (provisioningInFlight) return provisioning;
+    if (foundationStarted) return queued;
+    return idle;
+  };
+  const lastCommitId = typeof (foundationOutputs as { CommitID?: unknown } | undefined)?.CommitID ===
+      'string'
+    ? (foundationOutputs as { CommitID?: string }).CommitID
+    : undefined;
+  useEffect(() => {
+    if (lastCommitId) {
+      setPreviousCommitId(lastCommitId);
+    }
+  }, [lastCommitId]);
   const blueprintCards = [
     {
       title: 'Landing zone resource group',
-      summary: `${rgName || 'Resource group TBD'} · ${region || 'Region pending'}`,
+      summary: `${rgName || 'Resource group TBD'} - ${region || 'Region pending'}`,
       why:
         'Scopes the private foundation, centralizing policy, secrets, and networking assets for downstream workloads.',
     },
@@ -356,39 +518,47 @@ export function PrivateCloudFoundationModal({
   const managementCards = [
     {
       title: 'Azure Key Vault',
-      status: managementStatus(
+      status: unitStatus(
+        keyVaultReady,
         'Ready for secrets',
         'Provisioning vault resources...',
         'Waiting for foundation start',
+        'Not yet started',
       ),
       description:
         'Import certificates, set access policies, and confirm rotation cadence for shared secrets.',
     },
     {
       title: 'Log Analytics Workspace',
-      status: managementStatus(
+      status: unitStatus(
+        logAnalyticsReady,
         'Connected to RG',
         'Linking diagnostic settings...',
         'Awaiting base resources',
+        'Not yet started',
       ),
       description:
         'Map resource diagnostic settings and define retention so operations insights stay actionable.',
     },
     {
       title: 'Monitor & Alerts',
-      status: managementStatus(
+      status: unitStatus(
+        diagnosticsReady,
         'Baseline rules queued',
         'Syncing default alerts...',
         'Activate after foundation deploy',
+        'Not yet started',
       ),
       description: 'Review default metric alerts and wire them into your on-call tooling.',
     },
     {
       title: 'Policy & RBAC',
-      status: managementStatus(
+      status: unitStatus(
+        governanceReady,
         'Assignments staged',
         'Applying governance guardrails...',
         'Compile requirements',
+        'Not yet started',
       ),
       description:
         'Confirm role assignments and Azure Policy definitions align to your compliance baseline.',
@@ -544,6 +714,9 @@ export function PrivateCloudFoundationModal({
                                 </option>
                               ))}
                             </select>
+                            {locationError && (
+                              <p class='mt-2 text-xs text-amber-300'>{locationError}</p>
+                            )}
                             <div class='mt-2 space-y-1'>
                               <div class='flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400'>
                                 <span>
@@ -588,18 +761,6 @@ export function PrivateCloudFoundationModal({
                               >
                                 {baseBusy ? 'Provisioning foundation...' : 'Start provisioning'}
                               </Action>
-                              {isLocalPreview && (
-                                <Action
-                                  styleType={ActionStyleTypes.Outline}
-                                  onClick={() => {
-                                    setBaseBusy(false);
-                                    setBaseDone(false);
-                                    setFoundationView('manage');
-                                  }}
-                                >
-                                  Preview management view
-                                </Action>
-                              )}
                             </div>
                             <span class='text-xs text-slate-400'>
                               Clicking start provisioning moves you to the management dashboard.
@@ -696,31 +857,21 @@ export function PrivateCloudFoundationModal({
                           {managementStatusText}
                         </span>
                       </div>
-                      {!baseBusy && (
+                      {!foundationStarted && (
                         <div class='flex flex-wrap items-center gap-2'>
                           <Action
                             styleType={ActionStyleTypes.Outline}
-                            onClick={() => setFoundationView('plan')}
+                            onClick={() => handleViewChange('plan')}
+                            disabled={provisioningInFlight}
                           >
                             Adjust foundation inputs
                           </Action>
-                          {isLocalPreview && (
-                            <>
-                              <Action
-                                styleType={ActionStyleTypes.Outline}
-                                onClick={() => setBaseDone(false)}
-                              >
-                                Show queued state
-                              </Action>
-                              <Action
-                                styleType={ActionStyleTypes.Outline}
-                                onClick={() => setBaseDone(true)}
-                              >
-                                Show ready state
-                              </Action>
-                            </>
-                          )}
                         </div>
+                      )}
+                      {previousCommitId && (
+                        <p class='text-xs text-slate-400'>
+                          Last foundation run: {previousCommitId}
+                        </p>
                       )}
                     </div>
                   </div>
