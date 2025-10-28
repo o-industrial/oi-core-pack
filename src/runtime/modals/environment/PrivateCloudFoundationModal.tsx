@@ -317,7 +317,7 @@ const mergeFoundationPartial = (details: EaCFoundationDetails) => {
       const serviceDefinitions = buildServiceDefinitionsFromDetails(planDetails);
 
       const res = await fetch('/workspace/api/azure/locations', {
-        method: 'GET',
+        method: 'POST',
         headers: {
           'content-type': 'application/json',
           ...workspaceMgr.GetAuthHeaders(),
