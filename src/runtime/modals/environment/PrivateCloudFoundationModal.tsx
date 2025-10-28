@@ -5,6 +5,7 @@ import {
   JSX,
   LoadingIcon,
   Modal,
+  Select,
   useEffect,
   useRef,
   useState,
@@ -182,7 +183,7 @@ export function PrivateCloudFoundationModal({
     foundationDetails?.ResourceGroup?.Location ?? '',
   );
   const [rgName, setRgName] = useState(
-    foundationDetails?.ResourceGroup?.Name ?? 'oi-workspace-rg',
+    foundationDetails?.ResourceGroup?.Name ?? eac.Details?.Name ?? eac.EnterpriseLookup,
   );
   const [baseBusy, setBaseBusy] = useState(false);
   const [baseDone, setBaseDone] = useState(
@@ -261,42 +262,6 @@ const buildFoundationDetails = (
     Outputs: foundationDetails?.Outputs,
   });
 
-const buildServiceDefinitionsFromDetails = (
-  details: EaCFoundationDetails,
-): EaCServiceDefinitions => {
-  const providers = new Set<string>([
-    'Microsoft.Resources',
-    'Microsoft.Network',
-    'Microsoft.Authorization',
-  ]);
-
-  if (details.KeyVault) {
-    providers.add('Microsoft.KeyVault');
-  }
-
-  if (details.LogAnalytics) {
-    providers.add('Microsoft.OperationalInsights');
-    providers.add('Microsoft.Insights');
-  }
-
-  if (details.Diagnostics) {
-    providers.add('Microsoft.Insights');
-    providers.add('Microsoft.OperationalInsights');
-  }
-
-  if (details.Governance) {
-    providers.add('Microsoft.PolicyInsights');
-  }
-
-  return Array.from(providers).reduce(
-    (acc, provider) => {
-      acc[provider] = acc[provider] ?? { Types: [] };
-      return acc;
-    },
-    {} as EaCServiceDefinitions,
-  );
-};
-
 const mergeFoundationPartial = (details: EaCFoundationDetails) => {
   workspaceMgr.EaC.MergePartial({
     Foundations: {
@@ -313,19 +278,12 @@ const mergeFoundationPartial = (details: EaCFoundationDetails) => {
       setLoadingLocs(true);
       setLocationError(undefined);
 
-      const planDetails = buildFoundationDetails();
-      const serviceDefinitions = buildServiceDefinitionsFromDetails(planDetails);
-
       const res = await fetch('/workspace/api/azure/locations', {
-        method: 'POST',
+        method: 'GET',
         headers: {
           'content-type': 'application/json',
           ...workspaceMgr.GetAuthHeaders(),
         },
-        body: JSON.stringify({
-          cloudLookup: WORKSPACE_CLOUD_LOOKUP,
-          serviceDefinitions,
-        }),
       });
 
       if (!res.ok) {
@@ -700,23 +658,26 @@ const mergeFoundationPartial = (details: EaCFoundationDetails) => {
                           </div>
                           <div>
                             <label class='mb-1 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-400'>
-                              Region
-                            </label>
-                            <select
-                              class='w-full rounded-lg border border-slate-700/60 bg-slate-900/60 px-3 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-400/60'
-                              value={region}
-                              disabled={loadingLocs || locations.length === 0}
-                              onChange={(e) => setRegion((e.target as HTMLSelectElement).value)}
-                            >
-                              {locations.map((l) => (
-                                <option value={l.Name} key={l.Name}>
-                                  {l.Name}
-                                </option>
-                              ))}
-                            </select>
-                            {locationError && (
-                              <p class='mt-2 text-xs text-amber-300'>{locationError}</p>
-                            )}
+                          Region
+                        </label>
+                        <Select
+                          searchable
+                          searchPlaceholder='Search regions...'
+                          noResultsText='No matching regions'
+                          value={region}
+                          disabled={loadingLocs || locations.length === 0}
+                          onChange={(event) =>
+                            setRegion((event.target as HTMLSelectElement).value)}
+                        >
+                          {locations.map((l) => (
+                            <option value={l.Name} key={l.Name}>
+                              {l.Name}
+                            </option>
+                          ))}
+                        </Select>
+                        {locationError && (
+                          <p class='mt-2 text-xs text-amber-300'>{locationError}</p>
+                        )}
                             <div class='mt-2 space-y-1'>
                               <div class='flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400'>
                                 <span>
@@ -857,17 +818,6 @@ const mergeFoundationPartial = (details: EaCFoundationDetails) => {
                           {managementStatusText}
                         </span>
                       </div>
-                      {!foundationStarted && (
-                        <div class='flex flex-wrap items-center gap-2'>
-                          <Action
-                            styleType={ActionStyleTypes.Outline}
-                            onClick={() => handleViewChange('plan')}
-                            disabled={provisioningInFlight}
-                          >
-                            Adjust foundation inputs
-                          </Action>
-                        </div>
-                      )}
                       {previousCommitId && (
                         <p class='text-xs text-slate-400'>
                           Last foundation run: {previousCommitId}
