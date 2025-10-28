@@ -1,7 +1,6 @@
 import {
   Action,
   ActionStyleTypes,
-  IS_BROWSER,
   JSX,
   LoadingIcon,
   Modal,
@@ -177,8 +176,6 @@ export function PrivateCloudFoundationModal({
   const [loadingLocs, setLoadingLocs] = useState(false);
   const [foundationViewInternal, setFoundationViewInternal] = useState<'plan' | 'manage'>('plan');
   const viewManuallyChanged = useRef(false);
-  const isLocalPreview = IS_BROWSER && globalThis.location?.hostname === 'localhost';
-
   const [region, setRegion] = useState(
     foundationDetails?.ResourceGroup?.Location ?? '',
   );
@@ -300,18 +297,19 @@ const mergeFoundationPartial = (details: EaCFoundationDetails) => {
         .map((l) => ({ Name: l.displayName || l.name || '' }))
         .filter((l) => l.Name);
       setLocations(mapped);
-      if (!region && mapped.length > 0) setRegion(mapped[0].Name);
-      if (mapped.length === 0 && isLocalPreview) {
-        const fallback = [{ Name: 'westus3' }, { Name: 'centralus' }, { Name: 'eastus2' }];
-        setLocations(fallback);
-        if (!region) setRegion(fallback[0].Name);
+      const hasSelectedRegion = mapped.some((loc) => loc.Name === region);
+      if (mapped.length > 0) {
+        if (!hasSelectedRegion) {
+          setRegion(mapped[0].Name);
+        }
+      } else if (!hasSelectedRegion) {
+        setRegion('');
       }
     } catch (err) {
       console.error('Failed to load locations', err);
       setLocationError('Unable to load Azure regions automatically. Select or enter a region manually.');
-      const fallback = [{ Name: 'westus3' }, { Name: 'centralus' }, { Name: 'eastus2' }];
-      setLocations((prev) => (prev.length ? prev : fallback));
-      if (!region) setRegion(fallback[0].Name);
+      setLocations([]);
+      setRegion('');
     } finally {
       setLoadingLocs(false);
     }
@@ -665,15 +663,21 @@ const mergeFoundationPartial = (details: EaCFoundationDetails) => {
                           searchPlaceholder='Search regions...'
                           noResultsText='No matching regions'
                           value={region}
-                          disabled={loadingLocs || locations.length === 0}
+                          disabled={loadingLocs}
                           onChange={(event) =>
                             setRegion((event.target as HTMLSelectElement).value)}
                         >
-                          {locations.map((l) => (
-                            <option value={l.Name} key={l.Name}>
-                              {l.Name}
-                            </option>
-                          ))}
+                          {locations.length > 0
+                            ? locations.map((l) => (
+                              <option value={l.Name} key={l.Name}>
+                                {l.Name}
+                              </option>
+                            ))
+                            : (
+                              <option value=''>
+                                {locationError ?? 'No regions available'}
+                              </option>
+                            )}
                         </Select>
                         {locationError && (
                           <p class='mt-2 text-xs text-amber-300'>{locationError}</p>

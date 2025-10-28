@@ -463,6 +463,13 @@ export function SurfaceInterfaceImportsTab({
                 entry.moduleAnalysis
               )
             : '';
+          const showNamedMembers =
+            entry.importKind === 'named' ||
+            entry.importKind === 'default-and-named';
+          const showDefaultAlias =
+            entry.importKind === 'default' ||
+            entry.importKind === 'default-and-named';
+          const showNamespaceAlias = entry.importKind === 'namespace';
           const editingStatusMessage = resolveStatusMessage(
             entry,
             'edit',
@@ -556,264 +563,288 @@ export function SurfaceInterfaceImportsTab({
                   </p>
                 </div>
 
-                <div class="flex flex-col gap-3 md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:gap-6">
-                  <label class="flex flex-col gap-2 text-xs text-neutral-300 md:w-72">
-                    <span class="font-semibold uppercase tracking-wide text-neutral-500">
-                      Import style
-                    </span>
-                    <span class="text-xs text-neutral-400">
-                      Choose how this module is consumed. Adjusting the style
-                      resets incompatible fields automatically.
-                    </span>
-                    <Select
-                      // class='h-10 rounded border border-neutral-700 bg-neutral-900 px-3 text-sm text-neutral-100 outline-none focus:border-teal-400'
-                      value={entry.importKind}
-                      onInput={(
-                        event: JSX.TargetedEvent<HTMLSelectElement, Event>
-                      ) =>
-                        updateEntry(
-                          entry.id,
-                          'importKind',
-                          event.currentTarget.value as ImportKind
-                        )
-                      }
-                    >
-                      <option value="named">Named members {'{ foo }'}</option>
-                      <option value="default">Default import</option>
-                      <option value="default-and-named">
-                        Default + named members
-                      </option>
-                      <option value="namespace">
-                        Namespace import (* as alias)
-                      </option>
-                      <option value="side-effect">
-                        Side effect (import 'specifier')
-                      </option>
-                    </Select>
-                  </label>
-
-                  <div class="flex flex-col items-start gap-2 md:items-end">
-                    <Action
-                      type="button"
-                      styleType={
-                        ActionStyleTypes.Outline | ActionStyleTypes.Rounded
-                      }
-                      intentType={IntentTypes.Secondary}
-                      class="self-stretch md:self-auto md:h-10 md:px-4"
-                      onClick={() => requestSuggestions(entry.id)}
-                    >
-                      Validate &amp; suggest exports
-                    </Action>
-                    {entry.status !== 'idle' && editingStatusMessage && (
-                      <p
-                        class={`text-xs md:text-right ${
-                          entry.status === 'error'
-                            ? 'text-red-400'
-                            : entry.status === 'loading'
-                            ? 'text-neutral-400'
-                            : 'text-teal-300'
-                        }`}
+                <div class="mt-6 grid gap-6 md:grid-cols-2">
+                  <div class="flex flex-col gap-4">
+                    <label class="flex flex-col gap-2 text-xs text-neutral-300">
+                      <span class="font-semibold uppercase tracking-wide text-neutral-500">
+                        Import style
+                      </span>
+                      <span class="text-xs text-neutral-400">
+                        Choose how this module is consumed. Adjusting the style
+                        resets incompatible fields automatically.
+                      </span>
+                      <Select
+                        value={entry.importKind}
+                        onInput={(
+                          event: JSX.TargetedEvent<HTMLSelectElement, Event>
+                        ) =>
+                          updateEntry(
+                            entry.id,
+                            'importKind',
+                            event.currentTarget.value as ImportKind
+                          )
+                        }
                       >
-                        {editingStatusMessage}
-                      </p>
+                        <option value="named">
+                          Named members {'{ foo }'}
+                        </option>
+                        <option value="default">Default import</option>
+                        <option value="default-and-named">
+                          Default + named members
+                        </option>
+                        <option value="namespace">
+                          Namespace import (* as alias)
+                        </option>
+                        <option value="side-effect">
+                          Side effect (import 'specifier')
+                        </option>
+                      </Select>
+                    </label>
+
+                    <div class="flex flex-col items-start gap-2">
+                      <Action
+                        type="button"
+                        styleType={
+                          ActionStyleTypes.Outline | ActionStyleTypes.Rounded
+                        }
+                        intentType={IntentTypes.Secondary}
+                        class="w-full md:w-auto md:h-10 md:px-4"
+                        onClick={() => requestSuggestions(entry.id)}
+                      >
+                        Validate &amp; suggest exports
+                      </Action>
+                      {entry.status !== 'idle' && editingStatusMessage && (
+                        <p
+                          class={`w-full text-xs md:text-right ${
+                            entry.status === 'error'
+                              ? 'text-red-400'
+                              : entry.status === 'loading'
+                              ? 'text-neutral-400'
+                              : 'text-teal-300'
+                          }`}
+                        >
+                          {editingStatusMessage}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div class="space-y-6">
+                    {showNamedMembers && (
+                      <div class="space-y-4">
+                        <div class="space-y-2">
+                          <span class="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                            Named members
+                          </span>
+                          <div class="flex flex-wrap items-center gap-2 rounded border border-neutral-800 bg-neutral-950/80 px-3 py-2">
+                            {entry.members.map((member: string) => (
+                              <span
+                                key={member}
+                                class="inline-flex items-center gap-2 rounded bg-neutral-800 px-2 py-1 text-xs text-neutral-200"
+                              >
+                                {member}
+                                <button
+                                  type="button"
+                                  class="text-[11px] uppercase tracking-wide text-red-300 hover:text-red-200"
+                                  onClick={() =>
+                                    removeNamedMember(entry.id, member)
+                                  }
+                                >
+                                  remove
+                                </button>
+                              </span>
+                            ))}
+                            <input
+                              class="h-9 min-w-[200px] flex-1 rounded border border-neutral-700 bg-neutral-950 px-3 text-xs text-neutral-100 outline-none focus:border-teal-400"
+                              placeholder="addMember or member as alias"
+                              value={entry.memberDraft}
+                              onInput={(
+                                event: JSX.TargetedEvent<HTMLInputElement, Event>
+                              ) =>
+                                updateEntry(
+                                  entry.id,
+                                  'memberDraft',
+                                  event.currentTarget.value
+                                )
+                              }
+                              onKeyDown={(
+                                event: JSX.TargetedKeyboardEvent<HTMLInputElement>
+                              ) => {
+                                if (event.key === 'Enter' || event.key === ',') {
+                                  event.preventDefault();
+                                  addNamedMember(entry.id, entry.memberDraft);
+                                }
+                              }}
+                              onBlur={() =>
+                                addNamedMember(entry.id, entry.memberDraft)
+                              }
+                            />
+                          </div>
+                          <p class="text-xs text-neutral-400">
+                            Members render inside <code>{`{ ... }`}</code>.
+                            Press Enter (or comma) to add the value currently in
+                            the field.
+                          </p>
+                        </div>
+
+                        {showRecommendation && recommendationKind && (
+                          <div class="rounded border border-teal-500/40 bg-teal-500/10 px-3 py-2 text-xs text-teal-200">
+                            <p>{recommendationMessage}</p>
+                            <div class="mt-2 flex flex-wrap gap-2">
+                              <Action
+                                type="button"
+                                styleType={
+                                  ActionStyleTypes.Outline |
+                                  ActionStyleTypes.Rounded
+                                }
+                                intentType={IntentTypes.Primary}
+                                onClick={() =>
+                                  applyRecommendedKind(
+                                    entry.id,
+                                    recommendationKind
+                                  )
+                                }
+                              >
+                                Apply {getImportKindLabel(recommendationKind)}
+                              </Action>
+                            </div>
+                          </div>
+                        )}
+
+                        {entry.suggestions.length > 0 && (
+                          <div class="space-y-2 rounded border border-neutral-800 bg-neutral-950/60 p-3 text-xs text-neutral-200">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                              <p class="font-semibold uppercase tracking-wide text-neutral-400">
+                                Suggestions
+                              </p>
+                              <button
+                                type="button"
+                                class="text-[11px] uppercase tracking-wide text-teal-300 hover:text-teal-200"
+                                onClick={() => {
+                                  setEntries((current: ImportEntry[]) =>
+                                    current.map((item: ImportEntry) =>
+                                      item.id === entry.id
+                                        ? {
+                                            ...item,
+                                            members: mergeMembers(
+                                              item.members,
+                                              ...entry.suggestions
+                                            ),
+                                          }
+                                        : item
+                                    )
+                                  );
+                                }}
+                              >
+                                Add all
+                              </button>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                              {entry.suggestions.map((suggestion: string) => (
+                                <button
+                                  key={suggestion}
+                                  type="button"
+                                  class="rounded border border-teal-500/40 bg-teal-500/10 px-2 py-1 text-xs text-teal-200 hover:bg-teal-500/20"
+                                  onClick={() =>
+                                    addNamedMember(entry.id, suggestion)
+                                  }
+                                >
+                                  {suggestion}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {showDefaultAlias && (
+                      <div class="space-y-4">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                          Default import
+                        </span>
+                        <div class="flex flex-col gap-3 md:flex-row md:items-start md:gap-4">
+                          <div class="md:w-72">
+                            <Input
+                              label="Default import name"
+                              placeholder="ModuleDefault"
+                              value={entry.defaultAlias}
+                              onInput={(
+                                event: JSX.TargetedEvent<HTMLInputElement, Event>
+                              ) =>
+                                updateEntry(
+                                  entry.id,
+                                  'defaultAlias',
+                                  event.currentTarget.value
+                                )
+                              }
+                              intentType={
+                                validation.hasErrors &&
+                                !entry.defaultAlias.trim() &&
+                                (entry.importKind === 'default' ||
+                                  entry.importKind === 'default-and-named')
+                                  ? IntentTypes.Error
+                                  : undefined
+                              }
+                            />
+                          </div>
+                          <p class="text-xs text-neutral-400 md:flex-1">
+                            Generates{' '}
+                            <code>
+                              {entry.importKind === 'default-and-named'
+                                ? `import ${
+                                    entry.defaultAlias || 'DefaultExport'
+                                  }, { ... } from '${entry.specifier || 'module'}';`
+                                : `import ${
+                                    entry.defaultAlias || 'DefaultExport'
+                                  } from '${entry.specifier || 'module'}';`}
+                            </code>
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {showNamespaceAlias && (
+                      <div class="space-y-4">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                          Namespace import
+                        </span>
+                        <div class="flex flex-col gap-3 md:flex-row md:items-start md:gap-4">
+                          <div class="md:w-64">
+                            <Input
+                              label="Namespace alias"
+                              placeholder="ModuleNamespace"
+                              value={entry.namespaceAlias}
+                              onInput={(
+                                event: JSX.TargetedEvent<HTMLInputElement, Event>
+                              ) =>
+                                updateEntry(
+                                  entry.id,
+                                  'namespaceAlias',
+                                  event.currentTarget.value
+                                )
+                              }
+                              intentType={
+                                validation.hasErrors &&
+                                !entry.namespaceAlias.trim()
+                                  ? IntentTypes.Error
+                                  : undefined
+                              }
+                            />
+                          </div>
+                          <p class="text-xs text-neutral-400 md:flex-1">
+                            Generates{' '}
+                            <code>
+                              import * as Alias from '{entry.specifier ||
+                                'module'}';
+                            </code>
+                          </p>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
               </div>
-
-              {(entry.importKind === 'default' ||
-                entry.importKind === 'default-and-named') && (
-                <div class="mt-6 flex flex-col gap-3 md:flex-row md:items-start md:gap-4">
-                  <div class="md:w-72">
-                    <Input
-                      label="Default import name"
-                      placeholder="ModuleDefault"
-                      value={entry.defaultAlias}
-                      onInput={(
-                        event: JSX.TargetedEvent<HTMLInputElement, Event>
-                      ) =>
-                        updateEntry(
-                          entry.id,
-                          'defaultAlias',
-                          event.currentTarget.value
-                        )
-                      }
-                      intentType={
-                        validation.hasErrors &&
-                        !entry.defaultAlias.trim() &&
-                        (entry.importKind === 'default' ||
-                          entry.importKind === 'default-and-named')
-                          ? IntentTypes.Error
-                          : undefined
-                      }
-                    />
-                  </div>
-                  <p class="text-xs text-neutral-400 md:flex-1">
-                    Generates{' '}
-                    <code>
-                      {entry.importKind === 'default-and-named'
-                        ? `import ${
-                            entry.defaultAlias || 'DefaultExport'
-                          }, { ... } from '${entry.specifier || 'module'}';`
-                        : `import ${
-                            entry.defaultAlias || 'DefaultExport'
-                          } from '${entry.specifier || 'module'}';`}
-                    </code>
-                  </p>
-                </div>
-              )}
-
-              {entry.importKind === 'namespace' && (
-                <div class="mt-6 flex flex-col gap-3 md:flex-row md:items-start md:gap-4">
-                  <div class="md:w-64">
-                    <Input
-                      label="Namespace alias"
-                      placeholder="ModuleNamespace"
-                      value={entry.namespaceAlias}
-                      onInput={(
-                        event: JSX.TargetedEvent<HTMLInputElement, Event>
-                      ) =>
-                        updateEntry(
-                          entry.id,
-                          'namespaceAlias',
-                          event.currentTarget.value
-                        )
-                      }
-                      intentType={
-                        validation.hasErrors && !entry.namespaceAlias.trim()
-                          ? IntentTypes.Error
-                          : undefined
-                      }
-                    />
-                  </div>
-                  <p class="text-xs text-neutral-400 md:flex-1">
-                    Generates{' '}
-                    <code>
-                      import * as Alias from '{entry.specifier || 'module'}';
-                    </code>
-                  </p>
-                </div>
-              )}
-
-              {(entry.importKind === 'named' ||
-                entry.importKind === 'default-and-named') && (
-                <div class="mt-6 space-y-4">
-                  <div class="space-y-2">
-                    <span class="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                      Named members
-                    </span>
-                    <div class="flex flex-wrap items-center gap-2 rounded border border-neutral-800 bg-neutral-950/80 px-3 py-2">
-                      {entry.members.map((member: string) => (
-                        <span
-                          key={member}
-                          class="inline-flex items-center gap-2 rounded bg-neutral-800 px-2 py-1 text-xs text-neutral-200"
-                        >
-                          {member}
-                          <button
-                            type="button"
-                            class="text-[11px] uppercase tracking-wide text-red-300 hover:text-red-200"
-                            onClick={() => removeNamedMember(entry.id, member)}
-                          >
-                            remove
-                          </button>
-                        </span>
-                      ))}
-                      <input
-                        class="h-9 min-w-[200px] flex-1 rounded border border-neutral-700 bg-neutral-950 px-3 text-xs text-neutral-100 outline-none focus:border-teal-400"
-                        placeholder="addMember or member as alias"
-                        value={entry.memberDraft}
-                        onInput={(
-                          event: JSX.TargetedEvent<HTMLInputElement, Event>
-                        ) =>
-                          updateEntry(
-                            entry.id,
-                            'memberDraft',
-                            event.currentTarget.value
-                          )
-                        }
-                        onKeyDown={(
-                          event: JSX.TargetedKeyboardEvent<HTMLInputElement>
-                        ) => {
-                          if (event.key === 'Enter' || event.key === ',') {
-                            event.preventDefault();
-                            addNamedMember(entry.id, entry.memberDraft);
-                          }
-                        }}
-                        onBlur={() =>
-                          addNamedMember(entry.id, entry.memberDraft)
-                        }
-                      />
-                    </div>
-                    <p class="text-xs text-neutral-400">
-                      Members render inside <code>{`{ ... }`}</code>. Press
-                      Enter (or comma) to add the value currently in the field.
-                    </p>
-                  </div>
-
-                  {showRecommendation && recommendationKind && (
-                    <div class="rounded border border-teal-500/40 bg-teal-500/10 px-3 py-2 text-xs text-teal-200">
-                      <p>{recommendationMessage}</p>
-                      <div class="mt-2 flex flex-wrap gap-2">
-                        <Action
-                          type="button"
-                          styleType={
-                            ActionStyleTypes.Outline | ActionStyleTypes.Rounded
-                          }
-                          intentType={IntentTypes.Primary}
-                          onClick={() =>
-                            applyRecommendedKind(entry.id, recommendationKind)
-                          }
-                        >
-                          Apply {getImportKindLabel(recommendationKind)}
-                        </Action>
-                      </div>
-                    </div>
-                  )}
-
-                  {entry.suggestions.length > 0 && (
-                    <div class="space-y-2 rounded border border-neutral-800 bg-neutral-950/60 p-3 text-xs text-neutral-200">
-                      <div class="flex flex-wrap items-center justify-between gap-2">
-                        <p class="font-semibold uppercase tracking-wide text-neutral-400">
-                          Suggestions
-                        </p>
-                        <button
-                          type="button"
-                          class="text-[11px] uppercase tracking-wide text-teal-300 hover:text-teal-200"
-                          onClick={() => {
-                            setEntries((current: ImportEntry[]) =>
-                              current.map((item: ImportEntry) =>
-                                item.id === entry.id
-                                  ? {
-                                      ...item,
-                                      members: mergeMembers(
-                                        item.members,
-                                        ...entry.suggestions
-                                      ),
-                                    }
-                                  : item
-                              )
-                            );
-                          }}
-                        >
-                          Add all
-                        </button>
-                      </div>
-                      <div class="flex flex-wrap gap-2">
-                        {entry.suggestions.map((suggestion: string) => (
-                          <button
-                            key={suggestion}
-                            type="button"
-                            class="rounded border border-teal-500/40 bg-teal-500/10 px-2 py-1 text-xs text-teal-200 hover:bg-teal-500/20"
-                            onClick={() => addNamedMember(entry.id, suggestion)}
-                          >
-                            {suggestion}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
 
               {validation.hasErrors && (
                 <ul class="mt-4 list-disc space-y-1 pl-6 text-xs text-red-400">

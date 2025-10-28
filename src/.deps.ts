@@ -84,8 +84,8 @@ export {
   NodeStatTile,
   Select,
   ToggleCheckbox,
-} from 'jsr:@o-industrial/atomic@0.0.69/atoms';
-// } from '../../open-industrial-atomic/src/atoms/.exports.ts';
+// } from 'jsr:@o-industrial/atomic@0.0.69/atoms';
+} from '../../open-industrial-atomic/src/atoms/.exports.ts';
 
 export {
   CloudConnectAzureForm,
@@ -98,8 +98,8 @@ export {
   type MenuRoot,
   Modal,
   TabbedPanel,
-} from 'jsr:@o-industrial/atomic@0.0.69/molecules';
-// } from '../../open-industrial-atomic/src/molecules/.exports.ts';
+// } from 'jsr:@o-industrial/atomic@0.0.69/molecules';
+} from '../../open-industrial-atomic/src/molecules/.exports.ts';
 
 export {
   CloseIcon,
@@ -121,8 +121,8 @@ export {
   SimulatorCard,
   SimulatorPackCard,
   WorkspaceNodeRendererBase,
-} from 'jsr:@o-industrial/atomic@0.0.69/organisms';
-// } from '../../open-industrial-atomic/src/organisms/.exports.ts';
+// } from 'jsr:@o-industrial/atomic@0.0.69/organisms';
+} from '../../open-industrial-atomic/src/organisms/.exports.ts';
 
 export { type NodeEventRouter, type NodePreset } from 'jsr:@o-industrial/common@0.0.505/flow';
 
