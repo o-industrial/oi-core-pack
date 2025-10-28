@@ -48,7 +48,10 @@ import {
 } from './SurfaceInterfaceHandlerTab.tsx';
 import { SurfaceInterfaceGeneratedCodeTab } from './SurfaceInterfaceGeneratedCodeTab.tsx';
 import { SurfaceInterfaceImportsTab } from './SurfaceInterfaceImportsTab.tsx';
-import { SurfaceInterfacePageDataTab } from './SurfaceInterfacePageDataTab.tsx';
+import {
+  SurfaceInterfacePageDataTab,
+  resolveActionSurfaceSupport,
+} from './SurfaceInterfacePageDataTab.tsx';
 import { SurfaceCodeMirror } from '../../../components/code/SurfaceCodeMirror.tsx';
 import {
   buildDefaultInterfaceComponent,
@@ -440,23 +443,63 @@ export function SurfaceInterfaceModal({
 
       if (slice.Actions && slice.Actions.length > 0) {
         nextSlice.Actions = slice.Actions.map((action) => {
-          const currentMode = action.Invocation?.Mode;
-          if (!currentMode) return action;
+          const hasMode = action.Invocation?.Mode !== undefined;
+          const currentMode = action.Invocation?.Mode ?? null;
+          if (!hasMode) return action;
 
-          let nextMode: EaCInterfacePageDataActionInvocationMode = currentMode;
+          const support = resolveActionSurfaceSupport(action.Invocation?.Type);
+          const allowHandler = mode !== 'client';
+          const allowClient = mode !== 'server';
 
-          if (mode === 'server' && currentMode === 'both') {
-            nextMode = 'server';
-          } else if (mode === 'client' && currentMode === 'both') {
-            nextMode = 'client';
+          const handlerPossible = support.handler && allowHandler;
+          const clientPossible = support.client && allowClient;
+
+          const defaultMode: EaCInterfacePageDataActionInvocationMode | null =
+            handlerPossible && clientPossible
+              ? 'both'
+              : handlerPossible
+              ? 'server'
+              : clientPossible
+              ? 'client'
+              : null;
+
+          let nextMode: EaCInterfacePageDataActionInvocationMode | null = currentMode;
+
+          if (!handlerPossible && !clientPossible) {
+            nextMode = null;
+          } else if (!nextMode) {
+            nextMode = defaultMode;
+          } else if (nextMode === 'both') {
+            if (!(handlerPossible && clientPossible)) {
+              nextMode = handlerPossible
+                ? 'server'
+                : clientPossible
+                ? 'client'
+                : null;
+            }
+          } else if (nextMode === 'server') {
+            if (!handlerPossible) {
+              nextMode = clientPossible ? 'client' : null;
+            }
+          } else if (nextMode === 'client') {
+            if (!clientPossible) {
+              nextMode = handlerPossible ? 'server' : null;
+            }
           }
+
+          const nextInvocation = { ...(action.Invocation ?? {}) };
+          if (nextMode) {
+            nextInvocation.Mode = nextMode;
+          } else {
+            delete nextInvocation.Mode;
+          }
+
+          const normalizedInvocation =
+            Object.keys(nextInvocation).length > 0 ? nextInvocation : undefined;
 
           return {
             ...action,
-            Invocation: {
-              ...(action.Invocation ?? {}),
-              Mode: nextMode,
-            },
+            Invocation: normalizedInvocation,
           };
         });
       }
@@ -486,10 +529,37 @@ export function SurfaceInterfaceModal({
       const nextActions = slice.Actions.map((action) => {
         if (action.Key !== actionKey) return action;
 
+        const support = resolveActionSurfaceSupport(action.Invocation?.Type);
+        const accessMode = slice.AccessMode ?? 'both';
+        const allowHandler = accessMode !== 'client';
+        const allowClient = accessMode !== 'server';
+        const handlerPossible = support.handler && allowHandler;
+        const clientPossible = support.client && allowClient;
+
+        let nextMode: EaCInterfacePageDataActionInvocationMode | null = mode;
+
+        if (nextMode) {
+          if (nextMode === 'both') {
+            if (!(handlerPossible && clientPossible)) {
+              nextMode = handlerPossible
+                ? clientPossible
+                  ? 'both'
+                  : 'server'
+                : clientPossible
+                ? 'client'
+                : null;
+            }
+          } else if (nextMode === 'server' && !handlerPossible) {
+            nextMode = clientPossible ? 'client' : null;
+          } else if (nextMode === 'client' && !clientPossible) {
+            nextMode = handlerPossible ? 'server' : null;
+          }
+        }
+
         const nextInvocation = { ...(action.Invocation ?? {}) };
 
-        if (mode) {
-          nextInvocation.Mode = mode;
+        if (nextMode) {
+          nextInvocation.Mode = nextMode;
         } else {
           delete nextInvocation.Mode;
         }

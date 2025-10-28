@@ -14,7 +14,10 @@ import type {
   EaCInterfaceHistoricSliceFormat,
   EaCInterfaceHistoricWindowMode,
 } from '../../../.deps.ts';
-import { normalizeDataConnectionFeatures } from './SurfaceInterfacePageDataTab.tsx';
+import {
+  normalizeDataConnectionFeatures,
+  resolveActionSurfaceSupport,
+} from './SurfaceInterfacePageDataTab.tsx';
 import { SurfaceCodeMirror } from '../../../components/code/SurfaceCodeMirror.tsx';
 
 export type SurfaceInterfaceHandlerPlanStep = {
@@ -1052,6 +1055,8 @@ function buildBasePlanFromSlices(
 
     for (const action of slice.Actions ?? []) {
       if (!action?.Key) continue;
+      const support = resolveActionSurfaceSupport(action.Invocation?.Type);
+      if (!support.handler) continue;
       const invocationMode = action.Invocation?.Mode;
       if (!invocationMode || invocationMode === 'client') continue;
 

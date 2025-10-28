@@ -26,6 +26,23 @@ type SurfaceInterfacePageDataTabProps = {
   ) => void;
 };
 
+type PageDataActionInvocationType =
+  EaCInterfacePageDataAction['Invocation'] extends { Type?: infer T } ? T : string;
+
+export function resolveActionSurfaceSupport(
+  invocationType: PageDataActionInvocationType | undefined,
+): { handler: boolean; client: boolean } {
+  switch (invocationType) {
+    case 'warmQuery':
+    case 'interface':
+      return { handler: false, client: true };
+    case 'dataConnection':
+      return { handler: true, client: false };
+    default:
+      return { handler: true, client: true };
+  }
+}
+
 export function SurfaceInterfacePageDataTab({
   generatedSlices,
   onAccessModeChange,
@@ -212,14 +229,26 @@ function GeneratedSliceCard({
                 {slice.Actions.map((action: EaCInterfacePageDataAction) => {
                   const rawInvocationMode = action.Invocation?.Mode ?? null;
                   const isEnabled = rawInvocationMode !== null;
+                  const { handler: baseHandlerSupport, client: baseClientSupport } =
+                    resolveActionSurfaceSupport(action.Invocation?.Type);
+
+                  const handlerPossible = baseHandlerSupport && sliceAllowsHandler;
+                  const clientPossible = baseClientSupport && sliceAllowsClient;
+
+                  const defaultMode: EaCInterfacePageDataActionInvocationMode | null =
+                    handlerPossible && clientPossible
+                      ? 'both'
+                      : handlerPossible
+                      ? 'server'
+                      : clientPossible
+                      ? 'client'
+                      : null;
+
                   const invocationMode: EaCInterfacePageDataActionInvocationMode =
-                    rawInvocationMode ?? 'both';
+                    rawInvocationMode ?? defaultMode ?? 'both';
 
-                  const supportsHandler = invocationMode !== 'client';
-                  const supportsClient = invocationMode !== 'server';
-
-                  const handlerSelectable = isEnabled && supportsHandler && sliceAllowsHandler;
-                  const clientSelectable = isEnabled && supportsClient && sliceAllowsClient;
+                  const handlerSelectable = isEnabled && handlerPossible;
+                  const clientSelectable = isEnabled && clientPossible;
 
                   const handlerSelected =
                     isEnabled && (invocationMode === 'server' || invocationMode === 'both');
@@ -239,6 +268,7 @@ function GeneratedSliceCard({
                   }`;
 
                   const toggleSurface = (surface: 'server' | 'client') => {
+                    if (!isEnabled) return;
                     const isHandler = surface === 'server';
                     const selectable = isHandler ? handlerSelectable : clientSelectable;
                     if (!selectable) return;
@@ -274,17 +304,22 @@ function GeneratedSliceCard({
                     onActionModeChange(sliceKey, action.Key, nextMode);
                   };
 
-                  const actionUnavailable =
-                    isEnabled && !handlerSelectable && !clientSelectable;
+                  const actionUnavailable = !handlerPossible && !clientPossible;
                   const actionCardClass = `h-full rounded border ${
                     isEnabled
                       ? 'border-emerald-400 shadow-[0_0_0_1px_rgba(45,212,191,0.25)]'
                       : 'border-neutral-900'
-                  } bg-neutral-950/70 p-3 transition`;
+                  } ${isEnabled ? 'bg-neutral-950/70' : 'bg-neutral-950/40'} p-3 transition`;
+
+                  const toggleDisabled = !handlerPossible && !clientPossible;
 
                   const handleEnabledToggle = (checked: boolean) => {
                     if (checked) {
-                      onActionModeChange(sliceKey, action.Key, rawInvocationMode ?? 'both');
+                      if (defaultMode) {
+                        onActionModeChange(sliceKey, action.Key, defaultMode);
+                      } else {
+                        onActionModeChange(sliceKey, action.Key, null);
+                      }
                     } else {
                       onActionModeChange(sliceKey, action.Key, null);
                     }
@@ -313,6 +348,7 @@ function GeneratedSliceCard({
                             title={isEnabled ? 'Disable action' : 'Enable action'}
                             checkedIntentType={IntentTypes.Primary}
                             uncheckedIntentType={IntentTypes.Secondary}
+                            disabled={toggleDisabled}
                           />
                         </div>
                         {action.Description && (
@@ -338,7 +374,8 @@ function GeneratedSliceCard({
                         </div>
                         {actionUnavailable && (
                           <p class='text-[11px] text-amber-400'>
-                            This action is unavailable with the current availability settings.
+                            This action cannot run with the current exposure. Adjust surfaces or
+                            keep it disabled.
                           </p>
                         )}
                         {!isEnabled && (
