@@ -37,10 +37,10 @@ import {
 } from './interfaceDefaults.ts';
 import { reconcileInterfacePageData } from './pageDataHelpers.ts';
 import {
-  DEFAULT_HANDLER_BODY,
   buildGeneratedDescription,
   buildGeneratedMessages,
   composeHandlerCode,
+  DEFAULT_HANDLER_BODY,
   extractHandlerBody,
   generateHandlerStub,
   type SurfaceInterfaceHandlerPlanStep,
@@ -49,14 +49,11 @@ import {
 import { SurfaceInterfaceGeneratedCodeTab } from './SurfaceInterfaceGeneratedCodeTab.tsx';
 import { SurfaceInterfaceImportsTab } from './SurfaceInterfaceImportsTab.tsx';
 import {
-  SurfaceInterfacePageDataTab,
   resolveActionSurfaceSupport,
+  SurfaceInterfacePageDataTab,
 } from './SurfaceInterfacePageDataTab.tsx';
 import { SurfaceCodeMirror } from '../../../components/code/SurfaceCodeMirror.tsx';
-import {
-  buildDefaultInterfaceComponent,
-  toPascalCase,
-} from './SurfaceInterfaceTemplates.ts';
+import { buildDefaultInterfaceComponent, toPascalCase } from './SurfaceInterfaceTemplates.ts';
 
 type SurfaceInterfaceModalProps = {
   isOpen: boolean;
@@ -83,6 +80,114 @@ const TAB_HANDLER: SurfaceInterfaceTabKey = 'handler';
 const TAB_PAGE: SurfaceInterfaceTabKey = 'page';
 const TAB_PREVIEW: SurfaceInterfaceTabKey = 'preview';
 const TAB_CODE: SurfaceInterfaceTabKey = 'code';
+
+type CodeSegments = {
+  prefix: string;
+  body: string;
+  suffix: string;
+};
+
+function extractPageCodeSegments(
+  source: string,
+  fallbackPrefix?: string,
+  fallbackSuffix?: string,
+): CodeSegments {
+  const value = source ?? '';
+  if (!value.trim().length) {
+    return {
+      prefix: fallbackPrefix ?? '',
+      body: '',
+      suffix: fallbackSuffix ?? '',
+    };
+  }
+
+  const length = value.length;
+  let bodyOpen = -1;
+  for (let index = 0; index < length; index += 1) {
+    if (value[index] !== '{') continue;
+    let cursor = index - 1;
+    while (cursor >= 0 && /\s/.test(value[cursor])) cursor -= 1;
+    if (cursor >= 0 && value[cursor] === ')') {
+      bodyOpen = index;
+      break;
+    }
+  }
+
+  if (bodyOpen === -1) {
+    return {
+      prefix: fallbackPrefix ?? '',
+      body: value,
+      suffix: fallbackSuffix ?? '',
+    };
+  }
+
+  let depth = 0;
+  let bodyClose = -1;
+  for (let index = bodyOpen; index < length; index += 1) {
+    const char = value[index];
+    if (char === '"' || char === "'" || char === '`') {
+      const quote = char;
+      index += 1;
+      while (index < length) {
+        const current = value[index];
+        if (current === '\\') {
+          index += 2;
+          continue;
+        }
+        if (current === quote) break;
+        if (quote === '`' && current === '$' && value[index + 1] === '{') {
+          index += 2;
+          let tmplDepth = 1;
+          while (index < length && tmplDepth > 0) {
+            const tmplChar = value[index];
+            if (tmplChar === '{') tmplDepth += 1;
+            else if (tmplChar === '}') tmplDepth -= 1;
+            else if (tmplChar === '\\') index += 1;
+            index += 1;
+          }
+          continue;
+        }
+        index += 1;
+      }
+      continue;
+    }
+
+    if (char === '{') {
+      depth += 1;
+    } else if (char === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        bodyClose = index;
+        break;
+      }
+    }
+  }
+
+  if (bodyClose === -1) {
+    return {
+      prefix: fallbackPrefix ?? '',
+      body: value,
+      suffix: fallbackSuffix ?? '',
+    };
+  }
+
+  const prefix = value.slice(0, bodyOpen + 1);
+  const body = value.slice(bodyOpen + 1, bodyClose);
+  const suffix = value.slice(bodyClose);
+
+  return {
+    prefix,
+    body,
+    suffix,
+  };
+}
+
+function composePageCode(prefix: string, body: string, suffix: string): string {
+  const safePrefix = prefix ?? '';
+  const safeBody = body ?? '';
+  const safeSuffix = suffix ?? '';
+  return `${safePrefix}${safeBody}${safeSuffix}`;
+}
 
 export function SurfaceInterfaceModal({
   isOpen,
@@ -118,6 +223,11 @@ export function SurfaceInterfaceModal({
         resolvedDisplayName,
       ),
     [interfaceLookup, safeInterfaceId, resolvedDisplayName],
+  );
+
+  const defaultPageSegments = useMemo(
+    () => extractPageCodeSegments(defaultPageTemplate),
+    [defaultPageTemplate],
   );
 
   const derivedLookups = useMemo(
@@ -196,10 +306,18 @@ export function SurfaceInterfaceModal({
   const handlerDirtyRef = useRef(false);
 
   const [pageCode, setPageCode] = useState(
-    resolvedDetails.Page?.Code?.trim()?.length
-      ? resolvedDetails.Page.Code
-      : defaultPageTemplate,
+    resolvedDetails.Page?.Code?.trim()?.length ? resolvedDetails.Page.Code : defaultPageTemplate,
   );
+  const pageSegments = useMemo(
+    () =>
+      extractPageCodeSegments(
+        pageCode,
+        defaultPageSegments.prefix,
+        defaultPageSegments.suffix,
+      ),
+    [pageCode, defaultPageSegments.prefix, defaultPageSegments.suffix],
+  );
+  const { prefix: pagePrefix, body: pageBody, suffix: pageSuffix } = pageSegments;
   const [pageDescription, setPageDescription] = useState(
     resolvedDetails.Page?.Description ?? '',
   );
@@ -319,9 +437,12 @@ export function SurfaceInterfaceModal({
     }
   }, [handlerBody]);
 
-  const handlePageCodeChange = useCallback((next: string) => {
-    setPageCode(next);
-  }, []);
+  const handlePageBodyChange = useCallback(
+    (next: string) => {
+      setPageCode(composePageCode(pagePrefix, next, pageSuffix));
+    },
+    [pagePrefix, pageSuffix],
+  );
 
   const handlePageDescriptionChange = useCallback((next: string) => {
     setPageDescription(next);
@@ -471,11 +592,7 @@ export function SurfaceInterfaceModal({
             nextMode = defaultMode;
           } else if (nextMode === 'both') {
             if (!(handlerPossible && clientPossible)) {
-              nextMode = handlerPossible
-                ? 'server'
-                : clientPossible
-                ? 'client'
-                : null;
+              nextMode = handlerPossible ? 'server' : clientPossible ? 'client' : null;
             }
           } else if (nextMode === 'server') {
             if (!handlerPossible) {
@@ -494,8 +611,9 @@ export function SurfaceInterfaceModal({
             delete nextInvocation.Mode;
           }
 
-          const normalizedInvocation =
-            Object.keys(nextInvocation).length > 0 ? nextInvocation : undefined;
+          const normalizedInvocation = Object.keys(nextInvocation).length > 0
+            ? nextInvocation
+            : undefined;
 
           return {
             ...action,
@@ -542,9 +660,7 @@ export function SurfaceInterfaceModal({
           if (nextMode === 'both') {
             if (!(handlerPossible && clientPossible)) {
               nextMode = handlerPossible
-                ? clientPossible
-                  ? 'both'
-                  : 'server'
+                ? clientPossible ? 'both' : 'server'
                 : clientPossible
                 ? 'client'
                 : null;
@@ -564,8 +680,9 @@ export function SurfaceInterfaceModal({
           delete nextInvocation.Mode;
         }
 
-        const normalizedInvocation =
-          Object.keys(nextInvocation).length > 0 ? nextInvocation : undefined;
+        const normalizedInvocation = Object.keys(nextInvocation).length > 0
+          ? nextInvocation
+          : undefined;
 
         return {
           ...action,
@@ -719,9 +836,9 @@ export function SurfaceInterfaceModal({
       userFirstName,
       imports,
       pageDataType,
-    generatedSliceEntries,
-    handlerBody,
-    handlerCode,
+      generatedSliceEntries,
+      handlerBody,
+      handlerCode,
       handlerDescription,
       handlerMessagesText,
       pageCode,
@@ -782,13 +899,14 @@ export function SurfaceInterfaceModal({
           <div class='flex h-full min-h-0 flex-col gap-4'>
             <PageImportsSummary imports={imports} />
             <CodeEditorPanel
-              code={pageCode}
+              prefix={pagePrefix}
+              body={pageBody}
+              suffix={pageSuffix}
               description={pageDescription}
               messages={pageMessagesText}
-              onCodeChange={handlePageCodeChange}
+              onBodyChange={handlePageBodyChange}
               onDescriptionChange={handlePageDescriptionChange}
               onMessagesChange={handlePageMessagesChange}
-              placeholder='export default function InterfacePage({ data }: { data?: InterfacePageData }) { ... }'
             />
           </div>
         ),
@@ -835,7 +953,7 @@ export function SurfaceInterfaceModal({
       handleHandlerEnabledChange,
       handleHandlerMessagesChange,
       handleImportsChange,
-      handlePageCodeChange,
+      handlePageBodyChange,
       handlePageDescriptionChange,
       handlePageMessagesChange,
       handlerCode,
@@ -845,7 +963,9 @@ export function SurfaceInterfaceModal({
       handlerPlan,
       imports,
       interfaceLookup,
-      pageCode,
+      pageBody,
+      pagePrefix,
+      pageSuffix,
       pageDescription,
       pageMessagesText,
       previewBaseOverride,
@@ -918,13 +1038,14 @@ export function SurfaceInterfaceModal({
 }
 
 type CodeEditorPanelProps = {
-  code: string;
+  prefix: string;
+  body: string;
+  suffix: string;
   description: string;
   messages: string;
-  onCodeChange: (value: string) => void;
+  onBodyChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
   onMessagesChange: (value: string) => void;
-  placeholder: string;
 };
 
 function PageImportsSummary({ imports }: { imports: string[] }): JSX.Element {
@@ -939,7 +1060,8 @@ function PageImportsSummary({ imports }: { imports: string[] }): JSX.Element {
               Page imports
             </h3>
             <p class='text-xs text-neutral-400'>
-              Code authored on this tab can reference these modules directly. Manage the list from the Imports tab.
+              Code authored on this tab can reference these modules directly. Manage the list from
+              the Imports tab.
             </p>
           </div>
           <Badge intentType={hasImports ? IntentTypes.Secondary : IntentTypes.Info}>
@@ -975,21 +1097,33 @@ function PageImportsSummary({ imports }: { imports: string[] }): JSX.Element {
 }
 
 function CodeEditorPanel({
-  code,
+  prefix,
+  body,
+  suffix,
   description,
   messages,
-  onCodeChange,
+  onBodyChange,
   onDescriptionChange,
   onMessagesChange,
-  placeholder: _placeholder,
 }: CodeEditorPanelProps) {
+  const displayPrefix = prefix.replace(/\s+$/, '');
+  const displaySuffix = suffix.replace(/^\s+/, '');
+
   return (
     <div class='flex flex-1 min-h-0 flex-col gap-3'>
-      <SurfaceCodeMirror
-        value={code}
-        onValueChange={onCodeChange}
-        class='flex-1 min-h-[320px]'
-      />
+      <div class='overflow-hidden rounded-lg border border-neutral-800 bg-neutral-950/70'>
+        <pre class='m-0 border-b border-neutral-800 bg-neutral-900/80 px-3 py-2 font-mono text-[12px] text-neutral-300'>
+          {displayPrefix}
+        </pre>
+        <SurfaceCodeMirror
+          value={body}
+          onValueChange={onBodyChange}
+          class='min-h-[320px] [&_.cm-editor]:rounded-none [&_.cm-editor]:border-none [&_.cm-editor]:bg-neutral-950'
+        />
+        <pre class='m-0 border-t border-neutral-800 bg-neutral-900/80 px-3 py-2 font-mono text-[12px] text-neutral-300'>
+          {displaySuffix}
+        </pre>
+      </div>
       <textarea
         class='h-16 w-full resize-none rounded border border-neutral-700 bg-neutral-950 p-2 text-sm text-neutral-200 outline-none focus:border-teal-400'
         placeholder='Optional description for this code block'

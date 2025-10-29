@@ -13,6 +13,7 @@ import type {
   EaCInterfaceHistoricRange,
   EaCInterfaceHistoricSliceFormat,
   EaCInterfaceHistoricWindowMode,
+  EaCInterfacePageDataAction,
 } from '../../../.deps.ts';
 import {
   normalizeDataConnectionFeatures,
@@ -189,16 +190,13 @@ function PlanSummary({ steps }: PlanSummaryProps): JSX.Element {
   const hasSteps = steps.length > 0;
 
   return (
-    <section class="rounded-lg border border-neutral-800 bg-neutral-950 text-sm text-neutral-200">
+    <section class="rounded-lg border border-neutral-800 bg-neutral-950/80 text-sm text-neutral-200">
       <details open class="flex flex-col">
-        <summary class="flex cursor-pointer items-center justify-between gap-3 px-4 py-3">
+        <summary class="flex cursor-pointer items-start justify-between gap-3 px-4 py-3">
           <div class="space-y-1">
-            <h3 class="text-sm font-semibold text-neutral-100">
-              Configured handler actions
-            </h3>
+            <h3 class="text-sm font-semibold text-neutral-100">Handler snapshot</h3>
             <p class="text-xs text-neutral-400">
-              Documentation snapshot of the actions currently available to the
-              handler plan.
+              Reference list of the actions orchestrated by the generated server plan.
             </p>
           </div>
           <Badge
@@ -216,18 +214,18 @@ function PlanSummary({ steps }: PlanSummaryProps): JSX.Element {
                 return (
                   <li
                     key={step.id}
-                    class="space-y-3 rounded border border-neutral-800 bg-neutral-900/60 p-3 text-xs text-neutral-300"
+                    class="space-y-3 rounded-lg border border-neutral-800 bg-neutral-950/70 p-3 text-xs text-neutral-300"
                   >
-                    <header class="flex flex-wrap items-baseline justify-between gap-2">
+                    <header class="flex flex-wrap items-start justify-between gap-2">
                       <div class="space-y-1">
                         <p class="text-sm font-semibold text-neutral-100">
-                          {index + 1}. {step.sliceLabel} → {step.actionLabel}
+                          {index + 1}. {step.sliceLabel} -{'>'} {step.actionLabel}
                         </p>
                         <p class="font-mono text-[11px] text-neutral-500">
-                          slice: {step.sliceKey} • action: {step.actionKey}
+                          slice: {step.sliceKey} | action: {step.actionKey}
                         </p>
                       </div>
-                      <div class="flex flex-wrap items-center gap-2">
+                      <div class="flex flex-wrap items-center justify-end gap-2">
                         <Badge
                           intentType={
                             step.autoExecute
@@ -399,6 +397,16 @@ function HandlerStepCard({
   const [isOpen, setIsOpen] = useState(true);
   const isDataConnection = (slice?.SourceCapability ?? '').startsWith('dataConnection:');
   const features = slice?.DataConnection;
+  const action = slice?.Actions?.find((candidate) => candidate?.Key === step.actionKey);
+  const enhancedAction =
+    action as (EaCInterfacePageDataAction & { ComingSoon?: boolean }) | undefined;
+  const support = action ? resolveActionSurfaceSupport(action) : { handler: true, client: true };
+  const comingSoon = Boolean(enhancedAction?.ComingSoon);
+  const accessMode = slice?.AccessMode ?? 'both';
+  const sliceAllowsHandler = accessMode !== 'client';
+  const sliceAllowsClient = accessMode !== 'server';
+  const handlerSupported = sliceAllowsHandler && support.handler;
+  const clientSupported = sliceAllowsClient && support.client;
   const allowedFormats = Array.from(
     new Set(
       (features?.HistoricDownloadFormats ?? []).filter(
@@ -411,6 +419,22 @@ function HandlerStepCard({
     ? allowedFormats
     : ['json'];
   const autoExecuteLabel = isDataConnection ? 'Prefetch during' : 'Run during';
+  const summaryDescription =
+    slice?.Description ?? step.sliceDescription ?? 'Server-side orchestration for this action.';
+
+  const surfaceChipClass = (enabled: boolean) =>
+    `rounded border px-2 py-[2px] text-[11px] transition ${
+      enabled
+        ? 'border-emerald-400 bg-emerald-500/10 text-emerald-200'
+        : 'border-neutral-800 bg-neutral-950/40 text-neutral-600'
+    }`;
+
+  const statusChipClass = (active: boolean) =>
+    `rounded border px-2 py-[2px] text-[11px] transition ${
+      active
+        ? 'border-sky-400/50 bg-sky-500/10 text-sky-200'
+        : 'border-neutral-700 bg-neutral-900 text-neutral-400'
+    }`;
 
   const applyDataConnectionUpdate = (
     updater: (
@@ -443,89 +467,88 @@ function HandlerStepCard({
     ensurePrefetchEnabled(checked);
   };
 
-  const summaryBadges = (
-    <div class='flex flex-wrap items-center gap-2 text-[11px] text-neutral-400'>
-      <span class='rounded border border-neutral-700 bg-neutral-900/60 px-2 py-0.5 text-neutral-300'>
-        Slice: {step.sliceLabel}
-      </span>
-      <span
-        class={`rounded border px-2 py-0.5 ${
-          step.autoExecute
-            ? 'border-teal-500/40 bg-teal-500/10 text-teal-200'
-            : 'border-neutral-700 bg-neutral-900/60 text-neutral-400'
-        }`}
-      >
-        {step.autoExecute ? 'Auto executes' : 'Manual trigger'}
-      </span>
-      <span
-        class={`rounded border px-2 py-0.5 ${
-          step.includeInResponse
-            ? 'border-sky-500/40 bg-sky-500/10 text-sky-200'
-            : 'border-neutral-700 bg-neutral-900/60 text-neutral-400'
-        }`}
-      >
-        {step.includeInResponse ? 'Maps to response' : 'No response mapping'}
-      </span>
-      {step.invocationType && (
-        <span class='rounded border border-neutral-700 bg-neutral-900/60 px-2 py-0.5 text-neutral-300'>
-          {step.invocationType}
-        </span>
-      )}
-    </div>
-  );
-
   return (
-    <div class='rounded border border-neutral-800 bg-neutral-950/80'>
-      <header class='flex flex-wrap items-center justify-between gap-3 px-4 py-2 border border-sky-500/60 border-l-4 border-l-sky-400 bg-neutral-950/95 shadow-[0_0_32px_rgba(34,211,238,0.35)]'>
-        <button
-          type='button'
-          class='flex items-center gap-2 text-left text-sm font-semibold text-neutral-100 focus:outline-none'
-          onClick={() => setIsOpen((prev) => !prev)}
-        >
-          <span class='font-mono text-xs text-neutral-500'>{isOpen ? 'v' : '>'}</span>
-          <span>
-            Step {stepIndex + 1}: {step.actionLabel}
-          </span>
-        </button>
-        {summaryBadges}
-      </header>
+    <section class="rounded-lg border border-neutral-800 bg-neutral-950/80">
+      <details
+        open={isOpen}
+        class="flex flex-col"
+        onToggle={(event: JSX.TargetedEvent<HTMLDetailsElement, Event>) =>
+          setIsOpen(event.currentTarget.open)}
+      >
+        <summary class="flex cursor-pointer items-start justify-between gap-3 px-4 py-3">
+          <div class="space-y-1">
+            <p class="text-[11px] uppercase tracking-wide text-neutral-500">
+              Step {stepIndex + 1}
+            </p>
+            <h4 class="text-sm font-semibold text-neutral-100">
+              {step.actionLabel}
+            </h4>
+            <p class="text-xs text-neutral-400 leading-relaxed">
+              {summaryDescription}
+            </p>
+          </div>
+          <div class="flex flex-col items-end gap-2">
+            <span class="rounded border border-neutral-700 bg-neutral-900/70 px-2 py-[2px] text-[11px] text-neutral-300">
+              {step.sliceLabel}
+            </span>
+            <div class="flex flex-wrap justify-end gap-2 text-[11px]">
+              <span class={surfaceChipClass(handlerSupported)}>Handler</span>
+              <span class={surfaceChipClass(clientSupported)}>Client</span>
+              <span class={statusChipClass(step.autoExecute)}>
+                {step.autoExecute ? 'Auto executes' : 'Manual trigger'}
+              </span>
+              <span class={statusChipClass(step.includeInResponse)}>
+                {step.includeInResponse ? 'Maps to response' : 'No response mapping'}
+              </span>
+              {step.invocationType && (
+                <span class="rounded border border-blue-500/40 bg-blue-500/10 px-2 py-[2px] text-[11px] uppercase tracking-wide text-blue-200">
+                  {step.invocationType}
+                </span>
+              )}
+              {comingSoon && (
+                <span class="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-[2px] text-[11px] text-amber-200">
+                  Coming soon
+                </span>
+              )}
+            </div>
+          </div>
+        </summary>
 
-      {isOpen && (
-        <div class='space-y-4 border-t border-neutral-800 p-3'>
+        <div class="flex flex-col gap-4 border-t border-neutral-800 p-4">
           <FormRow
-            label='Result key'
-            description='Identifier applied to the handler response when this step returns data.'
+            label="Result key"
+            description="Identifier applied to the handler response when this step returns data."
           >
             <input
-              class='h-9 w-full rounded border border-neutral-700 bg-neutral-900 px-3 text-sm text-neutral-100 outline-none focus:border-teal-400'
+              class="h-10 w-full rounded-md border border-neutral-800 bg-neutral-900/70 px-3 text-sm text-neutral-100 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/40"
               value={step.resultName}
-              placeholder='statusMessage'
+              placeholder="statusMessage"
               onInput={(event: JSX.TargetedEvent<HTMLInputElement, Event>) =>
                 onChange((s) => ({ ...s, resultName: event.currentTarget.value }))}
             />
           </FormRow>
 
           <FormRow
-            label='Input payload'
-            description='Optional JavaScript expression evaluated and passed to the action.'
+            label="Input payload"
+            description="Optional JavaScript expression evaluated and passed to the action."
           >
             <input
-              class='h-9 w-full rounded border border-neutral-700 bg-neutral-900 px-3 text-sm text-neutral-100 outline-none focus:border-teal-400'
+              class="h-10 w-full rounded-md border border-neutral-800 bg-neutral-900/70 px-3 text-sm text-neutral-100 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/40"
               value={step.inputExpression}
-              placeholder='undefined'
+              placeholder="undefined"
               onInput={(event: JSX.TargetedEvent<HTMLInputElement, Event>) =>
                 onChange((s) => ({ ...s, inputExpression: event.currentTarget.value }))}
             />
           </FormRow>
 
           <FormRow
-            label='Execution'
+            label="Execution"
             description={isDataConnection
               ? 'Control when the data connection prefetches and whether results populate the page response.'
               : 'Control whether this step runs automatically and contributes to the page response.'}
           >
-            <div class='flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6'>
-              <label class='flex items-center gap-2 text-sm text-neutral-200'>
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
+              <label class="flex items-center gap-2 text-sm text-neutral-200">
                 <ToggleCheckbox
                   checked={step.autoExecute}
                   onToggle={handleAutoExecuteToggle}
@@ -533,13 +556,13 @@ function HandlerStepCard({
                   checkedIntentType={IntentTypes.Primary}
                   uncheckedIntentType={IntentTypes.Secondary}
                 />
-                {autoExecuteLabel} <span class='font-mono text-neutral-100'>loadPageData</span>
+                {autoExecuteLabel} <span class="font-mono text-neutral-100">loadPageData</span>
               </label>
-              <label class='flex items-center gap-2 text-sm text-neutral-200'>
+              <label class="flex items-center gap-2 text-sm text-neutral-200">
                 <ToggleCheckbox
                   checked={step.includeInResponse}
                   onToggle={(checked) => onChange((s) => ({ ...s, includeInResponse: checked }))}
-                  title='Toggle response projection'
+                  title="Toggle response projection"
                   checkedIntentType={IntentTypes.Primary}
                   uncheckedIntentType={IntentTypes.Secondary}
                 />
@@ -550,8 +573,8 @@ function HandlerStepCard({
 
           {isDataConnection && step.autoExecute && slice && (
             <FormRow
-              label='Prefetch window'
-              description='Fine-tune the historic slice fetched before the handler executes.'
+              label="Prefetch window"
+              description="Fine-tune the historic slice fetched before the handler executes."
             >
               <DataConnectionPrefetchSettings
                 sliceKey={step.sliceKey}
@@ -562,20 +585,20 @@ function HandlerStepCard({
           )}
 
           <FormRow
-            label='Notes'
-            description='Optional comments or follow-up tasks for collaborators.'
+            label="Notes"
+            description="Optional comments or follow-up tasks for collaborators."
           >
             <textarea
-              class='h-20 w-full resize-none rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-teal-400'
-              placeholder='e.g. Replace with production query once API stabilises.'
+              class="h-20 w-full resize-none rounded-md border border-neutral-800 bg-neutral-900/70 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/40"
+              placeholder="e.g. Replace with production query once API stabilises."
               value={step.notes}
               onInput={(event: JSX.TargetedEvent<HTMLTextAreaElement, Event>) =>
                 onChange((s) => ({ ...s, notes: event.currentTarget.value }))}
             />
           </FormRow>
         </div>
-      )}
-    </div>
+      </details>
+    </section>
   );
 }
 type FormRowProps = {
@@ -658,82 +681,96 @@ function CustomHandlerStep({
   };
 
   return (
-    <div class='rounded border border-neutral-800 bg-neutral-950/80'>
-      <header class='flex flex-wrap items-center justify-between gap-3 px-4 py-2 border border-cyan-400/60 border-l-4 border-l-cyan-400 bg-neutral-950/95 shadow-[0_0_32px_rgba(34,211,238,0.35)]'>
-        <button
-          type='button'
-          class='flex items-center gap-2 text-left text-sm font-semibold text-neutral-100 focus:outline-none'
-          onClick={() => setIsOpen((prev) => !prev)}
-        >
-          <span class='font-mono text-xs text-neutral-500'>{isOpen ? 'v' : '>'}</span>
-          <span>Step {stepIndex + 1}: Custom handler logic (optional)</span>
-        </button>
-        <label class='flex items-center gap-2 text-xs text-neutral-300'>
-          <ToggleCheckbox
-            checked={enabled}
-            onToggle={handleToggle}
-            title='Toggle custom handler logic'
-            checkedIntentType={IntentTypes.Primary}
-            uncheckedIntentType={IntentTypes.Secondary}
-          />
-          Enable
-        </label>
-      </header>
+    <section class="rounded-lg border border-neutral-800 bg-neutral-950/80">
+      <details
+        open={isOpen}
+        class="flex flex-col"
+        onToggle={(event: JSX.TargetedEvent<HTMLDetailsElement, Event>) =>
+          setIsOpen(event.currentTarget.open)}
+      >
+        <summary class="flex cursor-pointer items-start justify-between gap-3 px-4 py-3">
+          <div class="space-y-1">
+            <p class="text-[11px] uppercase tracking-wide text-neutral-500">
+              Step {stepIndex + 1}
+            </p>
+            <h4 class="text-sm font-semibold text-neutral-100">
+              Custom handler logic (optional)
+            </h4>
+            <p class="text-xs text-neutral-400">
+              Extend or override the generated handler before it returns data to the interface.
+            </p>
+          </div>
+          <div
+            class="flex items-center gap-2 text-xs text-neutral-300"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <ToggleCheckbox
+              checked={enabled}
+              onToggle={handleToggle}
+              title="Toggle custom handler logic"
+              checkedIntentType={IntentTypes.Primary}
+              uncheckedIntentType={IntentTypes.Secondary}
+            />
+            {enabled ? 'Enabled' : 'Disabled'}
+          </div>
+        </summary>
 
-      {isOpen && (
-        <div class='space-y-4 border-t border-neutral-800 p-3'>
-          <p class='text-xs text-neutral-400'>
-            Extend or override the generated handler before it returns data. When disabled, the default orchestration built from the steps above is used.
-          </p>
+        {isOpen && (
+          <div class="flex flex-col gap-4 border-t border-neutral-800 p-4">
+            <p class="text-xs text-neutral-400">
+              When this control is disabled, the generated orchestration from the steps above runs
+              unmodified. Turn it on to append bespoke logic before returning data.
+            </p>
 
-          {enabled ? (
-            <>
-              <div class='flex flex-col gap-2'>
-                <div class='space-y-1'>
-                  <p class='text-sm font-semibold text-neutral-100'>Custom handler code</p>
-                  <p class='text-xs text-neutral-400'>
-                    Returns an updated InterfacePageData object. The generated data is provided as the seed argument.
-                  </p>
+            {enabled ? (
+              <>
+                <div class="flex flex-col gap-2">
+                  <div class="space-y-1">
+                    <p class="text-sm font-semibold text-neutral-100">Custom handler code</p>
+                    <p class="text-xs text-neutral-400">
+                      Author bespoke logic that returns an updated InterfacePageData object.
+                    </p>
+                  </div>
+                  <div class="overflow-hidden rounded-lg border border-neutral-800 bg-neutral-950/60">
+                    <pre class="m-0 border-b border-neutral-800 bg-neutral-900/80 px-3 py-2 font-mono text-[12px] text-neutral-300">
+                      {HANDLER_PREFIX.replace(/\s+$/, '')}
+                    </pre>
+                    <SurfaceCodeMirror
+                      value={body}
+                      onValueChange={onBodyChange}
+                      class="min-h-[240px] [&_.cm-editor]:rounded-none [&_.cm-editor]:border-none [&_.cm-editor]:bg-neutral-950"
+                    />
+                    <pre class="m-0 border-t border-neutral-800 bg-neutral-900/80 px-3 py-2 font-mono text-[12px] text-neutral-300">
+                      {HANDLER_SUFFIX.replace(/^\s+/, '')}
+                    </pre>
+                  </div>
                 </div>
-                <div class='overflow-hidden rounded border border-neutral-800'>
-                  <pre class='m-0 border-b border-neutral-800 bg-neutral-900/80 px-3 py-2 font-mono text-[12px] text-neutral-300'>
-                    {HANDLER_PREFIX.replace(/\s+$/, '')}
-                  </pre>
-                  <SurfaceCodeMirror
-                    value={body}
-                    onValueChange={onBodyChange}
-                    class='min-h-[240px] [&_.cm-editor]:rounded-none [&_.cm-editor]:border-none [&_.cm-editor]:bg-neutral-950'
+
+                <FormRow label="Description">
+                  <textarea
+                    class="h-16 w-full resize-none rounded-md border border-neutral-800 bg-neutral-900/70 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/40"
+                    placeholder="Optional description for this handler override."
+                    value={description}
+                    onInput={(event: JSX.TargetedEvent<HTMLTextAreaElement, Event>) =>
+                      onDescriptionChange(event.currentTarget.value)}
                   />
-                  <pre class='m-0 border-t border-neutral-800 bg-neutral-900/80 px-3 py-2 font-mono text-[12px] text-neutral-300'>
-                    {HANDLER_SUFFIX.replace(/^\s+/, '')}
-                  </pre>
-                </div>
-              </div>
+                </FormRow>
 
-              <FormRow label='Description'>
-                <textarea
-                  class='h-16 w-full resize-none rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-teal-400'
-                  placeholder='Optional description for this handler override.'
-                  value={description}
-                  onInput={(event: JSX.TargetedEvent<HTMLTextAreaElement, Event>) =>
-                    onDescriptionChange(event.currentTarget.value)}
-                />
-              </FormRow>
-
-              <FormRow label='Guidance messages'>
-                <textarea
-                  class='h-20 w-full resize-none rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-teal-400'
-                  placeholder='Optional guidance messages (one per line).'
-                  value={messages}
-                  onInput={(event: JSX.TargetedEvent<HTMLTextAreaElement, Event>) =>
-                    onMessagesChange(event.currentTarget.value)}
-                />
-              </FormRow>
-            </>
-          ) : null}
-        </div>
-      )}
-    </div>
+                <FormRow label="Guidance messages">
+                  <textarea
+                    class="h-20 w-full resize-none rounded-md border border-neutral-800 bg-neutral-900/70 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/40"
+                    placeholder="Optional guidance messages (one per line)."
+                    value={messages}
+                    onInput={(event: JSX.TargetedEvent<HTMLTextAreaElement, Event>) =>
+                      onMessagesChange(event.currentTarget.value)}
+                  />
+                </FormRow>
+              </>
+            ) : null}
+          </div>
+        )}
+      </details>
+    </section>
   );
 }
 type DataConnectionPrefetchSettingsProps = {
