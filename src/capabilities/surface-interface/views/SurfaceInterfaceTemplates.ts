@@ -19,7 +19,18 @@ export function toCamelCase(value: string): string {
     .join('');
 }
 
-export function buildDefaultInterfaceComponent(
+export const PAGE_COMPONENT_PREFIX = `export default function InterfacePage({
+  data,
+  services,
+  status,
+  refresh,
+}: InterfacePageProps) {
+`;
+
+export const PAGE_COMPONENT_SUFFIX = `}
+`;
+
+export function buildDefaultInterfacePageBody(
   lookup: string,
   safeId?: string,
   displayName?: string,
@@ -29,13 +40,7 @@ export function buildDefaultInterfaceComponent(
     ? displayName.trim()
     : `${resolvedSafeId} interface`;
 
-  return `export default function InterfacePage({
-  data,
-  services,
-  status,
-  refresh,
-}: InterfacePageProps) {
-  return (
+  return `  return (
     <section class="oi-interface-splash">
       <header>
         <h1>${escapeTemplate(resolvedDisplayName)}</h1>
@@ -49,7 +54,16 @@ export function buildDefaultInterfaceComponent(
       <pre>{JSON.stringify(data ?? {}, null, 2)}</pre>
     </section>
   );
-}`;
+`;
+}
+
+export function buildDefaultInterfaceComponent(
+  lookup: string,
+  safeId?: string,
+  displayName?: string,
+): string {
+  const body = buildDefaultInterfacePageBody(lookup, safeId, displayName);
+  return `${PAGE_COMPONENT_PREFIX}${body}${PAGE_COMPONENT_SUFFIX}`;
 }
 
 function escapeTemplate(value: string): string {

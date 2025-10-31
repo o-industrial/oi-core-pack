@@ -55,7 +55,12 @@ import {
   SurfaceInterfacePageDataTab,
 } from './SurfaceInterfacePageDataTab.tsx';
 import { FramedCodeEditor } from '../../../components/code/FramedCodeEditor.tsx';
-import { buildDefaultInterfaceComponent, toPascalCase } from './SurfaceInterfaceTemplates.ts';
+import {
+  buildDefaultInterfacePageBody,
+  PAGE_COMPONENT_PREFIX,
+  PAGE_COMPONENT_SUFFIX,
+  toPascalCase,
+} from './SurfaceInterfaceTemplates.ts';
 
 type SurfaceInterfaceModalProps = {
   isOpen: boolean;
@@ -82,107 +87,6 @@ const TAB_HANDLER: SurfaceInterfaceTabKey = 'handler';
 const TAB_PAGE: SurfaceInterfaceTabKey = 'page';
 const TAB_PREVIEW: SurfaceInterfaceTabKey = 'preview';
 const TAB_CODE: SurfaceInterfaceTabKey = 'code';
-
-type CodeSegments = {
-  prefix: string;
-  body: string;
-  suffix: string;
-};
-
-function extractPageCodeSegments(
-  source: string,
-  fallbackPrefix?: string,
-  fallbackSuffix?: string,
-): CodeSegments {
-  const value = source ?? '';
-  if (!value.trim().length) {
-    return {
-      prefix: fallbackPrefix ?? '',
-      body: '',
-      suffix: fallbackSuffix ?? '',
-    };
-  }
-
-  const length = value.length;
-  let bodyOpen = -1;
-  for (let index = 0; index < length; index += 1) {
-    if (value[index] !== '{') continue;
-    let cursor = index - 1;
-    while (cursor >= 0 && /\s/.test(value[cursor])) cursor -= 1;
-    if (cursor >= 0 && value[cursor] === ')') {
-      bodyOpen = index;
-      break;
-    }
-  }
-
-  if (bodyOpen === -1) {
-    return {
-      prefix: fallbackPrefix ?? '',
-      body: value,
-      suffix: fallbackSuffix ?? '',
-    };
-  }
-
-  let depth = 0;
-  let bodyClose = -1;
-  for (let index = bodyOpen; index < length; index += 1) {
-    const char = value[index];
-    if (char === '"' || char === "'" || char === '`') {
-      const quote = char;
-      index += 1;
-      while (index < length) {
-        const current = value[index];
-        if (current === '\\') {
-          index += 2;
-          continue;
-        }
-        if (current === quote) break;
-        if (quote === '`' && current === '$' && value[index + 1] === '{') {
-          index += 2;
-          let tmplDepth = 1;
-          while (index < length && tmplDepth > 0) {
-            const tmplChar = value[index];
-            if (tmplChar === '{') tmplDepth += 1;
-            else if (tmplChar === '}') tmplDepth -= 1;
-            else if (tmplChar === '\\') index += 1;
-            index += 1;
-          }
-          continue;
-        }
-        index += 1;
-      }
-      continue;
-    }
-
-    if (char === '{') {
-      depth += 1;
-    } else if (char === '}') {
-      depth -= 1;
-      if (depth === 0) {
-        bodyClose = index;
-        break;
-      }
-    }
-  }
-
-  if (bodyClose === -1) {
-    return {
-      prefix: fallbackPrefix ?? '',
-      body: value,
-      suffix: fallbackSuffix ?? '',
-    };
-  }
-
-  const prefix = value.slice(0, bodyOpen + 1);
-  const body = value.slice(bodyOpen + 1, bodyClose);
-  const suffix = value.slice(bodyClose);
-
-  return {
-    prefix,
-    body,
-    suffix,
-  };
-}
 
 function composePageCode(prefix: string, body: string, suffix: string): string {
   const safePrefix = prefix ?? '';
@@ -217,19 +121,14 @@ export function SurfaceInterfaceModal({
     return `${safeInterfaceId} interface`;
   }, [resolvedDetails.Name, safeInterfaceId]);
 
-  const defaultPageTemplate = useMemo(
+  const defaultPageBody = useMemo(
     () =>
-      buildDefaultInterfaceComponent(
+      buildDefaultInterfacePageBody(
         interfaceLookup,
         safeInterfaceId,
         resolvedDisplayName,
       ),
     [interfaceLookup, safeInterfaceId, resolvedDisplayName],
-  );
-
-  const defaultPageSegments = useMemo(
-    () => extractPageCodeSegments(defaultPageTemplate),
-    [defaultPageTemplate],
   );
 
   const derivedLookups = useMemo(
@@ -310,18 +209,11 @@ export function SurfaceInterfaceModal({
   });
   const handlerDirtyRef = useRef(false);
 
-  const pagePrefix = defaultPageSegments.prefix;
-  const pageSuffix = defaultPageSegments.suffix;
+  const pagePrefix = PAGE_COMPONENT_PREFIX;
+  const pageSuffix = PAGE_COMPONENT_SUFFIX;
   const [pageBody, setPageBody] = useState(() => {
-    const incomingPageCode = resolvedDetails.Page?.Code ?? '';
-    if (incomingPageCode.trim().length > 0) {
-      return extractPageCodeSegments(
-        incomingPageCode,
-        pagePrefix,
-        pageSuffix,
-      ).body;
-    }
-    return defaultPageSegments.body;
+    const incoming = resolvedDetails.Page?.Code ?? '';
+    return incoming.trim().length > 0 ? incoming : defaultPageBody;
   });
   const pageFullCode = useMemo(
     () => composePageCode(pagePrefix, pageBody, pageSuffix),
@@ -389,16 +281,7 @@ export function SurfaceInterfaceModal({
     lastSyncedHandlerRef.current.messages = incomingHandlerMessages.trim();
 
     const incomingPageCode = resolvedDetails.Page?.Code ?? '';
-    if (incomingPageCode.trim().length > 0) {
-      const segments = extractPageCodeSegments(
-        incomingPageCode,
-        pagePrefix,
-        pageSuffix,
-      );
-      setPageBody(segments.body);
-    } else {
-      setPageBody(defaultPageSegments.body);
-    }
+    setPageBody(incomingPageCode.trim().length > 0 ? incomingPageCode : defaultPageBody);
     setPageDescription(resolvedDetails.Page?.Description ?? '');
     setPageMessagesText(formatMessages(resolvedDetails.Page?.Messages));
     setImportsInvalid(false);
@@ -406,7 +289,7 @@ export function SurfaceInterfaceModal({
     handlerDirtyRef.current = false;
     initializedLookupRef.current = interfaceLookup;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, interfaceLookup, pagePrefix, pageSuffix, defaultPageSegments.body]);
+  }, [isOpen, interfaceLookup, pagePrefix, pageSuffix, defaultPageBody]);
 
   useEffect(() => {
     if (isOpen) return;
