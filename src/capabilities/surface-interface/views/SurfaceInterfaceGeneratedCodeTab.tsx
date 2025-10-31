@@ -11,12 +11,13 @@ import { SurfaceCodeMirror } from '../../../components/code/SurfaceCodeMirror.ts
 import {
   composeHandlerCode,
   type SurfaceInterfaceHandlerPlanStep,
-} from './SurfaceInterfaceHandlerTab.tsx';
+} from './SurfaceInterfaceHandlerCode.ts';
 import {
   buildDefaultInterfaceComponent,
   toCamelCase,
   toPascalCase,
 } from './SurfaceInterfaceTemplates.ts';
+import { composePageCode as composePageCodeWithWrapper } from './SurfaceInterfacePageCode.ts';
 
 type SurfaceInterfaceGeneratedCodeTabProps = {
   interfaceLookup: string;
@@ -31,17 +32,6 @@ type SurfaceInterfaceGeneratedCodeTabProps = {
   pageMessages: string;
 };
 
-const CUSTOM_PAGE_PREFIX = `export default function InterfacePage({
-  data,
-  services,
-  status,
-  refresh,
-}: InterfacePageProps) {
-`;
-
-const CUSTOM_PAGE_SUFFIX = `}
-`;
-
 function isFullHandlerImplementation(code: string): boolean {
   return /export\s+async\s+function\s+loadPageData\b/.test(code);
 }
@@ -52,8 +42,7 @@ function isFullPageImplementation(code: string): boolean {
 
 function composePageCodeFromBody(body: string): string {
   if (!body.trim().length) return '';
-  const normalized = body.endsWith('\n') ? body : `${body}\n`;
-  return `${CUSTOM_PAGE_PREFIX}${normalized}${CUSTOM_PAGE_SUFFIX}`.trimEnd();
+  return composePageCodeWithWrapper(body).trimEnd();
 }
 
 export function SurfaceInterfaceGeneratedCodeTab({
