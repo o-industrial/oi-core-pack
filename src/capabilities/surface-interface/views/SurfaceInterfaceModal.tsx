@@ -6,7 +6,7 @@ import { SurfaceInterfaceImportsTab } from './SurfaceInterfaceImportsTab.tsx';
 import { SurfaceInterfacePageDataTab } from './SurfaceInterfacePageDataTab.tsx';
 import { SurfaceInterfacePageTab } from './SurfaceInterfacePageTab.tsx';
 import { SurfaceInterfacePreviewTab } from './SurfaceInterfacePreviewTab.tsx';
-import { useSurfaceInterfaceModalState } from './SurfaceInterfaceModalState.ts';
+import { useSurfaceInterfaceModalState } from './state/.exports.ts';
 
 export type SurfaceInterfaceModalProps = {
   isOpen: boolean;

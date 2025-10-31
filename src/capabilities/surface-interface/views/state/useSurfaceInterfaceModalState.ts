@@ -7,8 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
-  type WorkspaceManager,
-} from '../../../.deps.ts';
+} from '../../../../.deps.ts';
 import type {
   EaCInterfaceDataConnectionFeatures,
   EaCInterfaceDetails,
@@ -17,10 +16,9 @@ import type {
   EaCInterfacePageDataActionInvocationMode,
   EaCInterfacePageDataType,
   EverythingAsCodeOIWorkspace,
-  SurfaceInterfaceSettings,
-} from '../../../.deps.ts';
-import { ensureInterfaceDetails, ensurePageDataType } from './interfaceDefaults.ts';
-import { reconcileInterfacePageData } from './pageDataHelpers.ts';
+} from '../../../../.deps.ts';
+import { ensureInterfaceDetails, ensurePageDataType } from '../interfaceDefaults.ts';
+import { reconcileInterfacePageData } from '../pageDataHelpers.ts';
 import {
   buildGeneratedDescription,
   buildGeneratedMessages,
@@ -31,101 +29,30 @@ import {
   HANDLER_PREFIX,
   HANDLER_SUFFIX,
   type SurfaceInterfaceHandlerPlanStep,
-} from './SurfaceInterfaceHandlerCode.ts';
+} from '../SurfaceInterfaceHandlerCode.ts';
 import {
   buildPageScaffold,
   composePageCode,
   extractPageBody,
   PAGE_CODE_PREFIX,
   PAGE_CODE_SUFFIX,
-} from './SurfaceInterfacePageCode.ts';
-import { resolveActionSurfaceSupport } from './SurfaceInterfacePageDataTab.tsx';
-import { toPascalCase } from './SurfaceInterfaceTemplates.ts';
+} from '../SurfaceInterfacePageCode.ts';
+import { resolveActionSurfaceSupport } from '../SurfaceInterfacePageDataTab.tsx';
+import { toPascalCase } from '../SurfaceInterfaceTemplates.ts';
 import {
   buildInterfaceDetailsPatch,
   deriveInterfaceLookupsFromGraph,
   formatMessages,
   mergeInterfaceSettingsWithLookups,
   parseMessages,
-} from './SurfaceInterfaceModalUtils.ts';
-import type { SurfaceInterfaceTabKey } from './SurfaceInterfaceModal.tsx';
+} from '../utils/.exports.ts';
+import type { SurfaceInterfaceTabKey } from '../SurfaceInterfaceModal.tsx';
+import type { SurfaceInterfaceModalHookParams } from './SurfaceInterfaceModalHookParams.ts';
+import type { SurfaceInterfaceModalHookResult } from './SurfaceInterfaceModalHookResult.ts';
+import type { SurfaceInterfaceModalHandlerState } from './SurfaceInterfaceModalHandlerState.ts';
+import type { SurfaceInterfaceModalPageState } from './SurfaceInterfaceModalPageState.ts';
+import type { SurfaceInterfaceModalPreviewState } from './SurfaceInterfaceModalPreviewState.ts';
 
-type SurfaceInterfaceModalHookParams = {
-  isOpen: boolean;
-  interfaceLookup: string;
-  surfaceLookup?: string;
-  details: EaCInterfaceDetails;
-  settings?: SurfaceInterfaceSettings;
-  workspaceMgr: WorkspaceManager;
-  onDetailsChange?: (next: Partial<EaCInterfaceDetails>) => void;
-};
-
-type HandlerState = {
-  body: string;
-  enabled: boolean;
-  description: string;
-  messagesText: string;
-  fullCode: string;
-  plan: SurfaceInterfaceHandlerPlanStep[];
-  setPlan: (steps: SurfaceInterfaceHandlerPlanStep[]) => void;
-  onBodyChange: (next: string) => void;
-  onEnabledChange: (next: boolean) => void;
-  onDescriptionChange: (next: string) => void;
-  onMessagesChange: (next: string) => void;
-};
-
-type PageState = {
-  prefix: string;
-  suffix: string;
-  body: string;
-  fullCode: string;
-  description: string;
-  messagesText: string;
-  onBodyChange: (next: string) => void;
-  onDescriptionChange: (next: string) => void;
-  onMessagesChange: (next: string) => void;
-};
-
-type PreviewState = {
-  baseOverride: string;
-  setBaseOverride: (next: string) => void;
-  nonce: number;
-  refresh: () => void;
-};
-
-type SurfaceInterfaceModalHookResult = {
-  resolvedDetails: EaCInterfaceDetails;
-  resolvedDisplayName: string;
-  safeInterfaceId: string;
-  activeTab: SurfaceInterfaceTabKey;
-  setActiveTab: (tab: SurfaceInterfaceTabKey) => void;
-  imports: string[];
-  importsInvalid: boolean;
-  onImportsChange: (next: string[]) => void;
-  setImportsInvalid: (next: boolean) => void;
-  pageDataType: EaCInterfacePageDataType;
-  generatedSliceEntries: Array<[string, EaCInterfaceGeneratedDataSlice]>;
-  handler: HandlerState;
-  page: PageState;
-  preview: PreviewState;
-  handleAccessModeChange: (
-    key: string,
-    mode: EaCInterfacePageDataAccessMode,
-  ) => void;
-  handleDataConnectionFeaturesChange: (
-    key: string,
-    features: EaCInterfaceDataConnectionFeatures | undefined,
-  ) => void;
-  handleActionModeChange: (
-    sliceKey: string,
-    actionKey: string,
-    mode: EaCInterfacePageDataActionInvocationMode | null,
-  ) => void;
-  interfaceAzi: unknown;
-  enterpriseLookup: string;
-  renderAziMessage: (message: string) => string;
-  debouncedExtraInputs: Record<string, unknown>;
-};
 export function useSurfaceInterfaceModalState(
   params: SurfaceInterfaceModalHookParams,
 ): SurfaceInterfaceModalHookResult {
@@ -197,9 +124,7 @@ export function useSurfaceInterfaceModalState(
     return '';
   }, [profile.Name, profile.Username]);
 
-  const [activeTab, setActiveTab] = useState<SurfaceInterfaceTabKey>(
-    'imports',
-  );
+  const [activeTab, setActiveTab] = useState<SurfaceInterfaceTabKey>('imports');
 
   const [imports, setImports] = useState(resolvedDetails.Imports ?? []);
   const [importsInvalid, setImportsInvalid] = useState(false);
@@ -280,10 +205,7 @@ export function useSurfaceInterfaceModalState(
     }
     return defaultPageBody;
   });
-  const pageFullCode = useMemo(
-    () => composePageCode(pageBody),
-    [pageBody],
-  );
+  const pageFullCode = useMemo(() => composePageCode(pageBody), [pageBody]);
   const [pageDescription, setPageDescription] = useState(
     (resolvedDetails.Page?.Description ?? '').trim().length > 0
       ? resolvedDetails.Page?.Description ?? ''
@@ -344,18 +266,19 @@ export function useSurfaceInterfaceModalState(
     lastGeneratedHandlerRef.current.description = incomingHandlerDescription.trim();
     lastSyncedHandlerRef.current.description = incomingHandlerDescription.trim();
 
-    const incomingHandlerMessages = formatMessages(resolvedDetails.PageHandler?.Messages);
+    const incomingHandlerMessages = formatMessages(
+      resolvedDetails.PageHandler?.Messages,
+    );
     setHandlerMessagesText(incomingHandlerMessages);
     lastGeneratedHandlerRef.current.messages = incomingHandlerMessages.trim();
     lastSyncedHandlerRef.current.messages = incomingHandlerMessages.trim();
 
     const incomingPageCode = resolvedDetails.Page?.Code ?? '';
     const nextPageBody = incomingPageCode.trim().length > 0
-      ? (
-        extractPageBody(incomingPageCode, pagePrefix, pageSuffix).trim().length > 0
-          ? extractPageBody(incomingPageCode, pagePrefix, pageSuffix)
-          : defaultPageBody
-      )
+      ? extractPageBody(incomingPageCode, pagePrefix, pageSuffix).trim()
+          .length > 0
+        ? extractPageBody(incomingPageCode, pagePrefix, pageSuffix)
+        : defaultPageBody
       : defaultPageBody;
     setPageBody(nextPageBody);
 
@@ -415,19 +338,21 @@ export function useSurfaceInterfaceModalState(
       globalThis.clearTimeout(persistTimerRef.current);
       persistTimerRef.current = null;
     }
-  }, [isOpen, defaultPageBody, defaultPageDescription, defaultPageMessagesText]);
+  }, [
+    isOpen,
+    defaultPageBody,
+    defaultPageDescription,
+    defaultPageMessagesText,
+  ]);
 
   const handleImportsChange = useCallback((next: string[]) => {
     setImports(next);
   }, []);
 
-  const handleHandlerBodyChange = useCallback(
-    (next: string) => {
-      handlerDirtyRef.current = true;
-      setHandlerBody(next);
-    },
-    [],
-  );
+  const handleHandlerBodyChange = useCallback((next: string) => {
+    handlerDirtyRef.current = true;
+    setHandlerBody(next);
+  }, []);
 
   const handleHandlerDescriptionChange = useCallback((next: string) => {
     handlerDirtyRef.current = true;
@@ -439,24 +364,24 @@ export function useSurfaceInterfaceModalState(
     setHandlerMessagesText(next);
   }, []);
 
-  const handleHandlerEnabledChange = useCallback((next: boolean) => {
-    handlerDirtyRef.current = true;
-    setHandlerEnabled(next);
-    if (!next) {
-      setHandlerBody('');
-    } else if (handlerBody.trim().length === 0) {
-      const defaultBody = DEFAULT_HANDLER_BODY;
-      setHandlerBody(defaultBody);
-    }
-  }, [handlerBody]);
-
-  const handlePageBodyChange = useCallback(
-    (next: string) => {
-      pageDirtyRef.current = true;
-      setPageBody(next);
+  const handleHandlerEnabledChange = useCallback(
+    (next: boolean) => {
+      handlerDirtyRef.current = true;
+      setHandlerEnabled(next);
+      if (!next) {
+        setHandlerBody('');
+      } else if (handlerBody.trim().length === 0) {
+        const defaultBody = DEFAULT_HANDLER_BODY;
+        setHandlerBody(defaultBody);
+      }
     },
-    [],
+    [handlerBody],
   );
+
+  const handlePageBodyChange = useCallback((next: string) => {
+    pageDirtyRef.current = true;
+    setPageBody(next);
+  }, []);
 
   const handlePageDescriptionChange = useCallback((next: string) => {
     pageDirtyRef.current = true;
@@ -548,7 +473,9 @@ export function useSurfaceInterfaceModalState(
   const updateGeneratedSlice = useCallback(
     (
       key: string,
-      updater: (slice: EaCInterfaceGeneratedDataSlice) => EaCInterfaceGeneratedDataSlice | null,
+      updater: (
+        slice: EaCInterfaceGeneratedDataSlice,
+      ) => EaCInterfaceGeneratedDataSlice | null,
     ) => {
       setPageDataType((current) => {
         const slice = current.Generated[key];
@@ -669,10 +596,7 @@ export function useSurfaceInterfaceModalState(
     [updateGeneratedSlice],
   );
   const handleDataConnectionFeaturesChange = useCallback(
-    (
-      key: string,
-      features: EaCInterfaceDataConnectionFeatures | undefined,
-    ) => {
+    (key: string, features: EaCInterfaceDataConnectionFeatures | undefined) => {
       updateGeneratedSlice(key, (slice) => ({
         ...slice,
         DataConnection: features ? JSON.parse(JSON.stringify(features)) : undefined,
@@ -767,7 +691,8 @@ export function useSurfaceInterfaceModalState(
       const currentBody = handlerBody.trim();
       if (
         trimmedStubBody.length > 0 &&
-        (currentBody.length === 0 || currentBody === previousGeneratedHandler.body)
+        (currentBody.length === 0 ||
+          currentBody === previousGeneratedHandler.body)
       ) {
         if (handlerBody !== stubBody) {
           setHandlerBody(stubBody);
@@ -781,10 +706,8 @@ export function useSurfaceInterfaceModalState(
       const currentDescription = handlerDescription.trim();
       if (
         trimmedDescription.length > 0 &&
-        (
-          currentDescription.length === 0 ||
-          currentDescription === previousGeneratedHandler.description
-        )
+        (currentDescription.length === 0 ||
+          currentDescription === previousGeneratedHandler.description)
       ) {
         if (handlerDescription !== description) {
           setHandlerDescription(description);
@@ -798,10 +721,8 @@ export function useSurfaceInterfaceModalState(
       const currentMessages = handlerMessagesText.trim();
       if (
         trimmedMessages.length > 0 &&
-        (
-          currentMessages.length === 0 ||
-          currentMessages === previousGeneratedHandler.messages
-        )
+        (currentMessages.length === 0 ||
+          currentMessages === previousGeneratedHandler.messages)
       ) {
         if (handlerMessagesText !== messages) {
           setHandlerMessagesText(messages);
@@ -828,7 +749,8 @@ export function useSurfaceInterfaceModalState(
     const currentPageBody = pageBody.trim();
     if (
       trimmedPageBody.length > 0 &&
-      (currentPageBody.length === 0 || currentPageBody === previousGeneratedPage.body)
+      (currentPageBody.length === 0 ||
+        currentPageBody === previousGeneratedPage.body)
     ) {
       if (pageBody !== defaultPageBody) {
         setPageBody(defaultPageBody);
@@ -842,10 +764,8 @@ export function useSurfaceInterfaceModalState(
     const currentPageDescription = pageDescription.trim();
     if (
       trimmedPageDescription.length > 0 &&
-      (
-        currentPageDescription.length === 0 ||
-        currentPageDescription === previousGeneratedPage.description
-      )
+      (currentPageDescription.length === 0 ||
+        currentPageDescription === previousGeneratedPage.description)
     ) {
       if (pageDescription !== defaultPageDescription) {
         setPageDescription(defaultPageDescription);
@@ -859,10 +779,8 @@ export function useSurfaceInterfaceModalState(
     const currentPageMessages = pageMessagesText.trim();
     if (
       trimmedPageMessages.length > 0 &&
-      (
-        currentPageMessages.length === 0 ||
-        currentPageMessages === previousGeneratedPage.messages
-      )
+      (currentPageMessages.length === 0 ||
+        currentPageMessages === previousGeneratedPage.messages)
     ) {
       if (pageMessagesText !== defaultPageMessagesText) {
         setPageMessagesText(defaultPageMessagesText);
@@ -979,7 +897,7 @@ export function useSurfaceInterfaceModalState(
     };
   }, [rawExtraInputs]);
 
-  const renderAziMessage = useMemo<((message: string) => string)>(() => {
+  const renderAziMessage = useMemo<(message: string) => string>(() => {
     const cache = new Map<string, string>();
 
     return (message: string) => {
@@ -992,7 +910,7 @@ export function useSurfaceInterfaceModalState(
     };
   }, []);
 
-  const handlerState: HandlerState = {
+  const handlerState: SurfaceInterfaceModalHandlerState = {
     body: handlerBody,
     enabled: handlerEnabled,
     description: handlerDescription,
@@ -1006,7 +924,7 @@ export function useSurfaceInterfaceModalState(
     onMessagesChange: handleHandlerMessagesChange,
   };
 
-  const pageState: PageState = {
+  const pageState: SurfaceInterfaceModalPageState = {
     prefix: pagePrefix,
     suffix: pageSuffix,
     body: pageBody,
@@ -1018,7 +936,7 @@ export function useSurfaceInterfaceModalState(
     onMessagesChange: handlePageMessagesChange,
   };
 
-  const previewState: PreviewState = {
+  const previewState: SurfaceInterfaceModalPreviewState = {
     baseOverride: previewBaseOverride,
     setBaseOverride: setPreviewBaseOverride,
     nonce: previewNonce,
