@@ -5,7 +5,9 @@ import {
   IntentTypes,
   type JSONSchema7,
   type JSX,
+  useEffect,
   useMemo,
+  useState,
 } from '../../../.deps.ts';
 import { SurfaceCodeMirror } from '../../../components/code/SurfaceCodeMirror.tsx';
 import { composeHandlerCode } from './utils/composeHandlerCode.ts';
@@ -57,34 +59,56 @@ export function SurfaceInterfaceGeneratedCodeTab({
   pageMessages,
   isActive = false,
 }: SurfaceInterfaceGeneratedCodeTabProps): JSX.Element {
-  const generatedModule = useMemo(() => {
-    if (!isActive) return '';
+  const [generatedModule, setGeneratedModule] = useState<string>('');
 
-    return buildGeneratedModulePreview(
-      interfaceLookup,
-      imports,
-      handlerPlan,
-      generatedSlices,
-      handlerCode,
-      handlerDescription,
-      handlerMessages,
-      pageCode,
-      pageDescription,
-      pageMessages,
-    );
+  useEffect(() => {
+    if (!isActive) {
+      setGeneratedModule('');
+      return;
+    }
+
+    setGeneratedModule('// Generating interface snapshot...');
+
+    const handle = globalThis.setTimeout(() => {
+      const next = buildGeneratedModulePreview(
+        interfaceLookup,
+        imports,
+        handlerPlan,
+        generatedSlices,
+        handlerCode,
+        handlerDescription,
+        handlerMessages,
+        pageCode,
+        pageDescription,
+        pageMessages,
+      );
+      setGeneratedModule(next);
+    }, 250);
+
+    return () => {
+      globalThis.clearTimeout(handle);
+    };
   }, [
+    isActive,
+    interfaceLookup,
+    imports,
+    handlerPlan,
+    generatedSlices,
     handlerCode,
     handlerDescription,
     handlerMessages,
-    handlerPlan,
-    imports,
-    generatedSlices,
-    interfaceLookup,
     pageCode,
     pageDescription,
     pageMessages,
-    isActive,
   ]);
+
+  const canCopySnapshot =
+    isActive && generatedModule.trim().length > 0 &&
+    !generatedModule.startsWith('// Generating interface snapshot');
+
+  const displayModule = isActive
+    ? generatedModule
+    : '// Open the Code Preview tab to generate a snapshot.';
 
   return (
     <div class='flex h-full min-h-0 flex-col gap-3'>
@@ -99,7 +123,12 @@ export function SurfaceInterfaceGeneratedCodeTab({
         <Action
           styleType={ActionStyleTypes.Outline | ActionStyleTypes.Rounded}
           intentType={IntentTypes.Secondary}
-          onClick={() => copyToClipboard(generatedModule)}
+          disabled={!canCopySnapshot}
+          onClick={() => {
+            if (canCopySnapshot) {
+              copyToClipboard(generatedModule);
+            }
+          }}
         >
           Copy snapshot
         </Action>
@@ -107,7 +136,7 @@ export function SurfaceInterfaceGeneratedCodeTab({
 
       <div class='flex-1 min-h-0 overflow-auto rounded border border-neutral-800 bg-neutral-950'>
         <SurfaceCodeMirror
-          value={generatedModule}
+          value={displayModule}
           readOnly
           class='h-full [&_.cm-editor]:h-full [&_.cm-editor]:rounded [&_.cm-editor]:border-none [&_.cm-editor]:bg-transparent'
         />
