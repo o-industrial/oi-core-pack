@@ -8,16 +8,14 @@ import {
   useMemo,
 } from '../../../.deps.ts';
 import { SurfaceCodeMirror } from '../../../components/code/SurfaceCodeMirror.tsx';
-import {
-  composeHandlerCode,
-  type SurfaceInterfaceHandlerPlanStep,
-} from './SurfaceInterfaceHandlerCode.ts';
+import { composeHandlerCode } from './utils/composeHandlerCode.ts';
+import type { SurfaceInterfaceHandlerPlanStep } from './state/SurfaceInterfaceHandlerPlanStep.ts';
 import {
   buildDefaultInterfaceComponent,
   toCamelCase,
   toPascalCase,
 } from './SurfaceInterfaceTemplates.ts';
-import { composePageCode as composePageCodeWithWrapper } from './SurfaceInterfacePageCode.ts';
+import { composePageCode as composePageCodeWithWrapper } from './utils/composePageCode.ts';
 
 type SurfaceInterfaceGeneratedCodeTabProps = {
   interfaceLookup: string;

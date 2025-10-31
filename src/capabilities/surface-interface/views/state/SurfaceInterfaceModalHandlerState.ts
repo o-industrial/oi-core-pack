@@ -1,4 +1,4 @@
-import type { SurfaceInterfaceHandlerPlanStep } from '../SurfaceInterfaceHandlerCode.ts';
+import type { SurfaceInterfaceHandlerPlanStep } from './SurfaceInterfaceHandlerPlanStep.ts';
 
 export type SurfaceInterfaceModalHandlerState = {
   body: string;

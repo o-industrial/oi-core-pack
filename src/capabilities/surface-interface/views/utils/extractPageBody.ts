@@ -1,27 +1,4 @@
-import {
-  buildDefaultInterfacePageBody,
-  PAGE_COMPONENT_PREFIX,
-  PAGE_COMPONENT_SUFFIX,
-} from './SurfaceInterfaceTemplates.ts';
-
-export const PAGE_CODE_PREFIX = PAGE_COMPONENT_PREFIX;
-export const PAGE_CODE_SUFFIX = PAGE_COMPONENT_SUFFIX;
-
-export type PageScaffoldOptions = {
-  lookup: string;
-  safeId: string;
-  displayName: string;
-};
-
-export type PageScaffold = {
-  body: string;
-  description: string;
-  messages: string[];
-};
-
-export function composePageCode(body: string): string {
-  return `${PAGE_CODE_PREFIX}${body}${PAGE_CODE_SUFFIX}`;
-}
+import { PAGE_CODE_PREFIX, PAGE_CODE_SUFFIX } from './composePageCode.ts';
 
 export function extractPageBody(
   source: string,
@@ -144,24 +121,4 @@ export function extractPageBody(
   }
 
   return value.trim();
-}
-
-export function buildPageScaffold({
-  lookup,
-  safeId,
-  displayName,
-}: PageScaffoldOptions): PageScaffold {
-  const body = buildDefaultInterfacePageBody(lookup, safeId, displayName);
-  const title = displayName || `${safeId} interface`;
-
-  return {
-    body,
-    description:
-      `Render the ${title} interface using server-provided data and refresh affordances.`,
-    messages: [
-      'Update this layout to reflect the intended collaborative interface experience.',
-      'Reference the generated data shape and imports exposed on this tab.',
-      'Use the `refresh` helper to re-run interface actions when the user needs fresh data.',
-    ],
-  };
 }

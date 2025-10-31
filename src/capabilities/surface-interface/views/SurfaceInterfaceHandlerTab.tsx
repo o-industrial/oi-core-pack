@@ -20,17 +20,17 @@ import {
   resolveActionSurfaceSupport,
 } from './SurfaceInterfaceDataTab.tsx';
 import { FramedCodeEditor } from '../../../components/code/FramedCodeEditor.tsx';
+import { arePlansEqual } from './utils/arePlansEqual.ts';
+import { buildBasePlanFromSlices } from './utils/buildBasePlanFromSlices.ts';
+import { buildGeneratedDescription } from './utils/buildGeneratedDescription.ts';
+import { buildGeneratedMessages } from './utils/buildGeneratedMessages.ts';
 import {
-  arePlansEqual,
-  buildBasePlanFromSlices,
-  buildGeneratedDescription,
-  buildGeneratedMessages,
   DEFAULT_HANDLER_BODY,
   HANDLER_PREFIX,
   HANDLER_SUFFIX,
-  reconcileHandlerPlan,
-  type SurfaceInterfaceHandlerPlanStep,
-} from './SurfaceInterfaceHandlerCode.ts';
+} from './utils/composeHandlerCode.ts';
+import { reconcileHandlerPlan } from './utils/reconcileHandlerPlan.ts';
+import type { SurfaceInterfaceHandlerPlanStep } from './state/SurfaceInterfaceHandlerPlanStep.ts';
 
 type HandlerStep = SurfaceInterfaceHandlerPlanStep;
 

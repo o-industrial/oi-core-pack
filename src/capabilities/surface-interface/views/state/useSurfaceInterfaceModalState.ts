@@ -19,24 +19,23 @@ import type {
 } from '../../../../.deps.ts';
 import { ensureInterfaceDetails, ensurePageDataType } from '../interfaceDefaults.ts';
 import { reconcileInterfacePageData } from '../pageDataHelpers.ts';
+import { buildGeneratedDescription } from '../utils/buildGeneratedDescription.ts';
+import { buildGeneratedMessages } from '../utils/buildGeneratedMessages.ts';
 import {
-  buildGeneratedDescription,
-  buildGeneratedMessages,
   composeHandlerCode,
   DEFAULT_HANDLER_BODY,
-  extractHandlerBody,
-  generateHandlerStub,
   HANDLER_PREFIX,
   HANDLER_SUFFIX,
-  type SurfaceInterfaceHandlerPlanStep,
-} from '../SurfaceInterfaceHandlerCode.ts';
+} from '../utils/composeHandlerCode.ts';
+import { extractHandlerBody } from '../utils/extractHandlerBody.ts';
+import { generateHandlerStub } from '../utils/generateHandlerStub.ts';
+import { buildPageScaffold } from '../utils/buildPageScaffold.ts';
 import {
-  buildPageScaffold,
   composePageCode,
-  extractPageBody,
   PAGE_CODE_PREFIX,
   PAGE_CODE_SUFFIX,
-} from '../SurfaceInterfacePageCode.ts';
+} from '../utils/composePageCode.ts';
+import { extractPageBody } from '../utils/extractPageBody.ts';
 import { resolveActionSurfaceSupport } from '../SurfaceInterfaceDataTab.tsx';
 import { toPascalCase } from '../SurfaceInterfaceTemplates.ts';
 import {
@@ -46,6 +45,7 @@ import {
   mergeInterfaceSettingsWithLookups,
   parseMessages,
 } from '../utils/.exports.ts';
+import type { SurfaceInterfaceHandlerPlanStep } from './SurfaceInterfaceHandlerPlanStep.ts';
 import type { SurfaceInterfaceTabKey } from '../SurfaceInterfaceModal.tsx';
 import type { SurfaceInterfaceModalHookParams } from './SurfaceInterfaceModalHookParams.ts';
 import type { SurfaceInterfaceModalHookResult } from './SurfaceInterfaceModalHookResult.ts';
