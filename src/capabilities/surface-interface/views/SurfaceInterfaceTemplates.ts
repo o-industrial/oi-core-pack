@@ -53,8 +53,7 @@ export function buildDefaultInterfacePageBody(
       {status.error && <p class="oi-interface-splash__error">{status.error}</p>}
       <pre>{JSON.stringify(data ?? {}, null, 2)}</pre>
     </section>
-  );
-`;
+  );`;
 }
 
 export function buildDefaultInterfaceComponent(

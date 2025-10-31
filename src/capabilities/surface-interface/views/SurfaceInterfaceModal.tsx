@@ -49,12 +49,14 @@ import {
   resolveActionSurfaceSupport,
   SurfaceInterfacePageDataTab,
 } from './SurfaceInterfacePageDataTab.tsx';
+import { toPascalCase } from './SurfaceInterfaceTemplates.ts';
 import {
-  buildDefaultInterfacePageBody,
-  PAGE_COMPONENT_PREFIX,
-  PAGE_COMPONENT_SUFFIX,
-  toPascalCase,
-} from './SurfaceInterfaceTemplates.ts';
+  buildPageScaffold,
+  composePageCode,
+  extractPageBody,
+  PAGE_CODE_PREFIX,
+  PAGE_CODE_SUFFIX,
+} from './SurfaceInterfacePageCode.ts';
 import { SurfaceInterfacePageTab } from './SurfaceInterfacePageTab.tsx';
 import { SurfaceInterfacePreviewTab } from './SurfaceInterfacePreviewTab.tsx';
 
@@ -84,13 +86,6 @@ const TAB_PAGE: SurfaceInterfaceTabKey = 'page';
 const TAB_PREVIEW: SurfaceInterfaceTabKey = 'preview';
 const TAB_CODE: SurfaceInterfaceTabKey = 'code';
 
-function composePageCode(prefix: string, body: string, suffix: string): string {
-  const safePrefix = prefix ?? '';
-  const safeBody = body ?? '';
-  const safeSuffix = suffix ?? '';
-  return `${safePrefix}${safeBody}${safeSuffix}`;
-}
-
 export function SurfaceInterfaceModal({
   isOpen,
   onClose,
@@ -117,15 +112,18 @@ export function SurfaceInterfaceModal({
     return `${safeInterfaceId} interface`;
   }, [resolvedDetails.Name, safeInterfaceId]);
 
-  const defaultPageBody = useMemo(
+  const defaultPageScaffold = useMemo(
     () =>
-      buildDefaultInterfacePageBody(
-        interfaceLookup,
-        safeInterfaceId,
-        resolvedDisplayName,
-      ),
+      buildPageScaffold({
+        lookup: interfaceLookup,
+        safeId: safeInterfaceId,
+        displayName: resolvedDisplayName,
+      }),
     [interfaceLookup, safeInterfaceId, resolvedDisplayName],
   );
+  const defaultPageBody = defaultPageScaffold.body;
+  const defaultPageDescription = defaultPageScaffold.description;
+  const defaultPageMessages = defaultPageScaffold.messages;
 
   const derivedLookups = useMemo(
     () =>
@@ -205,22 +203,47 @@ export function SurfaceInterfaceModal({
   });
   const handlerDirtyRef = useRef(false);
 
-  const pagePrefix = PAGE_COMPONENT_PREFIX;
-  const pageSuffix = PAGE_COMPONENT_SUFFIX;
+  const defaultPageMessagesText = useMemo(
+    () => formatMessages(defaultPageMessages),
+    [defaultPageMessages],
+  );
+  const lastGeneratedPageRef = useRef({
+    body: defaultPageBody.trim(),
+    description: defaultPageDescription.trim(),
+    messages: defaultPageMessagesText.trim(),
+  });
+  const lastSyncedPageRef = useRef({
+    body: defaultPageBody.trim(),
+    description: defaultPageDescription.trim(),
+    messages: defaultPageMessagesText.trim(),
+  });
+  const pageDirtyRef = useRef(false);
+
+  const pagePrefix = PAGE_CODE_PREFIX;
+  const pageSuffix = PAGE_CODE_SUFFIX;
   const [pageBody, setPageBody] = useState(() => {
     const incoming = resolvedDetails.Page?.Code ?? '';
-    return incoming.trim().length > 0 ? incoming : defaultPageBody;
+    if (incoming.trim().length > 0) {
+      const extracted = extractPageBody(incoming, pagePrefix, pageSuffix);
+      return extracted.trim().length > 0 ? extracted : defaultPageBody;
+    }
+    return defaultPageBody;
   });
   const pageFullCode = useMemo(
-    () => composePageCode(pagePrefix, pageBody, pageSuffix),
-    [pagePrefix, pageBody, pageSuffix],
+    () => composePageCode(pageBody),
+    [pageBody],
   );
   const [pageDescription, setPageDescription] = useState(
-    resolvedDetails.Page?.Description ?? '',
+    (resolvedDetails.Page?.Description ?? '').trim().length > 0
+      ? resolvedDetails.Page?.Description ?? ''
+      : defaultPageDescription,
   );
-  const [pageMessagesText, setPageMessagesText] = useState(
-    formatMessages(resolvedDetails.Page?.Messages),
-  );
+  const [pageMessagesText, setPageMessagesText] = useState(() => {
+    const incoming = resolvedDetails.Page?.Messages;
+    const formatted = formatMessages(incoming);
+    if (formatted.trim().length > 0) return formatted;
+    return defaultPageMessagesText;
+  });
   const [pageMessageGroups] = useState(
     resolvedDetails.Page?.MessageGroups ?? [],
   );
@@ -277,25 +300,72 @@ export function SurfaceInterfaceModal({
     lastSyncedHandlerRef.current.messages = incomingHandlerMessages.trim();
 
     const incomingPageCode = resolvedDetails.Page?.Code ?? '';
-    setPageBody(incomingPageCode.trim().length > 0 ? incomingPageCode : defaultPageBody);
-    setPageDescription(resolvedDetails.Page?.Description ?? '');
-    setPageMessagesText(formatMessages(resolvedDetails.Page?.Messages));
+    const nextPageBody = incomingPageCode.trim().length > 0
+      ? (
+        extractPageBody(incomingPageCode, pagePrefix, pageSuffix).trim().length > 0
+          ? extractPageBody(incomingPageCode, pagePrefix, pageSuffix)
+          : defaultPageBody
+      )
+      : defaultPageBody;
+    setPageBody(nextPageBody);
+
+    const incomingPageDescription = resolvedDetails.Page?.Description ?? '';
+    const nextPageDescription = incomingPageDescription.trim().length > 0
+      ? incomingPageDescription
+      : defaultPageDescription;
+    setPageDescription(nextPageDescription);
+
+    const incomingPageMessages = formatMessages(resolvedDetails.Page?.Messages);
+    const nextPageMessages = incomingPageMessages.trim().length > 0
+      ? incomingPageMessages
+      : defaultPageMessagesText;
+    setPageMessagesText(nextPageMessages);
     setImportsInvalid(false);
 
     handlerDirtyRef.current = false;
+    pageDirtyRef.current = false;
+    lastGeneratedPageRef.current = {
+      body: defaultPageBody.trim(),
+      description: defaultPageDescription.trim(),
+      messages: defaultPageMessagesText.trim(),
+    };
+    lastSyncedPageRef.current = {
+      body: nextPageBody.trim(),
+      description: nextPageDescription.trim(),
+      messages: nextPageMessages.trim(),
+    };
     initializedLookupRef.current = interfaceLookup;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, interfaceLookup, pagePrefix, pageSuffix, defaultPageBody]);
+  }, [
+    isOpen,
+    interfaceLookup,
+    pagePrefix,
+    pageSuffix,
+    defaultPageBody,
+    defaultPageDescription,
+    defaultPageMessagesText,
+  ]);
 
   useEffect(() => {
     if (isOpen) return;
     initializedLookupRef.current = null;
     handlerDirtyRef.current = false;
+    pageDirtyRef.current = false;
+    lastSyncedPageRef.current = {
+      body: defaultPageBody.trim(),
+      description: defaultPageDescription.trim(),
+      messages: defaultPageMessagesText.trim(),
+    };
+    lastGeneratedPageRef.current = {
+      body: defaultPageBody.trim(),
+      description: defaultPageDescription.trim(),
+      messages: defaultPageMessagesText.trim(),
+    };
     if (persistTimerRef.current) {
       globalThis.clearTimeout(persistTimerRef.current);
       persistTimerRef.current = null;
     }
-  }, [isOpen]);
+  }, [isOpen, defaultPageBody, defaultPageDescription, defaultPageMessagesText]);
 
   const handleImportsChange = useCallback((next: string[]) => {
     setImports(next);
@@ -332,16 +402,19 @@ export function SurfaceInterfaceModal({
 
   const handlePageBodyChange = useCallback(
     (next: string) => {
+      pageDirtyRef.current = true;
       setPageBody(next);
     },
     [],
   );
 
   const handlePageDescriptionChange = useCallback((next: string) => {
+    pageDirtyRef.current = true;
     setPageDescription(next);
   }, []);
 
   const handlePageMessagesChange = useCallback((next: string) => {
+    pageDirtyRef.current = true;
     setPageMessagesText(next);
   }, []);
 
@@ -602,62 +675,120 @@ export function SurfaceInterfaceModal({
     const trimmedDescription = description.trim();
     const trimmedMessages = messages.trim();
 
-    const previousGenerated = { ...lastGeneratedHandlerRef.current };
+    const previousGeneratedHandler = { ...lastGeneratedHandlerRef.current };
 
-    if (!handlerEnabled) {
+    if (!handlerEnabled || handlerDirtyRef.current) {
       lastGeneratedHandlerRef.current.body = trimmedStubBody;
       lastGeneratedHandlerRef.current.description = trimmedDescription;
       lastGeneratedHandlerRef.current.messages = trimmedMessages;
+    } else {
+      const currentBody = handlerBody.trim();
+      if (
+        trimmedStubBody.length > 0 &&
+        (currentBody.length === 0 || currentBody === previousGeneratedHandler.body)
+      ) {
+        if (handlerBody !== stubBody) {
+          setHandlerBody(stubBody);
+        }
+        handlerDirtyRef.current = false;
+        lastGeneratedHandlerRef.current.body = trimmedStubBody;
+      } else {
+        lastGeneratedHandlerRef.current.body = currentBody;
+      }
+
+      const currentDescription = handlerDescription.trim();
+      if (
+        trimmedDescription.length > 0 &&
+        (
+          currentDescription.length === 0 ||
+          currentDescription === previousGeneratedHandler.description
+        )
+      ) {
+        if (handlerDescription !== description) {
+          setHandlerDescription(description);
+        }
+        handlerDirtyRef.current = false;
+        lastGeneratedHandlerRef.current.description = trimmedDescription;
+      } else {
+        lastGeneratedHandlerRef.current.description = currentDescription;
+      }
+
+      const currentMessages = handlerMessagesText.trim();
+      if (
+        trimmedMessages.length > 0 &&
+        (
+          currentMessages.length === 0 ||
+          currentMessages === previousGeneratedHandler.messages
+        )
+      ) {
+        if (handlerMessagesText !== messages) {
+          setHandlerMessagesText(messages);
+        }
+        handlerDirtyRef.current = false;
+        lastGeneratedHandlerRef.current.messages = trimmedMessages;
+      } else {
+        lastGeneratedHandlerRef.current.messages = currentMessages;
+      }
+    }
+
+    const trimmedPageBody = defaultPageBody.trim();
+    const trimmedPageDescription = defaultPageDescription.trim();
+    const trimmedPageMessages = defaultPageMessagesText.trim();
+    const previousGeneratedPage = { ...lastGeneratedPageRef.current };
+
+    if (pageDirtyRef.current) {
+      lastGeneratedPageRef.current.body = trimmedPageBody;
+      lastGeneratedPageRef.current.description = trimmedPageDescription;
+      lastGeneratedPageRef.current.messages = trimmedPageMessages;
       return;
     }
 
-    if (handlerDirtyRef.current) {
-      lastGeneratedHandlerRef.current.body = trimmedStubBody;
-      lastGeneratedHandlerRef.current.description = trimmedDescription;
-      lastGeneratedHandlerRef.current.messages = trimmedMessages;
-      return;
-    }
-
-    const currentBody = handlerBody.trim();
+    const currentPageBody = pageBody.trim();
     if (
-      trimmedStubBody.length > 0 &&
-      (currentBody.length === 0 || currentBody === previousGenerated.body)
+      trimmedPageBody.length > 0 &&
+      (currentPageBody.length === 0 || currentPageBody === previousGeneratedPage.body)
     ) {
-      setHandlerBody(stubBody);
-      handlerDirtyRef.current = false;
-      lastGeneratedHandlerRef.current.body = trimmedStubBody;
+      if (pageBody !== defaultPageBody) {
+        setPageBody(defaultPageBody);
+      }
+      pageDirtyRef.current = false;
+      lastGeneratedPageRef.current.body = trimmedPageBody;
     } else {
-      lastGeneratedHandlerRef.current.body = currentBody;
+      lastGeneratedPageRef.current.body = currentPageBody;
     }
 
-    const currentDescription = handlerDescription.trim();
+    const currentPageDescription = pageDescription.trim();
     if (
-      trimmedDescription.length > 0 &&
+      trimmedPageDescription.length > 0 &&
       (
-        currentDescription.length === 0 ||
-        currentDescription === previousGenerated.description
+        currentPageDescription.length === 0 ||
+        currentPageDescription === previousGeneratedPage.description
       )
     ) {
-      setHandlerDescription(description);
-      handlerDirtyRef.current = false;
-      lastGeneratedHandlerRef.current.description = trimmedDescription;
+      if (pageDescription !== defaultPageDescription) {
+        setPageDescription(defaultPageDescription);
+      }
+      pageDirtyRef.current = false;
+      lastGeneratedPageRef.current.description = trimmedPageDescription;
     } else {
-      lastGeneratedHandlerRef.current.description = currentDescription;
+      lastGeneratedPageRef.current.description = currentPageDescription;
     }
 
-    const currentMessages = handlerMessagesText.trim();
+    const currentPageMessages = pageMessagesText.trim();
     if (
-      trimmedMessages.length > 0 &&
+      trimmedPageMessages.length > 0 &&
       (
-        currentMessages.length === 0 ||
-        currentMessages === previousGenerated.messages
+        currentPageMessages.length === 0 ||
+        currentPageMessages === previousGeneratedPage.messages
       )
     ) {
-      setHandlerMessagesText(messages);
-      handlerDirtyRef.current = false;
-      lastGeneratedHandlerRef.current.messages = trimmedMessages;
+      if (pageMessagesText !== defaultPageMessagesText) {
+        setPageMessagesText(defaultPageMessagesText);
+      }
+      pageDirtyRef.current = false;
+      lastGeneratedPageRef.current.messages = trimmedPageMessages;
     } else {
-      lastGeneratedHandlerRef.current.messages = currentMessages;
+      lastGeneratedPageRef.current.messages = currentPageMessages;
     }
   }, [
     activeTab,
@@ -669,6 +800,15 @@ export function SurfaceInterfaceModal({
     setHandlerBody,
     setHandlerDescription,
     setHandlerMessagesText,
+    pageBody,
+    pageDescription,
+    pageMessagesText,
+    defaultPageBody,
+    defaultPageDescription,
+    defaultPageMessagesText,
+    setPageBody,
+    setPageDescription,
+    setPageMessagesText,
   ]);
 
   const rawExtraInputs = useMemo(

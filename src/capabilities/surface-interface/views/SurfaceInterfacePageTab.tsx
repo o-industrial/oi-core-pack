@@ -1,8 +1,4 @@
-import {
-  Badge,
-  IntentTypes,
-  type JSX,
-} from '../../../.deps.ts';
+import { Badge, IntentTypes, type JSX } from '../../../.deps.ts';
 import { FramedCodeEditor } from '../../../components/code/FramedCodeEditor.tsx';
 
 type SurfaceInterfacePageTabProps = {
