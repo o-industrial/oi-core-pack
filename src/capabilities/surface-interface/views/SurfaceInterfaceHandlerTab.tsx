@@ -49,8 +49,7 @@ export const HANDLER_PREFIX = `export async function loadPageData(
 export const HANDLER_SUFFIX = `}
 `;
 
-export const DEFAULT_HANDLER_BODY = `  return seed;
-`;
+export const DEFAULT_HANDLER_BODY = `return seed;`;
 
 export function composeHandlerCode(body: string): string {
   if (!body.trim().length) return '';
@@ -74,7 +73,7 @@ type SurfaceInterfaceHandlerTabProps = {
   onStepsChange: (next: SurfaceInterfaceHandlerPlanStep[]) => void;
   onDataConnectionChange: (
     key: string,
-    features: EaCInterfaceDataConnectionFeatures | undefined
+    features: EaCInterfaceDataConnectionFeatures | undefined,
   ) => void;
   handlerBody: string;
   handlerEnabled: boolean;
@@ -92,11 +91,11 @@ type HandlerPlannerProps = {
   slicesByKey: Map<string, EaCInterfaceGeneratedDataSlice>;
   onStepChange: (
     id: string,
-    updater: (step: HandlerStep) => HandlerStep
+    updater: (step: HandlerStep) => HandlerStep,
   ) => void;
   onDataConnectionChange: (
     key: string,
-    features: EaCInterfaceDataConnectionFeatures | undefined
+    features: EaCInterfaceDataConnectionFeatures | undefined,
   ) => void;
   handlerBody: string;
   handlerEnabled: boolean;
@@ -114,7 +113,7 @@ type HandlerStepCardProps = {
   slice?: EaCInterfaceGeneratedDataSlice;
   onDataConnectionChange: (
     key: string,
-    features: EaCInterfaceDataConnectionFeatures | undefined
+    features: EaCInterfaceDataConnectionFeatures | undefined,
   ) => void;
 };
 export function SurfaceInterfaceHandlerTab({
@@ -133,11 +132,11 @@ export function SurfaceInterfaceHandlerTab({
 }: SurfaceInterfaceHandlerTabProps): JSX.Element {
   const basePlan = useMemo(
     () => buildBasePlanFromSlices(generatedSlices),
-    [generatedSlices]
+    [generatedSlices],
   );
   const slicesByKey = useMemo(
     () => new Map<string, EaCInterfaceGeneratedDataSlice>(generatedSlices),
-    [generatedSlices]
+    [generatedSlices],
   );
 
   useEffect(() => {
@@ -153,11 +152,9 @@ export function SurfaceInterfaceHandlerTab({
 
   const handleStepChange = (
     stepId: string,
-    updater: (prev: HandlerStep) => HandlerStep
+    updater: (prev: HandlerStep) => HandlerStep,
   ) => {
-    const next = steps.map((step) =>
-      step.id === stepId ? updater(step) : step
-    );
+    const next = steps.map((step) => step.id === stepId ? updater(step) : step);
     console.debug('[SurfaceInterfaceHandlerTab] handler step updated', {
       stepId,
     });
@@ -165,7 +162,7 @@ export function SurfaceInterfaceHandlerTab({
   };
 
   return (
-    <div class="flex h-full min-h-0 flex-col gap-4 overflow-y-auto pb-2">
+    <div class='flex h-full min-h-0 flex-col gap-4 overflow-y-auto pb-2'>
       <HandlerPlanner
         steps={steps}
         slicesByKey={slicesByKey}
@@ -190,12 +187,12 @@ function PlanSummary({ steps }: PlanSummaryProps): JSX.Element {
   const hasSteps = steps.length > 0;
 
   return (
-    <section class="rounded-lg border border-neutral-800 bg-neutral-950/80 text-sm text-neutral-200">
-      <details open class="flex flex-col">
-        <summary class="flex cursor-pointer items-start justify-between gap-3 px-4 py-3">
-          <div class="space-y-1">
-            <h3 class="text-sm font-semibold text-neutral-100">Handler snapshot</h3>
-            <p class="text-xs text-neutral-400">
+    <section class='rounded-lg border border-neutral-800 bg-neutral-950/80 text-sm text-neutral-200'>
+      <details open class='flex flex-col'>
+        <summary class='flex cursor-pointer items-start justify-between gap-3 px-4 py-3'>
+          <div class='space-y-1'>
+            <h3 class='text-sm font-semibold text-neutral-100'>Handler snapshot</h3>
+            <p class='text-xs text-neutral-400'>
               Reference list of the actions orchestrated by the generated server plan.
             </p>
           </div>
@@ -206,97 +203,95 @@ function PlanSummary({ steps }: PlanSummaryProps): JSX.Element {
           </Badge>
         </summary>
 
-        <div class="flex flex-col gap-3 border-t border-neutral-800 p-4">
-          {hasSteps ? (
-            <ul class="space-y-3">
-              {steps.map((step, index) => {
-                const trimmedNotes = step.notes.trim();
-                return (
-                  <li
-                    key={step.id}
-                    class="space-y-3 rounded-lg border border-neutral-800 bg-neutral-950/70 p-3 text-xs text-neutral-300"
-                  >
-                    <header class="flex flex-wrap items-start justify-between gap-2">
-                      <div class="space-y-1">
-                        <p class="text-sm font-semibold text-neutral-100">
-                          {index + 1}. {step.sliceLabel} -{'>'} {step.actionLabel}
-                        </p>
-                        <p class="font-mono text-[11px] text-neutral-500">
-                          slice: {step.sliceKey} | action: {step.actionKey}
-                        </p>
-                      </div>
-                      <div class="flex flex-wrap items-center justify-end gap-2">
-                        <Badge
-                          intentType={
-                            step.autoExecute
-                              ? IntentTypes.Primary
-                              : IntentTypes.Secondary
-                          }
-                        >
-                          {step.autoExecute
-                            ? 'Auto during load'
-                            : 'Manual trigger'}
-                        </Badge>
-                        {step.includeInResponse && (
-                          <Badge intentType={IntentTypes.Secondary}>
-                            Maps to `{step.resultName || 'result'}`
-                          </Badge>
-                        )}
-                      </div>
-                    </header>
-
-                    <dl class="grid gap-2 text-[11px] md:grid-cols-2">
-                      <div>
-                        <dt class="uppercase tracking-wide text-neutral-500">
-                          Invocation type
-                        </dt>
-                        <dd class="text-neutral-200">
-                          {step.invocationType ?? 'default'}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt class="uppercase tracking-wide text-neutral-500">
-                          Result key
-                        </dt>
-                        <dd class="text-neutral-200">
-                          {step.includeInResponse &&
-                          step.resultName.trim().length > 0
-                            ? step.resultName
-                            : 'Not mapped to response'}
-                        </dd>
-                      </div>
-                      <div class="md:col-span-2">
-                        <dt class="uppercase tracking-wide text-neutral-500">
-                          Input expression
-                        </dt>
-                        <dd class="font-mono text-[11px] text-neutral-200">
-                          {step.inputExpression.trim() || 'undefined'}
-                        </dd>
-                      </div>
-                    </dl>
-
-                    {trimmedNotes.length > 0 && (
-                      <div class="rounded border border-neutral-800 bg-neutral-950/70 p-3 text-[11px] text-neutral-200">
-                        {trimmedNotes.split(/\r?\n/).map((line, noteIndex) => (
-                          <p
-                            key={`${step.id}-note-${noteIndex}`}
-                            class="leading-relaxed"
-                          >
-                            {line}
+        <div class='flex flex-col gap-3 border-t border-neutral-800 p-4'>
+          {hasSteps
+            ? (
+              <ul class='space-y-3'>
+                {steps.map((step, index) => {
+                  const trimmedNotes = step.notes.trim();
+                  return (
+                    <li
+                      key={step.id}
+                      class='space-y-3 rounded-lg border border-neutral-800 bg-neutral-950/70 p-3 text-xs text-neutral-300'
+                    >
+                      <header class='flex flex-wrap items-start justify-between gap-2'>
+                        <div class='space-y-1'>
+                          <p class='text-sm font-semibold text-neutral-100'>
+                            {index + 1}. {step.sliceLabel} -{'>'} {step.actionLabel}
                           </p>
-                        ))}
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <div class="rounded border border-dashed border-neutral-800 bg-neutral-900/40 p-4 text-xs text-neutral-500">
-              No handler-capable actions are configured. Enable server execution
-              from the Page Data tab to document them here.
-            </div>
-          )}
+                          <p class='font-mono text-[11px] text-neutral-500'>
+                            slice: {step.sliceKey} | action: {step.actionKey}
+                          </p>
+                        </div>
+                        <div class='flex flex-wrap items-center justify-end gap-2'>
+                          <Badge
+                            intentType={step.autoExecute
+                              ? IntentTypes.Primary
+                              : IntentTypes.Secondary}
+                          >
+                            {step.autoExecute ? 'Auto during load' : 'Manual trigger'}
+                          </Badge>
+                          {step.includeInResponse && (
+                            <Badge intentType={IntentTypes.Secondary}>
+                              Maps to `{step.resultName || 'result'}`
+                            </Badge>
+                          )}
+                        </div>
+                      </header>
+
+                      <dl class='grid gap-2 text-[11px] md:grid-cols-2'>
+                        <div>
+                          <dt class='uppercase tracking-wide text-neutral-500'>
+                            Invocation type
+                          </dt>
+                          <dd class='text-neutral-200'>
+                            {step.invocationType ?? 'default'}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt class='uppercase tracking-wide text-neutral-500'>
+                            Result key
+                          </dt>
+                          <dd class='text-neutral-200'>
+                            {step.includeInResponse &&
+                                step.resultName.trim().length > 0
+                              ? step.resultName
+                              : 'Not mapped to response'}
+                          </dd>
+                        </div>
+                        <div class='md:col-span-2'>
+                          <dt class='uppercase tracking-wide text-neutral-500'>
+                            Input expression
+                          </dt>
+                          <dd class='font-mono text-[11px] text-neutral-200'>
+                            {step.inputExpression.trim() || 'undefined'}
+                          </dd>
+                        </div>
+                      </dl>
+
+                      {trimmedNotes.length > 0 && (
+                        <div class='rounded border border-neutral-800 bg-neutral-950/70 p-3 text-[11px] text-neutral-200'>
+                          {trimmedNotes.split(/\r?\n/).map((line, noteIndex) => (
+                            <p
+                              key={`${step.id}-note-${noteIndex}`}
+                              class='leading-relaxed'
+                            >
+                              {line}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )
+            : (
+              <div class='rounded border border-dashed border-neutral-800 bg-neutral-900/40 p-4 text-xs text-neutral-500'>
+                No handler-capable actions are configured. Enable server execution from the Page
+                Data tab to document them here.
+              </div>
+            )}
         </div>
       </details>
     </section>
@@ -326,14 +321,14 @@ function HandlerPlanner({
     [steps],
   );
   return (
-    <section class="rounded-lg border border-neutral-800 bg-neutral-950 text-sm text-neutral-200">
-      <details open class="flex flex-col">
-        <summary class="flex cursor-pointer items-start justify-between gap-3 px-4 py-3">
+    <section class='rounded-lg border border-neutral-800 bg-neutral-950 text-sm text-neutral-200'>
+      <details open class='flex flex-col'>
+        <summary class='flex cursor-pointer items-start justify-between gap-3 px-4 py-3'>
           <div>
-            <h3 class="text-sm font-semibold text-neutral-100">Handler flow</h3>
-            <p class="text-xs text-neutral-400">
-              Adjust the orchestration order, runtime inputs, and response
-              mapping for each server-capable action.
+            <h3 class='text-sm font-semibold text-neutral-100'>Handler flow</h3>
+            <p class='text-xs text-neutral-400'>
+              Adjust the orchestration order, runtime inputs, and response mapping for each
+              server-capable action.
             </p>
           </div>
           <Badge intentType={IntentTypes.Secondary}>
@@ -341,27 +336,29 @@ function HandlerPlanner({
           </Badge>
         </summary>
 
-        <div class="flex flex-col gap-3 border-t border-neutral-800 p-4">
-          {steps.length === 0 ? (
-            <div class="rounded border border-dashed border-neutral-800 bg-neutral-950/70 p-4 text-xs text-neutral-500">
-              No handler-capable actions detected. Enable handler access from
-              Page Data to orchestrate backend logic.
-            </div>
-          ) : (
-            steps.map((step, index) => {
-              const slice = slicesByKey.get(step.sliceKey);
-              return (
-                <HandlerStepCard
-                  key={step.id}
-                  step={step}
-                  stepIndex={index}
-                  slice={slice}
-                  onChange={(updater) => onStepChange(step.id, updater)}
-                  onDataConnectionChange={onDataConnectionChange}
-                />
-              );
-            })
-          )}
+        <div class='flex flex-col gap-3 border-t border-neutral-800 p-4'>
+          {steps.length === 0
+            ? (
+              <div class='rounded border border-dashed border-neutral-800 bg-neutral-950/70 p-4 text-xs text-neutral-500'>
+                No handler-capable actions detected. Enable handler access from Page Data to
+                orchestrate backend logic.
+              </div>
+            )
+            : (
+              steps.map((step, index) => {
+                const slice = slicesByKey.get(step.sliceKey);
+                return (
+                  <HandlerStepCard
+                    key={step.id}
+                    step={step}
+                    stepIndex={index}
+                    slice={slice}
+                    onChange={(updater) => onStepChange(step.id, updater)}
+                    onDataConnectionChange={onDataConnectionChange}
+                  />
+                );
+              })
+            )}
 
           <CustomHandlerStep
             stepIndex={steps.length}
@@ -377,9 +374,8 @@ function HandlerPlanner({
             onMessagesChange={onHandlerMessagesChange}
           />
 
-          <p class="text-[11px] text-neutral-500">
-            Preview the generated handler source and export-ready modules on the
-            Code tab.
+          <p class='text-[11px] text-neutral-500'>
+            Preview the generated handler source and export-ready modules on the Code tab.
           </p>
         </div>
       </details>
@@ -398,8 +394,9 @@ function HandlerStepCard({
   const isDataConnection = (slice?.SourceCapability ?? '').startsWith('dataConnection:');
   const features = slice?.DataConnection;
   const action = slice?.Actions?.find((candidate) => candidate?.Key === step.actionKey);
-  const enhancedAction =
-    action as (EaCInterfacePageDataAction & { ComingSoon?: boolean }) | undefined;
+  const enhancedAction = action as
+    | (EaCInterfacePageDataAction & { ComingSoon?: boolean })
+    | undefined;
   const support = action ? resolveActionSurfaceSupport(action) : { handler: true, client: true };
   const comingSoon = Boolean(enhancedAction?.ComingSoon);
   const accessMode = slice?.AccessMode ?? 'both';
@@ -419,8 +416,8 @@ function HandlerStepCard({
     ? allowedFormats
     : ['json'];
   const autoExecuteLabel = isDataConnection ? 'Prefetch during' : 'Run during';
-  const summaryDescription =
-    slice?.Description ?? step.sliceDescription ?? 'Server-side orchestration for this action.';
+  const summaryDescription = slice?.Description ?? step.sliceDescription ??
+    'Server-side orchestration for this action.';
 
   const surfaceChipClass = (enabled: boolean) =>
     `rounded border px-2 py-[2px] text-[11px] transition ${
@@ -468,30 +465,30 @@ function HandlerStepCard({
   };
 
   return (
-    <section class="rounded-lg border border-neutral-800 bg-neutral-950/80">
+    <section class='rounded-lg border border-neutral-800 bg-neutral-950/80'>
       <details
         open={isOpen}
-        class="flex flex-col"
+        class='flex flex-col'
         onToggle={(event: JSX.TargetedEvent<HTMLDetailsElement, Event>) =>
           setIsOpen(event.currentTarget.open)}
       >
-        <summary class="flex cursor-pointer items-start justify-between gap-3 px-4 py-3">
-          <div class="space-y-1">
-            <p class="text-[11px] uppercase tracking-wide text-neutral-500">
+        <summary class='flex cursor-pointer items-start justify-between gap-3 px-4 py-3'>
+          <div class='space-y-1'>
+            <p class='text-[11px] uppercase tracking-wide text-neutral-500'>
               Step {stepIndex + 1}
             </p>
-            <h4 class="text-sm font-semibold text-neutral-100">
+            <h4 class='text-sm font-semibold text-neutral-100'>
               {step.actionLabel}
             </h4>
-            <p class="text-xs text-neutral-400 leading-relaxed">
+            <p class='text-xs text-neutral-400 leading-relaxed'>
               {summaryDescription}
             </p>
           </div>
-          <div class="flex flex-col items-end gap-2">
-            <span class="rounded border border-neutral-700 bg-neutral-900/70 px-2 py-[2px] text-[11px] text-neutral-300">
+          <div class='flex flex-col items-end gap-2'>
+            <span class='rounded border border-neutral-700 bg-neutral-900/70 px-2 py-[2px] text-[11px] text-neutral-300'>
               {step.sliceLabel}
             </span>
-            <div class="flex flex-wrap justify-end gap-2 text-[11px]">
+            <div class='flex flex-wrap justify-end gap-2 text-[11px]'>
               <span class={surfaceChipClass(handlerSupported)}>Handler</span>
               <span class={surfaceChipClass(clientSupported)}>Client</span>
               <span class={statusChipClass(step.autoExecute)}>
@@ -501,12 +498,12 @@ function HandlerStepCard({
                 {step.includeInResponse ? 'Maps to response' : 'No response mapping'}
               </span>
               {step.invocationType && (
-                <span class="rounded border border-blue-500/40 bg-blue-500/10 px-2 py-[2px] text-[11px] uppercase tracking-wide text-blue-200">
+                <span class='rounded border border-blue-500/40 bg-blue-500/10 px-2 py-[2px] text-[11px] uppercase tracking-wide text-blue-200'>
                   {step.invocationType}
                 </span>
               )}
               {comingSoon && (
-                <span class="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-[2px] text-[11px] text-amber-200">
+                <span class='rounded border border-amber-500/40 bg-amber-500/10 px-2 py-[2px] text-[11px] text-amber-200'>
                   Coming soon
                 </span>
               )}
@@ -514,41 +511,41 @@ function HandlerStepCard({
           </div>
         </summary>
 
-        <div class="flex flex-col gap-4 border-t border-neutral-800 p-4">
+        <div class='flex flex-col gap-4 border-t border-neutral-800 p-4'>
           <FormRow
-            label="Result key"
-            description="Identifier applied to the handler response when this step returns data."
+            label='Result key'
+            description='Identifier applied to the handler response when this step returns data.'
           >
             <input
-              class="h-10 w-full rounded-md border border-neutral-800 bg-neutral-900/70 px-3 text-sm text-neutral-100 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/40"
+              class='h-10 w-full rounded-md border border-neutral-800 bg-neutral-900/70 px-3 text-sm text-neutral-100 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/40'
               value={step.resultName}
-              placeholder="statusMessage"
+              placeholder='statusMessage'
               onInput={(event: JSX.TargetedEvent<HTMLInputElement, Event>) =>
                 onChange((s) => ({ ...s, resultName: event.currentTarget.value }))}
             />
           </FormRow>
 
           <FormRow
-            label="Input payload"
-            description="Optional JavaScript expression evaluated and passed to the action."
+            label='Input payload'
+            description='Optional JavaScript expression evaluated and passed to the action.'
           >
             <input
-              class="h-10 w-full rounded-md border border-neutral-800 bg-neutral-900/70 px-3 text-sm text-neutral-100 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/40"
+              class='h-10 w-full rounded-md border border-neutral-800 bg-neutral-900/70 px-3 text-sm text-neutral-100 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/40'
               value={step.inputExpression}
-              placeholder="undefined"
+              placeholder='undefined'
               onInput={(event: JSX.TargetedEvent<HTMLInputElement, Event>) =>
                 onChange((s) => ({ ...s, inputExpression: event.currentTarget.value }))}
             />
           </FormRow>
 
           <FormRow
-            label="Execution"
+            label='Execution'
             description={isDataConnection
               ? 'Control when the data connection prefetches and whether results populate the page response.'
               : 'Control whether this step runs automatically and contributes to the page response.'}
           >
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
-              <label class="flex items-center gap-2 text-sm text-neutral-200">
+            <div class='flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6'>
+              <label class='flex items-center gap-2 text-sm text-neutral-200'>
                 <ToggleCheckbox
                   checked={step.autoExecute}
                   onToggle={handleAutoExecuteToggle}
@@ -556,13 +553,13 @@ function HandlerStepCard({
                   checkedIntentType={IntentTypes.Primary}
                   uncheckedIntentType={IntentTypes.Secondary}
                 />
-                {autoExecuteLabel} <span class="font-mono text-neutral-100">loadPageData</span>
+                {autoExecuteLabel} <span class='font-mono text-neutral-100'>loadPageData</span>
               </label>
-              <label class="flex items-center gap-2 text-sm text-neutral-200">
+              <label class='flex items-center gap-2 text-sm text-neutral-200'>
                 <ToggleCheckbox
                   checked={step.includeInResponse}
                   onToggle={(checked) => onChange((s) => ({ ...s, includeInResponse: checked }))}
-                  title="Toggle response projection"
+                  title='Toggle response projection'
                   checkedIntentType={IntentTypes.Primary}
                   uncheckedIntentType={IntentTypes.Secondary}
                 />
@@ -573,8 +570,8 @@ function HandlerStepCard({
 
           {isDataConnection && step.autoExecute && slice && (
             <FormRow
-              label="Prefetch window"
-              description="Fine-tune the historic slice fetched before the handler executes."
+              label='Prefetch window'
+              description='Fine-tune the historic slice fetched before the handler executes.'
             >
               <DataConnectionPrefetchSettings
                 sliceKey={step.sliceKey}
@@ -585,12 +582,12 @@ function HandlerStepCard({
           )}
 
           <FormRow
-            label="Notes"
-            description="Optional comments or follow-up tasks for collaborators."
+            label='Notes'
+            description='Optional comments or follow-up tasks for collaborators.'
           >
             <textarea
-              class="h-20 w-full resize-none rounded-md border border-neutral-800 bg-neutral-900/70 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/40"
-              placeholder="e.g. Replace with production query once API stabilises."
+              class='h-20 w-full resize-none rounded-md border border-neutral-800 bg-neutral-900/70 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/40'
+              placeholder='e.g. Replace with production query once API stabilises.'
               value={step.notes}
               onInput={(event: JSX.TargetedEvent<HTMLTextAreaElement, Event>) =>
                 onChange((s) => ({ ...s, notes: event.currentTarget.value }))}
@@ -609,7 +606,9 @@ type FormRowProps = {
 };
 
 function FormRow({ label, description, disabled = false, children }: FormRowProps): JSX.Element {
-  const labelClasses = `text-sm font-semibold ${disabled ? 'text-neutral-500' : 'text-neutral-100'}`;
+  const labelClasses = `text-sm font-semibold ${
+    disabled ? 'text-neutral-500' : 'text-neutral-100'
+  }`;
   const descriptionClasses = `text-xs ${disabled ? 'text-neutral-700' : 'text-neutral-400'}`;
   const ariaDisabled = disabled ? 'true' : undefined;
 
@@ -656,7 +655,6 @@ function CustomHandlerStep({
     if (enabled) setIsOpen(true);
   }, [enabled]);
 
-
   const handleToggle = (checked: boolean) => {
     if (checked) {
       if (!enabled) {
@@ -681,33 +679,33 @@ function CustomHandlerStep({
   };
 
   return (
-    <section class="rounded-lg border border-neutral-800 bg-neutral-950/80">
+    <section class='rounded-lg border border-neutral-800 bg-neutral-950/80'>
       <details
         open={isOpen}
-        class="flex flex-col"
+        class='flex flex-col'
         onToggle={(event: JSX.TargetedEvent<HTMLDetailsElement, Event>) =>
           setIsOpen(event.currentTarget.open)}
       >
-        <summary class="flex cursor-pointer items-start justify-between gap-3 px-4 py-3">
-          <div class="space-y-1">
-            <p class="text-[11px] uppercase tracking-wide text-neutral-500">
+        <summary class='flex cursor-pointer items-start justify-between gap-3 px-4 py-3'>
+          <div class='space-y-1'>
+            <p class='text-[11px] uppercase tracking-wide text-neutral-500'>
               Step {stepIndex + 1}
             </p>
-            <h4 class="text-sm font-semibold text-neutral-100">
+            <h4 class='text-sm font-semibold text-neutral-100'>
               Custom handler logic (optional)
             </h4>
-            <p class="text-xs text-neutral-400">
+            <p class='text-xs text-neutral-400'>
               Extend or override the generated handler before it returns data to the interface.
             </p>
           </div>
           <div
-            class="flex items-center gap-2 text-xs text-neutral-300"
+            class='flex items-center gap-2 text-xs text-neutral-300'
             onClick={(event) => event.stopPropagation()}
           >
             <ToggleCheckbox
               checked={enabled}
               onToggle={handleToggle}
-              title="Toggle custom handler logic"
+              title='Toggle custom handler logic'
               checkedIntentType={IntentTypes.Primary}
               uncheckedIntentType={IntentTypes.Secondary}
             />
@@ -716,57 +714,59 @@ function CustomHandlerStep({
         </summary>
 
         {isOpen && (
-          <div class="flex flex-col gap-4 border-t border-neutral-800 p-4">
-            <p class="text-xs text-neutral-400">
+          <div class='flex flex-col gap-4 border-t border-neutral-800 p-4'>
+            <p class='text-xs text-neutral-400'>
               When this control is disabled, the generated orchestration from the steps above runs
               unmodified. Turn it on to append bespoke logic before returning data.
             </p>
 
-            {enabled ? (
-              <>
-                <div class="flex flex-col gap-2">
-                  <div class="space-y-1">
-                    <p class="text-sm font-semibold text-neutral-100">Custom handler code</p>
-                    <p class="text-xs text-neutral-400">
-                      Author bespoke logic that returns an updated InterfacePageData object.
-                    </p>
+            {enabled
+              ? (
+                <>
+                  <div class='flex flex-col gap-2'>
+                    <div class='space-y-1'>
+                      <p class='text-sm font-semibold text-neutral-100'>Custom handler code</p>
+                      <p class='text-xs text-neutral-400'>
+                        Author bespoke logic that returns an updated InterfacePageData object.
+                      </p>
+                    </div>
+                    <div class='rounded-lg border border-neutral-800 bg-neutral-950/60'>
+                      <pre class='m-0 rounded-t-lg border-b border-neutral-800 bg-neutral-900/80 px-3 py-2 font-mono text-[12px] text-neutral-300'>
+                        {HANDLER_PREFIX.replace(/\s+$/, '')}
+                      </pre>
+                      <SurfaceCodeMirror
+                        value={body}
+                        onValueChange={onBodyChange}
+                        class='h-[320px] max-h-[560px] [&_.cm-editor]:rounded-none [&_.cm-editor]:border-none [&_.cm-editor]:bg-neutral-950'
+                      />
+                      <pre class='m-0 rounded-b-lg border-t border-neutral-800 bg-neutral-900/80 px-3 py-2 font-mono text-[12px] text-neutral-300'>
+                        {HANDLER_SUFFIX.trimStart() || '}'}
+                      </pre>
+                    </div>
                   </div>
-                  <div class="overflow-hidden rounded-lg border border-neutral-800 bg-neutral-950/60">
-                    <pre class="m-0 border-b border-neutral-800 bg-neutral-900/80 px-3 py-2 font-mono text-[12px] text-neutral-300">
-                      {HANDLER_PREFIX.replace(/\s+$/, '')}
-                    </pre>
-                    <SurfaceCodeMirror
-                      value={body}
-                      onValueChange={onBodyChange}
-                      class="min-h-[240px] [&_.cm-editor]:rounded-none [&_.cm-editor]:border-none [&_.cm-editor]:bg-neutral-950"
+
+                  <FormRow label='Description'>
+                    <textarea
+                      class='h-16 w-full resize-none rounded-md border border-neutral-800 bg-neutral-900/70 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/40'
+                      placeholder='Optional description for this handler override.'
+                      value={description}
+                      onInput={(event: JSX.TargetedEvent<HTMLTextAreaElement, Event>) =>
+                        onDescriptionChange(event.currentTarget.value)}
                     />
-                    <pre class="m-0 border-t border-neutral-800 bg-neutral-900/80 px-3 py-2 font-mono text-[12px] text-neutral-300">
-                      {HANDLER_SUFFIX.replace(/^\s+/, '')}
-                    </pre>
-                  </div>
-                </div>
+                  </FormRow>
 
-                <FormRow label="Description">
-                  <textarea
-                    class="h-16 w-full resize-none rounded-md border border-neutral-800 bg-neutral-900/70 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/40"
-                    placeholder="Optional description for this handler override."
-                    value={description}
-                    onInput={(event: JSX.TargetedEvent<HTMLTextAreaElement, Event>) =>
-                      onDescriptionChange(event.currentTarget.value)}
-                  />
-                </FormRow>
-
-                <FormRow label="Guidance messages">
-                  <textarea
-                    class="h-20 w-full resize-none rounded-md border border-neutral-800 bg-neutral-900/70 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/40"
-                    placeholder="Optional guidance messages (one per line)."
-                    value={messages}
-                    onInput={(event: JSX.TargetedEvent<HTMLTextAreaElement, Event>) =>
-                      onMessagesChange(event.currentTarget.value)}
-                  />
-                </FormRow>
-              </>
-            ) : null}
+                  <FormRow label='Guidance messages'>
+                    <textarea
+                      class='h-20 w-full resize-none rounded-md border border-neutral-800 bg-neutral-900/70 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/40'
+                      placeholder='Optional guidance messages (one per line).'
+                      value={messages}
+                      onInput={(event: JSX.TargetedEvent<HTMLTextAreaElement, Event>) =>
+                        onMessagesChange(event.currentTarget.value)}
+                    />
+                  </FormRow>
+                </>
+              )
+              : null}
           </div>
         )}
       </details>
@@ -778,7 +778,7 @@ type DataConnectionPrefetchSettingsProps = {
   slice: EaCInterfaceGeneratedDataSlice;
   onFeaturesChange: (
     key: string,
-    features: EaCInterfaceDataConnectionFeatures | undefined
+    features: EaCInterfaceDataConnectionFeatures | undefined,
   ) => void;
 };
 
@@ -792,22 +792,22 @@ function DataConnectionPrefetchSettings({
     new Set(
       (features?.HistoricDownloadFormats ?? []).filter(
         (format): format is EaCInterfaceHistoricSliceFormat =>
-          format === 'json' || format === 'csv'
-      )
-    )
+          format === 'json' || format === 'csv',
+      ),
+    ),
   );
-  const availableFormats: EaCInterfaceHistoricSliceFormat[] =
-    allowedFormats.length > 0 ? allowedFormats : ['json'];
+  const availableFormats: EaCInterfaceHistoricSliceFormat[] = allowedFormats.length > 0
+    ? allowedFormats
+    : ['json'];
   const prefetch = features?.PrefetchHistoricSlice;
-  const defaultMode: EaCInterfaceHistoricWindowMode =
-    prefetch?.Mode ?? 'relative';
-  const effectivePrefetch =
-    prefetch ?? createPrefetchSlice(defaultMode, undefined, availableFormats);
+  const defaultMode: EaCInterfaceHistoricWindowMode = prefetch?.Mode ?? 'relative';
+  const effectivePrefetch = prefetch ??
+    createPrefetchSlice(defaultMode, undefined, availableFormats);
 
   const handleFeaturesUpdate = (
     updater: (
-      current: EaCInterfaceDataConnectionFeatures | undefined
-    ) => EaCInterfaceDataConnectionFeatures | undefined
+      current: EaCInterfaceDataConnectionFeatures | undefined,
+    ) => EaCInterfaceDataConnectionFeatures | undefined,
   ) => {
     const clone = cloneDataConnectionFeatures(features);
     const next = updater(clone);
@@ -820,15 +820,15 @@ function DataConnectionPrefetchSettings({
     mutate: (
       slice: NonNullable<
         EaCInterfaceDataConnectionFeatures['PrefetchHistoricSlice']
-      >
-    ) => void
+      >,
+    ) => void,
   ) => {
     handleFeaturesUpdate((prev) => {
       const next: EaCInterfaceDataConnectionFeatures = { ...(prev ?? {}) };
       const baseSlice = createPrefetchSlice(
         mode,
         prev?.PrefetchHistoricSlice,
-        availableFormats
+        availableFormats,
       );
       mutate(baseSlice);
       baseSlice.Enabled = true;
@@ -837,7 +837,8 @@ function DataConnectionPrefetchSettings({
     });
   };
 
-  const inputClass = 'h-9 w-full rounded border border-neutral-700 bg-neutral-900 px-3 text-sm text-neutral-100 outline-none focus:border-teal-400';
+  const inputClass =
+    'h-9 w-full rounded border border-neutral-700 bg-neutral-900 px-3 text-sm text-neutral-100 outline-none focus:border-teal-400';
 
   return (
     <div class='flex flex-col gap-3 text-sm text-neutral-200'>
@@ -932,7 +933,8 @@ function DataConnectionPrefetchSettings({
             <span class='text-xs text-neutral-400'>Range unit</span>
           </div>
           <p class='md:col-span-2 text-xs text-neutral-500'>
-            Pull a rolling window relative to the request time (for example, the last 30 minutes or 7 days).
+            Pull a rolling window relative to the request time (for example, the last 30 minutes or
+            7 days).
           </p>
         </div>
       )}
@@ -987,21 +989,21 @@ function DataConnectionPrefetchSettings({
   );
 }
 function cloneDataConnectionFeatures(
-  features: EaCInterfaceDataConnectionFeatures | undefined
+  features: EaCInterfaceDataConnectionFeatures | undefined,
 ): EaCInterfaceDataConnectionFeatures | undefined {
   return features
     ? (JSON.parse(
-        JSON.stringify(features)
-      ) as EaCInterfaceDataConnectionFeatures)
+      JSON.stringify(features),
+    ) as EaCInterfaceDataConnectionFeatures)
     : undefined;
 }
 
 function resolvePrefetchFormat(
   current: string | undefined,
-  available: EaCInterfaceHistoricSliceFormat[]
+  available: EaCInterfaceHistoricSliceFormat[],
 ): EaCInterfaceHistoricSliceFormat {
   const sanitized = available.filter(
-    (format) => format === 'json' || format === 'csv'
+    (format) => format === 'json' || format === 'csv',
   );
   const fallback = sanitized[0] ?? 'json';
   if (
@@ -1018,7 +1020,7 @@ function createPrefetchSlice(
   existing:
     | NonNullable<EaCInterfaceDataConnectionFeatures['PrefetchHistoricSlice']>
     | undefined,
-  availableFormats: EaCInterfaceHistoricSliceFormat[]
+  availableFormats: EaCInterfaceHistoricSliceFormat[],
 ): NonNullable<EaCInterfaceDataConnectionFeatures['PrefetchHistoricSlice']> {
   const slice: NonNullable<
     EaCInterfaceDataConnectionFeatures['PrefetchHistoricSlice']
@@ -1030,17 +1032,15 @@ function createPrefetchSlice(
 
   if (mode === 'absolute') {
     const absolute = existing?.AbsoluteRange;
-    slice.AbsoluteRange =
-      absolute && isValidIsoDate(absolute.Start)
-        ? { ...absolute }
-        : { Start: new Date().toISOString() };
+    slice.AbsoluteRange = absolute && isValidIsoDate(absolute.Start)
+      ? { ...absolute }
+      : { Start: new Date().toISOString() };
     delete slice.Range;
   } else {
     const range = existing?.Range;
-    slice.Range =
-      range && typeof range.Amount === 'number' && range.Amount > 0
-        ? { ...range }
-        : { Amount: 7, Unit: 'days' };
+    slice.Range = range && typeof range.Amount === 'number' && range.Amount > 0
+      ? { ...range }
+      : { Amount: 7, Unit: 'days' };
     delete slice.AbsoluteRange;
   }
 
@@ -1078,7 +1078,7 @@ function isValidIsoDate(value: string | undefined): boolean {
 }
 
 function buildBasePlanFromSlices(
-  generatedSlices: Array<[string, EaCInterfaceGeneratedDataSlice]>
+  generatedSlices: Array<[string, EaCInterfaceGeneratedDataSlice]>,
 ): SurfaceInterfaceHandlerPlanStep[] {
   const steps: SurfaceInterfaceHandlerPlanStep[] = [];
 
@@ -1119,7 +1119,7 @@ function buildBasePlanFromSlices(
 
 function reconcileHandlerPlan(
   basePlan: SurfaceInterfaceHandlerPlanStep[],
-  currentPlan: SurfaceInterfaceHandlerPlanStep[]
+  currentPlan: SurfaceInterfaceHandlerPlanStep[],
 ): SurfaceInterfaceHandlerPlanStep[] {
   const currentMap = new Map(currentPlan.map((step) => [step.id, step]));
   return basePlan.map((base) => {
@@ -1138,7 +1138,7 @@ function reconcileHandlerPlan(
 
 function arePlansEqual(
   first: SurfaceInterfaceHandlerPlanStep[],
-  second: SurfaceInterfaceHandlerPlanStep[]
+  second: SurfaceInterfaceHandlerPlanStep[],
 ): boolean {
   if (first.length !== second.length) return false;
   for (let index = 0; index < first.length; index += 1) {
@@ -1162,13 +1162,9 @@ type HandlerStubOptions = {
   returnType?: string;
 };
 
-function buildCustomHandlerSkeleton(): string {
-  return composeHandlerCode(DEFAULT_HANDLER_BODY);
-}
-
 export function generateHandlerStub(
   steps: SurfaceInterfaceHandlerPlanStep[],
-  options: HandlerStubOptions = {}
+  options: HandlerStubOptions = {},
 ): string {
   const returnType = options.returnType ?? 'Record<string, unknown>';
   const executableSteps = steps.filter((step) => step.autoExecute);
@@ -1203,13 +1199,13 @@ export function generateHandlerStub(
       '    }',
       '    return undefined;',
       '  };',
-      ''
+      '',
     );
   } else {
     lines.push(
       '',
       '  // Define handler steps with the planner or author your own logic below.',
-      ''
+      '',
     );
   }
 
@@ -1228,23 +1224,29 @@ export function generateHandlerStub(
       const inputExpression = step.inputExpression.trim() || 'undefined';
       const tempVar = `result${index + 1}`;
       lines.push(
-        `  const ${tempVar} = await callAction(${JSON.stringify(
-          step.sliceKey
-        )}, ${JSON.stringify(step.actionKey)}, ${inputExpression});`
+        `  const ${tempVar} = await callAction(${
+          JSON.stringify(
+            step.sliceKey,
+          )
+        }, ${JSON.stringify(step.actionKey)}, ${inputExpression});`,
       );
 
       if (step.includeInResponse && step.resultName.trim().length > 0) {
         lines.push(
-          `  data[${JSON.stringify(
-            step.resultName.trim()
-          )}] = ${tempVar} ?? null;`
+          `  data[${
+            JSON.stringify(
+              step.resultName.trim(),
+            )
+          }] = ${tempVar} ?? null;`,
         );
       }
     } else {
       lines.push(
-        `  // Available helper: callAction(${JSON.stringify(
-          step.sliceKey
-        )}, ${JSON.stringify(step.actionKey)}, input)`
+        `  // Available helper: callAction(${
+          JSON.stringify(
+            step.sliceKey,
+          )
+        }, ${JSON.stringify(step.actionKey)}, input)`,
       );
     }
 
@@ -1257,7 +1259,7 @@ export function generateHandlerStub(
 }
 
 export function buildGeneratedDescription(
-  steps: SurfaceInterfaceHandlerPlanStep[]
+  steps: SurfaceInterfaceHandlerPlanStep[],
 ): string {
   if (steps.length === 0) {
     return 'Author server-side logic that composes interface actions and returns page data.';
@@ -1273,13 +1275,11 @@ export function buildGeneratedDescription(
 }
 
 export function buildGeneratedMessages(
-  steps: SurfaceInterfaceHandlerPlanStep[]
+  steps: SurfaceInterfaceHandlerPlanStep[],
 ): string {
   if (steps.length === 0) return '';
   const messages = steps.map((step, index) => {
-    const prefix = `Step ${index + 1}: ${step.sliceLabel} -> ${
-      step.actionLabel
-    }`;
+    const prefix = `Step ${index + 1}: ${step.sliceLabel} -> ${step.actionLabel}`;
     if (step.autoExecute && step.includeInResponse) {
       return `${prefix} (maps result to \`${step.resultName || 'result'}\`).`;
     }
@@ -1304,10 +1304,3 @@ function toCamelCase(value: string): string {
       .join('') || value
   );
 }
-
-
-
-
-
-
-

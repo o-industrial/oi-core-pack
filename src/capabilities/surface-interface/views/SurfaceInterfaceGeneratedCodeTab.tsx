@@ -8,7 +8,10 @@ import {
   useMemo,
 } from '../../../.deps.ts';
 import { SurfaceCodeMirror } from '../../../components/code/SurfaceCodeMirror.tsx';
-import { type SurfaceInterfaceHandlerPlanStep } from './SurfaceInterfaceHandlerTab.tsx';
+import {
+  composeHandlerCode,
+  type SurfaceInterfaceHandlerPlanStep,
+} from './SurfaceInterfaceHandlerTab.tsx';
 import {
   buildDefaultInterfaceComponent,
   toCamelCase,
@@ -27,6 +30,31 @@ type SurfaceInterfaceGeneratedCodeTabProps = {
   pageDescription: string;
   pageMessages: string;
 };
+
+const CUSTOM_PAGE_PREFIX = `export default function InterfacePage({
+  data,
+  services,
+  status,
+  refresh,
+}: InterfacePageProps) {
+`;
+
+const CUSTOM_PAGE_SUFFIX = `}
+`;
+
+function isFullHandlerImplementation(code: string): boolean {
+  return /export\s+async\s+function\s+loadPageData\b/.test(code);
+}
+
+function isFullPageImplementation(code: string): boolean {
+  return /export\s+default\s+function\s+InterfacePage\s*\(/.test(code);
+}
+
+function composePageCodeFromBody(body: string): string {
+  if (!body.trim().length) return '';
+  const normalized = body.endsWith('\n') ? body : `${body}\n`;
+  return `${CUSTOM_PAGE_PREFIX}${normalized}${CUSTOM_PAGE_SUFFIX}`.trimEnd();
+}
 
 export function SurfaceInterfaceGeneratedCodeTab({
   interfaceLookup,
@@ -74,8 +102,8 @@ export function SurfaceInterfaceGeneratedCodeTab({
         <div class='space-y-1'>
           <h3 class='text-sm font-semibold text-neutral-100'>Generated interface files preview</h3>
           <p class='text-xs text-neutral-400'>
-            Snapshot of the virtual DFS emitted by the InterfaceApp processor. Each section mirrors a
-            file that the runtime can load dynamically.
+            Snapshot of the virtual DFS emitted by the InterfaceApp processor. Each section mirrors
+            a file that the runtime can load dynamically.
           </p>
         </div>
         <Action
@@ -279,10 +307,9 @@ function collectDataProps(
       const entrySchema = typeof schemaEntry === 'boolean' ? undefined : schemaEntry;
       const typeString = schemaToTsType(entrySchema, 'unknown');
       const defaultValue = schemaToDefaultValue(entrySchema, typeString, optional);
-      const propDescription =
-        entrySchema && typeof entrySchema.description === 'string'
-          ? (entrySchema.description as string)
-          : undefined;
+      const propDescription = entrySchema && typeof entrySchema.description === 'string'
+        ? (entrySchema.description as string)
+        : undefined;
 
       const docLines = sanitizeDocLines([
         slice.Label ?? sliceKey,
@@ -350,21 +377,20 @@ function collectServiceDefinitions(
     const slice = sliceMap.get(step.sliceKey);
     const action = slice?.Actions?.find((candidate) => candidate?.Key === step.actionKey);
 
-    const aliasSeed =
-      action?.Label?.trim() ||
+    const aliasSeed = action?.Label?.trim() ||
       step.actionLabel?.trim() ||
       slice?.Label?.trim() ||
       `${step.sliceKey}-${step.actionKey}`;
     const aliasBase = aliasFor(aliasSeed, 'Action');
 
-    const methodSeed =
-      step.actionLabel?.trim() ||
+    const methodSeed = step.actionLabel?.trim() ||
       action?.Label?.trim() ||
       step.resultName?.trim() ||
       `${step.sliceKey}-${step.actionKey}`;
     const methodName = createIdentifier(methodSeed, usedMethodNames, 'invokeAction');
 
-    const resultName = step.resultName?.trim() || toCamelCase(`${step.sliceKey}-${step.actionKey}-result`);
+    const resultName = step.resultName?.trim() ||
+      toCamelCase(`${step.sliceKey}-${step.actionKey}-result`);
 
     const inputSchema = action?.Input;
     const outputSchema = action?.Output;
@@ -641,21 +667,19 @@ function buildServicesFile(lookup: string, services: ServiceDefinition[]): strin
 
   lines.push('export type InterfaceServices = {');
   services.forEach((service) => {
-    const params = service.hasInput
-      ? `(input: ${service.aliasBase}Input)`
-      : '()';
+    const params = service.hasInput ? `(input: ${service.aliasBase}Input)` : '()';
     const doc = service.docLines.length ? formatDocComment(service.docLines, 2) : [];
     lines.push(...doc);
     lines.push(`  ${service.methodName}${params}: Promise<${service.aliasBase}Output>;`);
   });
   lines.push('};', '');
 
-  lines.push('export function createInterfaceServices(invoke: InterfaceServiceInvoke): InterfaceServices {');
+  lines.push(
+    'export function createInterfaceServices(invoke: InterfaceServiceInvoke): InterfaceServices {',
+  );
   lines.push('  return {');
   services.forEach((service) => {
-    const params = service.hasInput
-      ? `input: ${service.aliasBase}Input`
-      : '';
+    const params = service.hasInput ? `input: ${service.aliasBase}Input` : '';
     const invokeGeneric = service.hasInput
       ? `${service.aliasBase}Output, ${service.aliasBase}Input`
       : `${service.aliasBase}Output, void`;
@@ -665,7 +689,9 @@ function buildServicesFile(lookup: string, services: ServiceDefinition[]): strin
     lines.push(`        actionKey: ${JSON.stringify(service.descriptor.actionKey)},`);
     lines.push(`        resultName: ${JSON.stringify(service.descriptor.resultName)},`);
     lines.push(`        autoExecute: ${service.descriptor.autoExecute ? 'true' : 'false'},`);
-    lines.push(`        includeInResponse: ${service.descriptor.includeInResponse ? 'true' : 'false'},`);
+    lines.push(
+      `        includeInResponse: ${service.descriptor.includeInResponse ? 'true' : 'false'},`,
+    );
     lines.push(`      }, ${service.hasInput ? 'input' : 'undefined as void'});`);
     lines.push('    },');
   });
@@ -715,8 +741,11 @@ function buildModuleFile(options: BuildModuleFileOptions): string {
   const serverLoader = buildServerLoaderStub(safeId, dataProps);
   const clientLoader = buildClientLoaderStub();
 
-  const component = pageCode.trim().length > 0
-    ? pageCode.trim()
+  const trimmedPageCode = pageCode.trim();
+  const component = trimmedPageCode.length > 0
+    ? (isFullPageImplementation(trimmedPageCode)
+      ? trimmedPageCode
+      : composePageCodeFromBody(pageCode))
     : buildDefaultInterfaceComponent(lookup, safeId);
 
   const lines: string[] = [
@@ -859,11 +888,18 @@ type BuildHandlerFileOptions = {
 function buildHandlerFile(options: BuildHandlerFileOptions): string {
   const { lookup, handlerCode, handlerDescription, handlerMessages } = options;
 
-  const guidance = buildGuidanceComment("Server handler guidance", handlerDescription, handlerMessages);
-  const customCode = handlerCode.trim();
+  const guidance = buildGuidanceComment(
+    'Server handler guidance',
+    handlerDescription,
+    handlerMessages,
+  );
+  const trimmedCustomCode = handlerCode.trim();
 
-  if (customCode.length > 0) {
-    return `${customCode.trimEnd()}\n`;
+  if (trimmedCustomCode.length > 0) {
+    const fullHandler = isFullHandlerImplementation(trimmedCustomCode)
+      ? trimmedCustomCode
+      : composeHandlerCode(handlerCode);
+    return `${fullHandler.trimEnd()}\n`;
   }
 
   return `import type { InterfaceRequestContext } from "../registry.ts";
@@ -1355,5 +1391,3 @@ function copyToClipboard(text: string): void {
     writer.call(clipboard, text).catch(() => {});
   }
 }
-
-

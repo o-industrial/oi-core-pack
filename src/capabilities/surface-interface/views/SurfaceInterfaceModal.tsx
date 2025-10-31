@@ -43,6 +43,8 @@ import {
   DEFAULT_HANDLER_BODY,
   extractHandlerBody,
   generateHandlerStub,
+  HANDLER_PREFIX,
+  HANDLER_SUFFIX,
   type SurfaceInterfaceHandlerPlanStep,
   SurfaceInterfaceHandlerTab,
 } from './SurfaceInterfaceHandlerTab.tsx';
@@ -274,14 +276,13 @@ export function SurfaceInterfaceModal({
       interfaceLookup,
     );
   });
-  const [handlerCode, setHandlerCode] = useState(
-    resolvedDetails.PageHandler?.Code ?? '',
-  );
-  const [handlerBody, setHandlerBody] = useState(() =>
-    extractHandlerBody(resolvedDetails.PageHandler?.Code ?? '')
-  );
-  const [handlerEnabled, setHandlerEnabled] = useState<boolean>(() =>
-    (resolvedDetails.PageHandler?.Code ?? '').trim().length > 0
+  const initialHandlerCode = resolvedDetails.PageHandler?.Code ?? '';
+  const initialHandlerBody = initialHandlerCode.trim().length > 0
+    ? extractHandlerBody(initialHandlerCode) || initialHandlerCode
+    : '';
+  const [handlerBody, setHandlerBody] = useState(initialHandlerBody);
+  const [handlerEnabled, setHandlerEnabled] = useState<boolean>(
+    initialHandlerBody.trim().length > 0,
   );
   const [handlerDescription, setHandlerDescription] = useState(
     resolvedDetails.PageHandler?.Description ?? '',
@@ -292,32 +293,40 @@ export function SurfaceInterfaceModal({
   const [handlerMessageGroups] = useState(
     resolvedDetails.PageHandler?.MessageGroups ?? [],
   );
+  const handlerFullCode = useMemo(
+    () => handlerEnabled && handlerBody.trim().length > 0 ? composeHandlerCode(handlerBody) : '',
+    [handlerBody, handlerEnabled],
+  );
   const [handlerPlan, setHandlerPlan] = useState<SurfaceInterfaceHandlerPlanStep[]>([]);
   const lastGeneratedHandlerRef = useRef({
-    code: (resolvedDetails.PageHandler?.Code ?? '').trim(),
+    body: initialHandlerBody.trim(),
     description: (resolvedDetails.PageHandler?.Description ?? '').trim(),
     messages: formatMessages(resolvedDetails.PageHandler?.Messages).trim(),
   });
   const lastSyncedHandlerRef = useRef({
-    code: (resolvedDetails.PageHandler?.Code ?? '').trim(),
+    body: initialHandlerBody.trim(),
     description: (resolvedDetails.PageHandler?.Description ?? '').trim(),
     messages: formatMessages(resolvedDetails.PageHandler?.Messages).trim(),
   });
   const handlerDirtyRef = useRef(false);
 
-  const [pageCode, setPageCode] = useState(
-    resolvedDetails.Page?.Code?.trim()?.length ? resolvedDetails.Page.Code : defaultPageTemplate,
+  const pagePrefix = defaultPageSegments.prefix;
+  const pageSuffix = defaultPageSegments.suffix;
+  const [pageBody, setPageBody] = useState(() => {
+    const incomingPageCode = resolvedDetails.Page?.Code ?? '';
+    if (incomingPageCode.trim().length > 0) {
+      return extractPageCodeSegments(
+        incomingPageCode,
+        pagePrefix,
+        pageSuffix,
+      ).body;
+    }
+    return defaultPageSegments.body;
+  });
+  const pageFullCode = useMemo(
+    () => composePageCode(pagePrefix, pageBody, pageSuffix),
+    [pagePrefix, pageBody, pageSuffix],
   );
-  const pageSegments = useMemo(
-    () =>
-      extractPageCodeSegments(
-        pageCode,
-        defaultPageSegments.prefix,
-        defaultPageSegments.suffix,
-      ),
-    [pageCode, defaultPageSegments.prefix, defaultPageSegments.suffix],
-  );
-  const { prefix: pagePrefix, body: pageBody, suffix: pageSuffix } = pageSegments;
   const [pageDescription, setPageDescription] = useState(
     resolvedDetails.Page?.Description ?? '',
   );
@@ -361,11 +370,13 @@ export function SurfaceInterfaceModal({
     setPageDataType(reconciled);
 
     const incomingHandlerCode = resolvedDetails.PageHandler?.Code ?? '';
-    setHandlerCode(incomingHandlerCode);
-    setHandlerEnabled(incomingHandlerCode.trim().length > 0);
-    setHandlerBody(extractHandlerBody(incomingHandlerCode));
-    lastGeneratedHandlerRef.current.code = incomingHandlerCode.trim();
-    lastSyncedHandlerRef.current.code = incomingHandlerCode.trim();
+    const nextHandlerBody = incomingHandlerCode.trim().length > 0
+      ? extractHandlerBody(incomingHandlerCode) || incomingHandlerCode
+      : '';
+    setHandlerBody(nextHandlerBody);
+    setHandlerEnabled(nextHandlerBody.trim().length > 0);
+    lastGeneratedHandlerRef.current.body = nextHandlerBody.trim();
+    lastSyncedHandlerRef.current.body = nextHandlerBody.trim();
 
     const incomingHandlerDescription = resolvedDetails.PageHandler?.Description ?? '';
     setHandlerDescription(incomingHandlerDescription);
@@ -377,10 +388,17 @@ export function SurfaceInterfaceModal({
     lastGeneratedHandlerRef.current.messages = incomingHandlerMessages.trim();
     lastSyncedHandlerRef.current.messages = incomingHandlerMessages.trim();
 
-    const incomingPageCode = resolvedDetails.Page?.Code;
-    setPageCode(
-      incomingPageCode?.trim()?.length ? incomingPageCode : defaultPageTemplate,
-    );
+    const incomingPageCode = resolvedDetails.Page?.Code ?? '';
+    if (incomingPageCode.trim().length > 0) {
+      const segments = extractPageCodeSegments(
+        incomingPageCode,
+        pagePrefix,
+        pageSuffix,
+      );
+      setPageBody(segments.body);
+    } else {
+      setPageBody(defaultPageSegments.body);
+    }
     setPageDescription(resolvedDetails.Page?.Description ?? '');
     setPageMessagesText(formatMessages(resolvedDetails.Page?.Messages));
     setImportsInvalid(false);
@@ -388,7 +406,7 @@ export function SurfaceInterfaceModal({
     handlerDirtyRef.current = false;
     initializedLookupRef.current = interfaceLookup;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, interfaceLookup, defaultPageTemplate]);
+  }, [isOpen, interfaceLookup, pagePrefix, pageSuffix, defaultPageSegments.body]);
 
   useEffect(() => {
     if (isOpen) return;
@@ -408,8 +426,6 @@ export function SurfaceInterfaceModal({
     (next: string) => {
       handlerDirtyRef.current = true;
       setHandlerBody(next);
-      const composed = next.trim().length ? composeHandlerCode(next) : '';
-      setHandlerCode(composed);
     },
     [],
   );
@@ -429,19 +445,17 @@ export function SurfaceInterfaceModal({
     setHandlerEnabled(next);
     if (!next) {
       setHandlerBody('');
-      setHandlerCode('');
     } else if (handlerBody.trim().length === 0) {
       const defaultBody = DEFAULT_HANDLER_BODY;
       setHandlerBody(defaultBody);
-      setHandlerCode(composeHandlerCode(defaultBody));
     }
   }, [handlerBody]);
 
   const handlePageBodyChange = useCallback(
     (next: string) => {
-      setPageCode(composePageCode(pagePrefix, next, pageSuffix));
+      setPageBody(next);
     },
-    [pagePrefix, pageSuffix],
+    [],
   );
 
   const handlePageDescriptionChange = useCallback((next: string) => {
@@ -479,11 +493,11 @@ export function SurfaceInterfaceModal({
         resolvedDetails.Page,
         imports,
         pageDataType,
-        handlerCode,
+        handlerBody,
         handlerDescription,
         handlerMessagesText,
         handlerMessageGroups,
-        pageCode,
+        pageBody,
         pageDescription,
         pageMessagesText,
         pageMessageGroups,
@@ -508,11 +522,11 @@ export function SurfaceInterfaceModal({
     resolvedDetails.Page,
     imports,
     pageDataType,
-    handlerCode,
+    handlerBody,
     handlerDescription,
     handlerMessagesText,
     handlerMessageGroups,
-    pageCode,
+    pageBody,
     pageDescription,
     pageMessagesText,
     pageMessageGroups,
@@ -704,38 +718,37 @@ export function SurfaceInterfaceModal({
     const description = buildGeneratedDescription(handlerPlan);
     const messages = buildGeneratedMessages(handlerPlan);
 
-    const trimmedStub = stub.trim();
+    const stubBody = extractHandlerBody(stub) ?? stub;
+    const trimmedStubBody = stubBody.trim();
     const trimmedDescription = description.trim();
     const trimmedMessages = messages.trim();
 
     const previousGenerated = { ...lastGeneratedHandlerRef.current };
 
     if (!handlerEnabled) {
-      lastGeneratedHandlerRef.current.code = trimmedStub;
+      lastGeneratedHandlerRef.current.body = trimmedStubBody;
       lastGeneratedHandlerRef.current.description = trimmedDescription;
       lastGeneratedHandlerRef.current.messages = trimmedMessages;
       return;
     }
 
     if (handlerDirtyRef.current) {
-      lastGeneratedHandlerRef.current.code = trimmedStub;
+      lastGeneratedHandlerRef.current.body = trimmedStubBody;
       lastGeneratedHandlerRef.current.description = trimmedDescription;
       lastGeneratedHandlerRef.current.messages = trimmedMessages;
       return;
     }
 
-    const currentCode = handlerCode.trim();
+    const currentBody = handlerBody.trim();
     if (
-      trimmedStub.length > 0 &&
-      (currentCode.length === 0 || currentCode === previousGenerated.code)
+      trimmedStubBody.length > 0 &&
+      (currentBody.length === 0 || currentBody === previousGenerated.body)
     ) {
-      const nextBody = extractHandlerBody(stub);
-      setHandlerCode(stub);
-      setHandlerBody(nextBody);
+      setHandlerBody(stubBody);
       handlerDirtyRef.current = false;
-      lastGeneratedHandlerRef.current.code = trimmedStub;
+      lastGeneratedHandlerRef.current.body = trimmedStubBody;
     } else {
-      lastGeneratedHandlerRef.current.code = currentCode;
+      lastGeneratedHandlerRef.current.body = currentBody;
     }
 
     const currentDescription = handlerDescription.trim();
@@ -770,12 +783,11 @@ export function SurfaceInterfaceModal({
   }, [
     activeTab,
     handlerPlan,
-    handlerCode,
+    handlerBody,
     handlerDescription,
     handlerMessagesText,
     handlerEnabled,
     setHandlerBody,
-    setHandlerCode,
     setHandlerDescription,
     setHandlerMessagesText,
   ]);
@@ -817,12 +829,16 @@ export function SurfaceInterfaceModal({
       },
       handler: {
         body: handlerBody,
-        code: handlerCode,
+        prefix: HANDLER_PREFIX.replace(/\s+$/, ''),
+        suffix: HANDLER_SUFFIX.trimStart() || '}',
         description: handlerDescription,
         messages: parseMessages(handlerMessagesText),
+        enabled: handlerEnabled,
       },
       page: {
-        code: pageCode,
+        body: pageBody,
+        prefix: pagePrefix.replace(/\s+$/, ''),
+        suffix: pageSuffix.trimStart() || '}',
         description: pageDescription,
         messages: parseMessages(pageMessagesText),
       },
@@ -838,10 +854,10 @@ export function SurfaceInterfaceModal({
       pageDataType,
       generatedSliceEntries,
       handlerBody,
-      handlerCode,
       handlerDescription,
       handlerMessagesText,
-      pageCode,
+      handlerEnabled,
+      pageBody,
       pageDescription,
       pageMessagesText,
     ],
@@ -934,10 +950,10 @@ export function SurfaceInterfaceModal({
             imports={imports}
             handlerPlan={handlerPlan}
             generatedSlices={generatedSliceEntries}
-            handlerCode={handlerCode}
+            handlerCode={handlerFullCode}
             handlerDescription={handlerDescription}
             handlerMessages={handlerMessagesText}
-            pageCode={pageCode}
+            pageCode={pageFullCode}
             pageDescription={pageDescription}
             pageMessages={pageMessagesText}
           />
@@ -956,16 +972,18 @@ export function SurfaceInterfaceModal({
       handlePageBodyChange,
       handlePageDescriptionChange,
       handlePageMessagesChange,
-      handlerCode,
+      handlerBody,
       handlerDescription,
       handlerEnabled,
       handlerMessagesText,
+      handlerFullCode,
       handlerPlan,
       imports,
       interfaceLookup,
       pageBody,
       pagePrefix,
       pageSuffix,
+      pageFullCode,
       pageDescription,
       pageMessagesText,
       previewBaseOverride,
@@ -1456,11 +1474,11 @@ function buildInterfaceDetailsPatch(
   basePage: EaCInterfaceCodeBlock | undefined,
   imports: string[],
   pageDataType: EaCInterfacePageDataType,
-  handlerCode: string,
+  handlerBody: string,
   handlerDescription: string,
   handlerMessages: string,
   handlerMessageGroups: EaCInterfaceCodeBlock['MessageGroups'] | undefined,
-  pageCode: string,
+  pageBody: string,
   pageDescription: string,
   pageMessages: string,
   pageMessageGroups: EaCInterfaceCodeBlock['MessageGroups'] | undefined,
@@ -1470,14 +1488,14 @@ function buildInterfaceDetailsPatch(
     PageDataType: clonePageDataType(pageDataType),
     PageHandler: buildCodeBlock(
       baseHandler,
-      handlerCode,
+      handlerBody,
       handlerDescription,
       parseMessages(handlerMessages),
       handlerMessageGroups,
     ),
     Page: buildCodeBlock(
       basePage,
-      pageCode,
+      pageBody,
       pageDescription,
       parseMessages(pageMessages),
       pageMessageGroups,
