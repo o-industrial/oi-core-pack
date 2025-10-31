@@ -1,18 +1,8 @@
-import {
-  Action,
-  ActionStyleTypes,
-  Input,
-  IntentTypes,
-  type JSX,
-  useEffect,
-  useMemo,
-} from '../../../.deps.ts';
+import { Action, ActionStyleTypes, IntentTypes, type JSX, useMemo } from '../../../.deps.ts';
 
 type SurfaceInterfacePreviewTabProps = {
   interfaceLookup: string;
   surfaceLookup?: string;
-  previewBaseOverride: string;
-  onPreviewBaseChange: (value: string) => void;
   previewNonce: number;
   onRefreshPreview: () => void;
 };
@@ -20,13 +10,10 @@ type SurfaceInterfacePreviewTabProps = {
 export function SurfaceInterfacePreviewTab({
   interfaceLookup,
   surfaceLookup,
-  previewBaseOverride,
-  onPreviewBaseChange,
   previewNonce,
   onRefreshPreview,
 }: SurfaceInterfacePreviewTabProps): JSX.Element {
   const globalLocation = (globalThis as { location?: Location }).location;
-  const globalLocalStorage = (globalThis as { localStorage?: Storage }).localStorage;
   const globalOpen = (globalThis as { open?: typeof open }).open;
 
   const defaultHost = globalLocation?.origin ?? '';
@@ -39,32 +26,16 @@ export function SurfaceInterfacePreviewTab({
     const trimmedGlobal = globalBase?.trim();
     if (trimmedGlobal) return trimmedGlobal;
 
-    const trimmedOverride = previewBaseOverride?.trim();
-    if (trimmedOverride) return trimmedOverride;
-
     return defaultHost;
-  }, [globalBase, previewBaseOverride, defaultHost]);
-
-  useEffect(() => {
-    if (!globalLocalStorage) return;
-
-    try {
-      const trimmedOverride = previewBaseOverride.trim();
-      if (trimmedOverride.length > 0) {
-        globalLocalStorage.setItem('oi.interfacePreviewBase', trimmedOverride);
-      } else {
-        globalLocalStorage.removeItem('oi.interfacePreviewBase');
-      }
-    } catch {
-      // best effort
-    }
-  }, [globalLocalStorage, previewBaseOverride]);
+  }, [globalBase, defaultHost]);
 
   const previewUrl = useMemo(() => {
     if (!effectivePreviewBase) return undefined;
 
     const previewPath = surfaceLookup
-      ? `/surfaces/${encodeURIComponent(surfaceLookup)}/interfaces/${encodeURIComponent(interfaceLookup)}`
+      ? `/surfaces/${encodeURIComponent(surfaceLookup)}/interfaces/${
+        encodeURIComponent(interfaceLookup)
+      }`
       : `/interfaces/${encodeURIComponent(interfaceLookup)}`;
 
     try {
@@ -87,29 +58,8 @@ export function SurfaceInterfacePreviewTab({
     }
   }, [defaultHost, effectivePreviewBase, globalLocation, interfaceLookup, surfaceLookup]);
 
-  const previewDescription = useMemo(() => {
-    if (globalBase?.trim()) {
-      return `Preview base is provided by global configuration (${globalBase.trim()}).`;
-    }
-    if (previewBaseOverride.trim()) {
-      return 'Preview base overrides the default origin so you can point at a deployed runtime.';
-    }
-    return 'Preview defaults to the current origin. Override the host if your interface runs on a different domain.';
-  }, [globalBase, previewBaseOverride]);
-
   return (
     <div class='flex h-full min-h-0 flex-col gap-3'>
-      <div class='space-y-2'>
-        <Input
-          label='Preview Host'
-          placeholder='https://workspace-preview.example.com'
-          value={previewBaseOverride}
-          onInput={(event: JSX.TargetedEvent<HTMLInputElement, Event>) =>
-            onPreviewBaseChange((event.currentTarget as HTMLInputElement).value)}
-        />
-        <p class='text-xs text-neutral-400'>{previewDescription}</p>
-      </div>
-
       <div class='flex items-center justify-between'>
         <div class='flex flex-col text-xs text-neutral-400'>
           <span>Surface: {surfaceLookup ?? '(workspace default)'}</span>

@@ -28,6 +28,7 @@ type SurfaceInterfaceGeneratedCodeTabProps = {
   pageCode: string;
   pageDescription: string;
   pageMessages: string;
+  isActive?: boolean;
 };
 
 function isFullHandlerImplementation(code: string): boolean {
@@ -54,34 +55,36 @@ export function SurfaceInterfaceGeneratedCodeTab({
   pageCode,
   pageDescription,
   pageMessages,
+  isActive = false,
 }: SurfaceInterfaceGeneratedCodeTabProps): JSX.Element {
-  const generatedModule = useMemo(
-    () =>
-      buildGeneratedModulePreview(
-        interfaceLookup,
-        imports,
-        handlerPlan,
-        generatedSlices,
-        handlerCode,
-        handlerDescription,
-        handlerMessages,
-        pageCode,
-        pageDescription,
-        pageMessages,
-      ),
-    [
+  const generatedModule = useMemo(() => {
+    if (!isActive) return '';
+
+    return buildGeneratedModulePreview(
+      interfaceLookup,
+      imports,
+      handlerPlan,
+      generatedSlices,
       handlerCode,
       handlerDescription,
       handlerMessages,
-      handlerPlan,
-      imports,
-      generatedSlices,
-      interfaceLookup,
       pageCode,
       pageDescription,
       pageMessages,
-    ],
-  );
+    );
+  }, [
+    handlerCode,
+    handlerDescription,
+    handlerMessages,
+    handlerPlan,
+    imports,
+    generatedSlices,
+    interfaceLookup,
+    pageCode,
+    pageDescription,
+    pageMessages,
+    isActive,
+  ]);
 
   return (
     <div class='flex h-full min-h-0 flex-col gap-3'>

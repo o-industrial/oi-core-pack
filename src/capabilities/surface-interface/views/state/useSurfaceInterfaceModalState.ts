@@ -30,11 +30,7 @@ import {
 import { extractHandlerBody } from '../utils/extractHandlerBody.ts';
 import { generateHandlerStub } from '../utils/generateHandlerStub.ts';
 import { buildPageScaffold } from '../utils/buildPageScaffold.ts';
-import {
-  composePageCode,
-  PAGE_CODE_PREFIX,
-  PAGE_CODE_SUFFIX,
-} from '../utils/composePageCode.ts';
+import { composePageCode, PAGE_CODE_PREFIX, PAGE_CODE_SUFFIX } from '../utils/composePageCode.ts';
 import { extractPageBody } from '../utils/extractPageBody.ts';
 import { resolveActionSurfaceSupport } from '../SurfaceInterfaceDataTab.tsx';
 import { toPascalCase } from '../SurfaceInterfaceTemplates.ts';
@@ -220,16 +216,6 @@ export function useSurfaceInterfaceModalState(
   const [pageMessageGroups] = useState(
     resolvedDetails.Page?.MessageGroups ?? [],
   );
-  const [previewBaseOverride, setPreviewBaseOverride] = useState(() => {
-    const storage = (globalThis as { localStorage?: Storage }).localStorage;
-    if (!storage) return '';
-    try {
-      const stored = storage.getItem('oi.interfacePreviewBase');
-      return stored ?? '';
-    } catch {
-      return '';
-    }
-  });
   const [previewNonce, setPreviewNonce] = useState(0);
   const persistTimerRef = useRef<number | null>(null);
   const lastPersistedRef = useRef<string | null>(null);
@@ -937,8 +923,6 @@ export function useSurfaceInterfaceModalState(
   };
 
   const previewState: SurfaceInterfaceModalPreviewState = {
-    baseOverride: previewBaseOverride,
-    setBaseOverride: setPreviewBaseOverride,
     nonce: previewNonce,
     refresh: () => setPreviewNonce((value: number) => value + 1),
   };

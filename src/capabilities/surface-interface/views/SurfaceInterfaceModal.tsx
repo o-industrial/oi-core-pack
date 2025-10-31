@@ -99,12 +99,7 @@ export function SurfaceInterfaceModal({
     onMessagesChange: handlePageMessagesChange,
   } = page;
 
-  const {
-    baseOverride: previewBaseOverride,
-    setBaseOverride: setPreviewBaseOverride,
-    nonce: previewNonce,
-    refresh: refreshPreview,
-  } = preview;
+  const { nonce: previewNonce, refresh: refreshPreview } = preview;
 
   const resolvedAziMgr = interfaceAzi as AziPanelProps['aziMgr'];
   const resolvedExtraInputs = debouncedExtraInputs as AziPanelProps['extraInputs'];
@@ -178,8 +173,6 @@ export function SurfaceInterfaceModal({
           <SurfaceInterfacePreviewTab
             interfaceLookup={interfaceLookup}
             surfaceLookup={surfaceLookup}
-            previewBaseOverride={previewBaseOverride}
-            onPreviewBaseChange={setPreviewBaseOverride}
             previewNonce={previewNonce}
             onRefreshPreview={refreshPreview}
           />
@@ -190,6 +183,7 @@ export function SurfaceInterfaceModal({
         label: 'Code Preview',
         content: (
           <SurfaceInterfaceGeneratedCodeTab
+            isActive={activeTab === TAB_CODE}
             interfaceLookup={interfaceLookup}
             imports={imports}
             handlerPlan={handlerPlan}
@@ -231,13 +225,12 @@ export function SurfaceInterfaceModal({
       pageMessagesText,
       pagePrefix,
       pageSuffix,
-      previewBaseOverride,
       previewNonce,
       refreshPreview,
       setHandlerPlan,
       setImportsInvalid,
-      setPreviewBaseOverride,
       surfaceLookup,
+      activeTab,
     ],
   );
 
