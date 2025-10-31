@@ -1,12 +1,7 @@
 import { marked } from 'npm:marked@15.0.1';
 
 import {
-  Action,
-  ActionStyleTypes,
   AziPanel,
-  Badge,
-  Input,
-  IntentTypes,
   interfacePageDataToSchema,
   Modal,
   TabbedPanel,
@@ -54,13 +49,14 @@ import {
   resolveActionSurfaceSupport,
   SurfaceInterfacePageDataTab,
 } from './SurfaceInterfacePageDataTab.tsx';
-import { FramedCodeEditor } from '../../../components/code/FramedCodeEditor.tsx';
 import {
   buildDefaultInterfacePageBody,
   PAGE_COMPONENT_PREFIX,
   PAGE_COMPONENT_SUFFIX,
   toPascalCase,
 } from './SurfaceInterfaceTemplates.ts';
+import { SurfaceInterfacePageTab } from './SurfaceInterfacePageTab.tsx';
+import { SurfaceInterfacePreviewTab } from './SurfaceInterfacePreviewTab.tsx';
 
 type SurfaceInterfaceModalProps = {
   isOpen: boolean;
@@ -822,26 +818,24 @@ export function SurfaceInterfaceModal({
         key: TAB_PAGE,
         label: 'Page',
         content: (
-          <div class='flex h-full min-h-0 flex-col gap-4'>
-            <PageImportsSummary imports={imports} />
-            <CodeEditorPanel
-              prefix={pagePrefix}
-              body={pageBody}
-              suffix={pageSuffix}
-              description={pageDescription}
-              messages={pageMessagesText}
-              onBodyChange={handlePageBodyChange}
-              onDescriptionChange={handlePageDescriptionChange}
-              onMessagesChange={handlePageMessagesChange}
-            />
-          </div>
+          <SurfaceInterfacePageTab
+            imports={imports}
+            prefix={pagePrefix}
+            body={pageBody}
+            suffix={pageSuffix}
+            description={pageDescription}
+            messages={pageMessagesText}
+            onBodyChange={handlePageBodyChange}
+            onDescriptionChange={handlePageDescriptionChange}
+            onMessagesChange={handlePageMessagesChange}
+          />
         ),
       },
       {
         key: TAB_PREVIEW,
         label: 'Preview',
         content: (
-          <InterfacePreviewTab
+          <SurfaceInterfacePreviewTab
             interfaceLookup={interfaceLookup}
             surfaceLookup={surfaceLookup}
             previewBaseOverride={previewBaseOverride}
@@ -965,99 +959,6 @@ export function SurfaceInterfaceModal({
   );
 }
 
-type CodeEditorPanelProps = {
-  prefix: string;
-  body: string;
-  suffix: string;
-  description: string;
-  messages: string;
-  onBodyChange: (value: string) => void;
-  onDescriptionChange: (value: string) => void;
-  onMessagesChange: (value: string) => void;
-};
-
-function PageImportsSummary({ imports }: { imports: string[] }): JSX.Element {
-  const hasImports = imports.length > 0;
-
-  return (
-    <section class='rounded-lg border border-neutral-800 bg-neutral-950 text-sm text-neutral-200'>
-      <details open class='flex flex-col'>
-        <summary class='flex cursor-pointer items-center justify-between gap-3 px-4 py-3'>
-          <div class='space-y-1'>
-            <h3 class='text-sm font-semibold text-neutral-100'>
-              Page imports
-            </h3>
-            <p class='text-xs text-neutral-400'>
-              Code authored on this tab can reference these modules directly. Manage the list from
-              the Imports tab.
-            </p>
-          </div>
-          <Badge intentType={hasImports ? IntentTypes.Secondary : IntentTypes.Info}>
-            {hasImports
-              ? `${imports.length} ${imports.length === 1 ? 'import' : 'imports'}`
-              : 'None configured'}
-          </Badge>
-        </summary>
-
-        <div class='flex flex-col gap-2 border-t border-neutral-800 p-4'>
-          {hasImports
-            ? (
-              <ul class='max-h-48 space-y-1 overflow-y-auto pr-1 text-[13px]'>
-                {imports.map((line, index) => (
-                  <li
-                    key={`${index}-${line}`}
-                    class='truncate rounded border border-neutral-800 bg-neutral-900/70 px-2 py-1 font-mono text-xs'
-                  >
-                    {line}
-                  </li>
-                ))}
-              </ul>
-            )
-            : (
-              <p class='text-xs text-neutral-500'>
-                No additional imports configured yet. Add shared dependencies on the Imports tab.
-              </p>
-            )}
-        </div>
-      </details>
-    </section>
-  );
-}
-
-function CodeEditorPanel({
-  prefix,
-  body,
-  suffix,
-  description,
-  messages,
-  onBodyChange,
-  onDescriptionChange,
-  onMessagesChange,
-}: CodeEditorPanelProps) {
-  return (
-    <div class='flex flex-1 min-h-0 flex-col gap-3'>
-      <FramedCodeEditor
-        prefix={prefix}
-        suffix={suffix}
-        value={body}
-        onChange={onBodyChange}
-      />
-      <textarea
-        class='h-16 w-full resize-none rounded border border-neutral-700 bg-neutral-950 p-2 text-sm text-neutral-200 outline-none focus:border-teal-400'
-        placeholder='Optional description for this code block'
-        value={description}
-        onInput={(event) => onDescriptionChange((event.target as HTMLTextAreaElement).value)}
-      />
-      <textarea
-        class='h-24 w-full resize-none rounded border border-neutral-800 bg-neutral-950 p-2 text-xs text-neutral-300 outline-none focus:border-teal-400'
-        placeholder='Guidance messages (one per line) to share with AI collaborators'
-        value={messages}
-        onInput={(event) => onMessagesChange((event.target as HTMLTextAreaElement).value)}
-      />
-    </div>
-  );
-}
-
 function formatMessages(messages?: string[]): string {
   return (messages ?? []).join('\n');
 }
@@ -1092,178 +993,6 @@ function buildCodeBlock(
     ...(hasMessages ? { Messages: messages } : { Messages: undefined }),
     ...(hasGroups ? { MessageGroups: messageGroups } : { MessageGroups: undefined }),
   };
-}
-
-type InterfacePreviewTabProps = {
-  interfaceLookup: string;
-  surfaceLookup?: string;
-  previewBaseOverride: string;
-  onPreviewBaseChange: (value: string) => void;
-  previewNonce: number;
-  onRefreshPreview: () => void;
-};
-
-function InterfacePreviewTab({
-  interfaceLookup,
-  surfaceLookup,
-  previewBaseOverride,
-  onPreviewBaseChange,
-  previewNonce,
-  onRefreshPreview,
-}: InterfacePreviewTabProps) {
-  const globalLocation = (globalThis as { location?: Location }).location;
-  const globalLocalStorage = (globalThis as { localStorage?: Storage })
-    .localStorage;
-  const globalOpen = (globalThis as { open?: typeof open }).open;
-
-  const defaultHost = globalLocation?.origin ?? '';
-  const globalBase = (globalThis as { __OI_INTERFACE_PREVIEW_BASE__?: string })
-    .__OI_INTERFACE_PREVIEW_BASE__ ??
-    (globalThis as { __INTERFACE_PREVIEW_BASE__?: string })
-      .__INTERFACE_PREVIEW_BASE__ ??
-    '';
-
-  const effectivePreviewBase = useMemo(() => {
-    const trimmedGlobal = globalBase?.trim();
-    if (trimmedGlobal) return trimmedGlobal;
-
-    const trimmedOverride = previewBaseOverride?.trim();
-    if (trimmedOverride) return trimmedOverride;
-
-    return defaultHost;
-  }, [globalBase, previewBaseOverride, defaultHost]);
-
-  useEffect(() => {
-    if (!globalLocalStorage) return;
-
-    try {
-      const trimmedOverride = previewBaseOverride.trim();
-      if (trimmedOverride.length > 0) {
-        globalLocalStorage.setItem('oi.interfacePreviewBase', trimmedOverride);
-      } else {
-        globalLocalStorage.removeItem('oi.interfacePreviewBase');
-      }
-    } catch {
-      // best effort
-    }
-  }, [globalLocalStorage, previewBaseOverride]);
-
-  const previewUrl = useMemo(() => {
-    if (!effectivePreviewBase) return undefined;
-
-    const previewPath = surfaceLookup
-      ? `/surfaces/${
-        encodeURIComponent(
-          surfaceLookup,
-        )
-      }/interfaces/${encodeURIComponent(interfaceLookup)}`
-      : `/interfaces/${encodeURIComponent(interfaceLookup)}`;
-
-    try {
-      const baseUrl = new URL(
-        effectivePreviewBase,
-        defaultHost || 'http://localhost',
-      );
-      const prefix = baseUrl.pathname.endsWith('/')
-        ? baseUrl.pathname.slice(0, -1)
-        : baseUrl.pathname;
-      baseUrl.pathname = `${prefix}${previewPath}`;
-      return baseUrl.toString();
-    } catch {
-      if (!globalLocation) return undefined;
-      try {
-        return new URL(previewPath, globalLocation.origin).toString();
-      } catch {
-        return undefined;
-      }
-    }
-  }, [
-    defaultHost,
-    effectivePreviewBase,
-    globalLocation,
-    interfaceLookup,
-    surfaceLookup,
-  ]);
-
-  const previewDescription = useMemo(() => {
-    if (globalBase?.trim()) {
-      return `Preview base is provided by global configuration (${globalBase.trim()}).`;
-    }
-    if (previewBaseOverride.trim()) {
-      return 'Preview base overrides the default origin so you can point at a deployed runtime.';
-    }
-    return 'Preview defaults to the current origin. Override the host if your interface runs on a different domain.';
-  }, [globalBase, previewBaseOverride]);
-
-  return (
-    <div class='flex h-full min-h-0 flex-col gap-3'>
-      <div class='space-y-2'>
-        <Input
-          label='Preview Host'
-          placeholder='https://workspace-preview.example.com'
-          value={previewBaseOverride}
-          onInput={(event: JSX.TargetedEvent<HTMLInputElement, Event>) =>
-            onPreviewBaseChange((event.currentTarget as HTMLInputElement).value)}
-        />
-        <p class='text-xs text-neutral-400'>{previewDescription}</p>
-      </div>
-
-      <div class='flex items-center justify-between'>
-        <div class='flex flex-col text-xs text-neutral-400'>
-          <span>Surface: {surfaceLookup ?? '(workspace default)'}</span>
-          <span>Interface: {interfaceLookup}</span>
-          {previewUrl && (
-            <span class='truncate text-neutral-500'>
-              Preview URL: {previewUrl}
-            </span>
-          )}
-        </div>
-        <div class='flex items-center gap-2'>
-          <Action
-            styleType={ActionStyleTypes.Outline | ActionStyleTypes.Rounded}
-            intentType={IntentTypes.Secondary}
-            disabled={!previewUrl}
-            onClick={() => onRefreshPreview()}
-          >
-            Refresh
-          </Action>
-          <Action
-            styleType={ActionStyleTypes.Solid | ActionStyleTypes.Rounded}
-            intentType={IntentTypes.Primary}
-            disabled={!previewUrl}
-            onClick={() => {
-              if (previewUrl && globalOpen) {
-                globalOpen(previewUrl, '_blank', 'noopener,noreferrer');
-              }
-            }}
-          >
-            Open in new tab
-          </Action>
-        </div>
-      </div>
-
-      <div class='flex-1 min-h-0 rounded border border-neutral-800 bg-neutral-950 overflow-hidden'>
-        {previewUrl
-          ? (
-            <iframe
-              key={previewNonce}
-              src={previewUrl}
-              title='Interface Preview'
-              loading='lazy'
-              class='h-full w-full border-0'
-              allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'
-              sandbox='allow-scripts allow-same-origin allow-popups allow-forms'
-            />
-          )
-          : (
-            <div class='flex h-full items-center justify-center p-6 text-center text-sm text-neutral-400'>
-              Unable to determine a preview URL. Provide a preview host or verify your runtime
-              configuration.
-            </div>
-          )}
-      </div>
-    </div>
-  );
 }
 
 type InterfaceGraphLookups = {
