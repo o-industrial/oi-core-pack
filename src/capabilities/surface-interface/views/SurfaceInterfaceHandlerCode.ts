@@ -1,5 +1,5 @@
 import type { EaCInterfaceGeneratedDataSlice } from '../../../.deps.ts';
-import { resolveActionSurfaceSupport } from './SurfaceInterfacePageDataTab.tsx';
+import { resolveActionSurfaceSupport } from './SurfaceInterfaceDataTab.tsx';
 
 export type SurfaceInterfaceHandlerPlanStep = {
   id: string;
@@ -230,7 +230,7 @@ export function buildGeneratedDescription(
   steps: SurfaceInterfaceHandlerPlanStep[],
 ): string {
   if (steps.length === 0) {
-    return 'Author server-side logic that composes interface actions and returns page data.';
+    return 'Author server-side logic that composes interface actions and returns interface data.';
   }
 
   const actionable = steps.filter((step) => step.autoExecute);

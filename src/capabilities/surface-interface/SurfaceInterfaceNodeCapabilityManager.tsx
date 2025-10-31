@@ -442,7 +442,7 @@ export class SurfaceInterfaceNodeCapabilityManager
       errors.push({
         field: 'Details.PageDataType',
         message:
-          'Define the page data schema slices or provide a custom schema for AI-assisted authoring.',
+          'Define the data schema slices or provide a custom schema for AI-assisted authoring.',
       });
     }
 

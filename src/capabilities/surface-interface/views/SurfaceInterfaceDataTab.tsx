@@ -12,7 +12,7 @@ import type {
   JSONSchema7,
 } from '../../../.deps.ts';
 
-type SurfaceInterfacePageDataTabProps = {
+type SurfaceInterfaceDataTabProps = {
   generatedSlices: Array<[string, EaCInterfaceGeneratedDataSlice]>;
   onAccessModeChange: (key: string, mode: EaCInterfacePageDataAccessMode) => void;
   onDataConnectionChange: (
@@ -57,12 +57,12 @@ export function resolveActionSurfaceSupport(
   }
 }
 
-export function SurfaceInterfacePageDataTab({
+export function SurfaceInterfaceDataTab({
   generatedSlices,
   onAccessModeChange,
   onDataConnectionChange,
   onActionModeChange,
-}: SurfaceInterfacePageDataTabProps): JSX.Element {
+}: SurfaceInterfaceDataTabProps): JSX.Element {
   return (
     <div class='flex h-full min-h-0 flex-col gap-4'>
       <section class='flex flex-1 min-h-0 flex-col gap-3'>

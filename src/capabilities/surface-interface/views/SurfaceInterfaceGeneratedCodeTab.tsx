@@ -554,7 +554,7 @@ function buildServerLoaderStub(safeId: string, props: DataProp[]): string {
   ];
 
   if (props.length > 0) {
-    lines.push('  // Known page data properties:');
+    lines.push('  // Known data properties:');
     for (const prop of props) {
       lines.push(`  // - ${prop.name}${prop.optional ? '?' : ''}: ${prop.type}`);
     }
@@ -578,8 +578,8 @@ function buildClientLoaderStub(): string {
 function buildTypesFile(safeId: string, props: DataProp[]): string {
   const lines: string[] = [
     '/**',
-    ` * Strongly-typed page data contract for the ${safeId} interface.`,
-    ' * Update via the planner or by editing interface Page Data settings.',
+    ` * Strongly-typed data contract for the ${safeId} interface.`,
+    ' * Update via the planner or by editing interface Data settings.',
     ' */',
     'export type InterfacePageData = {',
   ];

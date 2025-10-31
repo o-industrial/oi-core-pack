@@ -37,7 +37,7 @@ import {
   PAGE_CODE_PREFIX,
   PAGE_CODE_SUFFIX,
 } from '../SurfaceInterfacePageCode.ts';
-import { resolveActionSurfaceSupport } from '../SurfaceInterfacePageDataTab.tsx';
+import { resolveActionSurfaceSupport } from '../SurfaceInterfaceDataTab.tsx';
 import { toPascalCase } from '../SurfaceInterfaceTemplates.ts';
 import {
   buildInterfaceDetailsPatch,

@@ -18,7 +18,7 @@ import type {
 import {
   normalizeDataConnectionFeatures,
   resolveActionSurfaceSupport,
-} from './SurfaceInterfacePageDataTab.tsx';
+} from './SurfaceInterfaceDataTab.tsx';
 import { FramedCodeEditor } from '../../../components/code/FramedCodeEditor.tsx';
 import {
   arePlansEqual,
@@ -307,7 +307,7 @@ function HandlerPlanner({
           {steps.length === 0
             ? (
               <div class='rounded border border-dashed border-neutral-800 bg-neutral-950/70 p-4 text-xs text-neutral-500'>
-                No handler-capable actions detected. Enable handler access from Page Data to
+                No handler-capable actions detected. Enable handler access from the Data tab to
                 orchestrate backend logic.
               </div>
             )

@@ -1,9 +1,9 @@
-import { AziPanel, Modal, TabbedPanel, WorkspaceManager } from '../../../.deps.ts';
+import { AziPanel, Modal, TabbedPanel, useMemo, WorkspaceManager } from '../../../.deps.ts';
 import type { EaCInterfaceDetails, JSX, SurfaceInterfaceSettings } from '../../../.deps.ts';
 import { SurfaceInterfaceGeneratedCodeTab } from './SurfaceInterfaceGeneratedCodeTab.tsx';
 import { SurfaceInterfaceHandlerTab } from './SurfaceInterfaceHandlerTab.tsx';
 import { SurfaceInterfaceImportsTab } from './SurfaceInterfaceImportsTab.tsx';
-import { SurfaceInterfacePageDataTab } from './SurfaceInterfacePageDataTab.tsx';
+import { SurfaceInterfaceDataTab } from './SurfaceInterfaceDataTab.tsx';
 import { SurfaceInterfacePageTab } from './SurfaceInterfacePageTab.tsx';
 import { SurfaceInterfacePreviewTab } from './SurfaceInterfacePreviewTab.tsx';
 import { useSurfaceInterfaceModalState } from './state/.exports.ts';
@@ -73,103 +73,173 @@ export function SurfaceInterfaceModal({
     onDetailsChange,
   });
 
+  const {
+    plan: handlerPlan,
+    setPlan: setHandlerPlan,
+    body: handlerBody,
+    enabled: handlerEnabled,
+    description: handlerDescription,
+    messagesText: handlerMessagesText,
+    fullCode: handlerFullCode,
+    onBodyChange: handleHandlerBodyChange,
+    onEnabledChange: handleHandlerEnabledChange,
+    onDescriptionChange: handleHandlerDescriptionChange,
+    onMessagesChange: handleHandlerMessagesChange,
+  } = handler;
+
+  const {
+    prefix: pagePrefix,
+    suffix: pageSuffix,
+    body: pageBody,
+    fullCode: pageFullCode,
+    description: pageDescription,
+    messagesText: pageMessagesText,
+    onBodyChange: handlePageBodyChange,
+    onDescriptionChange: handlePageDescriptionChange,
+    onMessagesChange: handlePageMessagesChange,
+  } = page;
+
+  const {
+    baseOverride: previewBaseOverride,
+    setBaseOverride: setPreviewBaseOverride,
+    nonce: previewNonce,
+    refresh: refreshPreview,
+  } = preview;
+
   const resolvedAziMgr = interfaceAzi as AziPanelProps['aziMgr'];
   const resolvedExtraInputs = debouncedExtraInputs as AziPanelProps['extraInputs'];
 
-  const tabData = [
-    {
-      key: TAB_IMPORTS,
-      label: 'Imports',
-      content: (
-        <SurfaceInterfaceImportsTab
-          imports={imports}
-          onChange={onImportsChange}
-          onValidityChange={setImportsInvalid}
-        />
-      ),
-    },
-    {
-      key: TAB_DATA,
-      label: 'Page Data',
-      content: (
-        <SurfaceInterfacePageDataTab
-          generatedSlices={generatedSliceEntries}
-          onAccessModeChange={handleAccessModeChange}
-          onDataConnectionChange={handleDataConnectionFeaturesChange}
-          onActionModeChange={handleActionModeChange}
-        />
-      ),
-    },
-    {
-      key: TAB_HANDLER,
-      label: 'Handler',
-      content: (
-        <SurfaceInterfaceHandlerTab
-          generatedSlices={generatedSliceEntries}
-          steps={handler.plan}
-          onStepsChange={handler.setPlan}
-          onDataConnectionChange={handleDataConnectionFeaturesChange}
-          handlerBody={handler.body}
-          handlerEnabled={handler.enabled}
-          handlerDescription={handler.description}
-          handlerMessages={handler.messagesText}
-          onHandlerBodyChange={handler.onBodyChange}
-          onHandlerEnabledChange={handler.onEnabledChange}
-          onHandlerDescriptionChange={handler.onDescriptionChange}
-          onHandlerMessagesChange={handler.onMessagesChange}
-        />
-      ),
-    },
-    {
-      key: TAB_PAGE,
-      label: 'Page',
-      content: (
-        <SurfaceInterfacePageTab
-          imports={imports}
-          prefix={page.prefix}
-          body={page.body}
-          suffix={page.suffix}
-          description={page.description}
-          messages={page.messagesText}
-          onBodyChange={page.onBodyChange}
-          onDescriptionChange={page.onDescriptionChange}
-          onMessagesChange={page.onMessagesChange}
-        />
-      ),
-    },
-    {
-      key: TAB_PREVIEW,
-      label: 'Preview',
-      content: (
-        <SurfaceInterfacePreviewTab
-          interfaceLookup={interfaceLookup}
-          surfaceLookup={surfaceLookup}
-          previewBaseOverride={preview.baseOverride}
-          onPreviewBaseChange={preview.setBaseOverride}
-          previewNonce={preview.nonce}
-          onRefreshPreview={preview.refresh}
-        />
-      ),
-    },
-    {
-      key: TAB_CODE,
-      label: 'Code Preview',
-      content: (
-        <SurfaceInterfaceGeneratedCodeTab
-          interfaceLookup={interfaceLookup}
-          imports={imports}
-          handlerPlan={handler.plan}
-          generatedSlices={generatedSliceEntries}
-          handlerCode={handler.fullCode}
-          handlerDescription={handler.description}
-          handlerMessages={handler.messagesText}
-          pageCode={page.fullCode}
-          pageDescription={page.description}
-          pageMessages={page.messagesText}
-        />
-      ),
-    },
-  ];
+  const tabData = useMemo(
+    () => [
+      {
+        key: TAB_IMPORTS,
+        label: 'Imports',
+        content: (
+          <SurfaceInterfaceImportsTab
+            imports={imports}
+            onChange={onImportsChange}
+            onValidityChange={setImportsInvalid}
+          />
+        ),
+      },
+      {
+        key: TAB_DATA,
+        label: 'Data',
+        content: (
+          <SurfaceInterfaceDataTab
+            generatedSlices={generatedSliceEntries}
+            onAccessModeChange={handleAccessModeChange}
+            onDataConnectionChange={handleDataConnectionFeaturesChange}
+            onActionModeChange={handleActionModeChange}
+          />
+        ),
+      },
+      {
+        key: TAB_HANDLER,
+        label: 'Handler',
+        content: (
+          <SurfaceInterfaceHandlerTab
+            generatedSlices={generatedSliceEntries}
+            steps={handlerPlan}
+            onStepsChange={setHandlerPlan}
+            onDataConnectionChange={handleDataConnectionFeaturesChange}
+            handlerBody={handlerBody}
+            handlerEnabled={handlerEnabled}
+            handlerDescription={handlerDescription}
+            handlerMessages={handlerMessagesText}
+            onHandlerBodyChange={handleHandlerBodyChange}
+            onHandlerEnabledChange={handleHandlerEnabledChange}
+            onHandlerDescriptionChange={handleHandlerDescriptionChange}
+            onHandlerMessagesChange={handleHandlerMessagesChange}
+          />
+        ),
+      },
+      {
+        key: TAB_PAGE,
+        label: 'Page',
+        content: (
+          <SurfaceInterfacePageTab
+            imports={imports}
+            prefix={pagePrefix}
+            body={pageBody}
+            suffix={pageSuffix}
+            description={pageDescription}
+            messages={pageMessagesText}
+            onBodyChange={handlePageBodyChange}
+            onDescriptionChange={handlePageDescriptionChange}
+            onMessagesChange={handlePageMessagesChange}
+          />
+        ),
+      },
+      {
+        key: TAB_PREVIEW,
+        label: 'Preview',
+        content: (
+          <SurfaceInterfacePreviewTab
+            interfaceLookup={interfaceLookup}
+            surfaceLookup={surfaceLookup}
+            previewBaseOverride={previewBaseOverride}
+            onPreviewBaseChange={setPreviewBaseOverride}
+            previewNonce={previewNonce}
+            onRefreshPreview={refreshPreview}
+          />
+        ),
+      },
+      {
+        key: TAB_CODE,
+        label: 'Code Preview',
+        content: (
+          <SurfaceInterfaceGeneratedCodeTab
+            interfaceLookup={interfaceLookup}
+            imports={imports}
+            handlerPlan={handlerPlan}
+            generatedSlices={generatedSliceEntries}
+            handlerCode={handlerFullCode}
+            handlerDescription={handlerDescription}
+            handlerMessages={handlerMessagesText}
+            pageCode={pageFullCode}
+            pageDescription={pageDescription}
+            pageMessages={pageMessagesText}
+          />
+        ),
+      },
+    ],
+    [
+      generatedSliceEntries,
+      handleAccessModeChange,
+      handleActionModeChange,
+      handleDataConnectionFeaturesChange,
+      handleHandlerBodyChange,
+      handleHandlerDescriptionChange,
+      handleHandlerEnabledChange,
+      handleHandlerMessagesChange,
+      handlePageBodyChange,
+      handlePageDescriptionChange,
+      handlePageMessagesChange,
+      handlerBody,
+      handlerDescription,
+      handlerEnabled,
+      handlerFullCode,
+      handlerMessagesText,
+      handlerPlan,
+      imports,
+      interfaceLookup,
+      onImportsChange,
+      pageBody,
+      pageDescription,
+      pageFullCode,
+      pageMessagesText,
+      pagePrefix,
+      pageSuffix,
+      previewBaseOverride,
+      previewNonce,
+      refreshPreview,
+      setHandlerPlan,
+      setImportsInvalid,
+      setPreviewBaseOverride,
+      surfaceLookup,
+    ],
+  );
 
   if (!isOpen) return null;
 
