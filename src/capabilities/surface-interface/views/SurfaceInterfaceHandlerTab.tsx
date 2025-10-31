@@ -19,7 +19,7 @@ import {
   normalizeDataConnectionFeatures,
   resolveActionSurfaceSupport,
 } from './SurfaceInterfacePageDataTab.tsx';
-import { SurfaceCodeMirror } from '../../../components/code/SurfaceCodeMirror.tsx';
+import { FramedCodeEditor } from '../../../components/code/FramedCodeEditor.tsx';
 
 export type SurfaceInterfaceHandlerPlanStep = {
   id: string;
@@ -730,19 +730,12 @@ function CustomHandlerStep({
                         Author bespoke logic that returns an updated InterfacePageData object.
                       </p>
                     </div>
-                    <div class='rounded-lg border border-neutral-800 bg-neutral-950/60'>
-                      <pre class='m-0 rounded-t-lg border-b border-neutral-800 bg-neutral-900/80 px-3 py-2 font-mono text-[12px] text-neutral-300'>
-                        {HANDLER_PREFIX.replace(/\s+$/, '')}
-                      </pre>
-                      <SurfaceCodeMirror
-                        value={body}
-                        onValueChange={onBodyChange}
-                        class='h-[320px] max-h-[560px] [&_.cm-editor]:rounded-none [&_.cm-editor]:border-none [&_.cm-editor]:bg-neutral-950'
-                      />
-                      <pre class='m-0 rounded-b-lg border-t border-neutral-800 bg-neutral-900/80 px-3 py-2 font-mono text-[12px] text-neutral-300'>
-                        {HANDLER_SUFFIX.trimStart() || '}'}
-                      </pre>
-                    </div>
+                    <FramedCodeEditor
+                      prefix={HANDLER_PREFIX.replace(/\s+$/, '')}
+                      suffix={HANDLER_SUFFIX.trimStart() || '}'}
+                      value={body}
+                      onChange={onBodyChange}
+                    />
                   </div>
 
                   <FormRow label='Description'>

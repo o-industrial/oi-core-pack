@@ -54,7 +54,7 @@ import {
   resolveActionSurfaceSupport,
   SurfaceInterfacePageDataTab,
 } from './SurfaceInterfacePageDataTab.tsx';
-import { SurfaceCodeMirror } from '../../../components/code/SurfaceCodeMirror.tsx';
+import { FramedCodeEditor } from '../../../components/code/FramedCodeEditor.tsx';
 import { buildDefaultInterfaceComponent, toPascalCase } from './SurfaceInterfaceTemplates.ts';
 
 type SurfaceInterfaceModalProps = {
@@ -792,7 +792,7 @@ export function SurfaceInterfaceModal({
     setHandlerMessagesText,
   ]);
 
-  const extraInputs = useMemo(
+  const rawExtraInputs = useMemo(
     () => ({
       interfaceLookup,
       surfaceLookup,
@@ -862,6 +862,33 @@ export function SurfaceInterfaceModal({
       pageMessagesText,
     ],
   );
+
+  const [debouncedExtraInputs, setDebouncedExtraInputs] = useState(rawExtraInputs);
+
+  useEffect(() => {
+    const handle = globalThis.setTimeout(() => {
+      setDebouncedExtraInputs((current) =>
+        Object.is(current, rawExtraInputs) ? current : rawExtraInputs
+      );
+    }, 400);
+
+    return () => {
+      globalThis.clearTimeout(handle);
+    };
+  }, [rawExtraInputs]);
+
+  const renderAziMessage = useMemo<((message: string) => string)>(() => {
+    const cache = new Map<string, string>();
+
+    return (message: string) => {
+      const key = message ?? '';
+      const cached = cache.get(key);
+      if (cached !== undefined) return cached;
+      const parsed = marked.parse(key) as string;
+      cache.set(key, parsed);
+      return parsed;
+    };
+  }, []);
 
   const tabData = useMemo(
     () => [
@@ -1040,8 +1067,8 @@ export function SurfaceInterfaceModal({
               <AziPanel
                 workspaceMgr={workspaceMgr}
                 aziMgr={interfaceAzi}
-                renderMessage={(message) => marked.parse(message) as string}
-                extraInputs={extraInputs}
+                renderMessage={renderAziMessage}
+                extraInputs={debouncedExtraInputs}
               />
             )
             : (
@@ -1124,24 +1151,14 @@ function CodeEditorPanel({
   onDescriptionChange,
   onMessagesChange,
 }: CodeEditorPanelProps) {
-  const displayPrefix = prefix.replace(/\s+$/, '');
-  const displaySuffix = suffix.replace(/^\s+/, '');
-
   return (
     <div class='flex flex-1 min-h-0 flex-col gap-3'>
-      <div class='overflow-hidden rounded-lg border border-neutral-800 bg-neutral-950/70'>
-        <pre class='m-0 border-b border-neutral-800 bg-neutral-900/80 px-3 py-2 font-mono text-[12px] text-neutral-300'>
-          {displayPrefix}
-        </pre>
-        <SurfaceCodeMirror
-          value={body}
-          onValueChange={onBodyChange}
-          class='min-h-[320px] [&_.cm-editor]:rounded-none [&_.cm-editor]:border-none [&_.cm-editor]:bg-neutral-950'
-        />
-        <pre class='m-0 border-t border-neutral-800 bg-neutral-900/80 px-3 py-2 font-mono text-[12px] text-neutral-300'>
-          {displaySuffix}
-        </pre>
-      </div>
+      <FramedCodeEditor
+        prefix={prefix}
+        suffix={suffix}
+        value={body}
+        onChange={onBodyChange}
+      />
       <textarea
         class='h-16 w-full resize-none rounded border border-neutral-700 bg-neutral-950 p-2 text-sm text-neutral-200 outline-none focus:border-teal-400'
         placeholder='Optional description for this code block'

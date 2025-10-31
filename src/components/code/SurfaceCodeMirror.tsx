@@ -41,6 +41,21 @@ export function SurfaceCodeMirror({
     return new Set(lockedLineNumbers);
   }, [lockedLinesKey, lockedLineNumbers]);
 
+  const autoSizeTheme = useMemo(
+    () =>
+      EditorView.theme({
+        '&': {
+          height: 'auto',
+          minHeight: '0',
+          maxHeight: 'none',
+        },
+        '.cm-scroller': {
+          overflow: 'auto',
+        },
+      }),
+    [],
+  );
+
   const baseExtensions = useMemo(() => {
     const base: Extension[] = [
       lineNumbers(),
@@ -50,6 +65,7 @@ export function SurfaceCodeMirror({
       javascript(),
       syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
       theme ?? [],
+      autoSizeTheme,
     ];
 
     if (readOnly) {
@@ -105,7 +121,7 @@ export function SurfaceCodeMirror({
     }
 
     return base;
-  }, [extensions, lockedLinesSet, readOnly, onValueChange, theme]);
+  }, [extensions, lockedLinesSet, readOnly, onValueChange, theme, autoSizeTheme]);
 
   useEffect(() => {
     if (!hostRef.current || viewRef.current) return;
@@ -183,7 +199,7 @@ export function SurfaceCodeMirror({
       ref={hostRef}
       class={classSet(
         [
-          'relative h-full w-full overflow-auto [&_.cm-editor]:h-full [&_.cm-editor]:w-full [&_.cm-editor]:text-[13px]',
+          'relative w-full overflow-auto [&_.cm-editor]:w-full [&_.cm-editor]:text-[13px]',
         ],
         { class: className },
       )}
