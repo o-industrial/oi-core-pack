@@ -8,6 +8,7 @@ import type {
 } from '../../../../.deps.ts';
 import type { SurfaceInterfaceTabKey } from '../SurfaceInterfaceModal.tsx';
 import type { SurfaceInterfaceModalHandlerState } from './SurfaceInterfaceModalHandlerState.ts';
+import type { SurfaceInterfaceModalPageDocs } from './SurfaceInterfaceModalPageDocs.ts';
 import type { SurfaceInterfaceModalPageState } from './SurfaceInterfaceModalPageState.ts';
 import type { SurfaceInterfaceModalPreviewState } from './SurfaceInterfaceModalPreviewState.ts';
 
@@ -26,6 +27,7 @@ export type SurfaceInterfaceModalHookResult = {
   handler: SurfaceInterfaceModalHandlerState;
   page: SurfaceInterfaceModalPageState;
   preview: SurfaceInterfaceModalPreviewState;
+  pageDocs: SurfaceInterfaceModalPageDocs;
   handleAccessModeChange: (
     key: string,
     mode: EaCInterfacePageDataAccessMode,

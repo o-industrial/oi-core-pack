@@ -41,8 +41,10 @@ import {
   mergeInterfaceSettingsWithLookups,
   parseMessages,
 } from '../utils/.exports.ts';
+import { buildSurfaceInterfaceModalPageDocs } from './buildSurfaceInterfaceModalPageDocs.ts';
 import type { SurfaceInterfaceHandlerPlanStep } from './SurfaceInterfaceHandlerPlanStep.ts';
 import type { SurfaceInterfaceTabKey } from '../SurfaceInterfaceModal.tsx';
+import type { SurfaceInterfaceModalPageDocs } from './SurfaceInterfaceModalPageDocs.ts';
 import type { SurfaceInterfaceModalHookParams } from './SurfaceInterfaceModalHookParams.ts';
 import type { SurfaceInterfaceModalHookResult } from './SurfaceInterfaceModalHookResult.ts';
 import type { SurfaceInterfaceModalHandlerState } from './SurfaceInterfaceModalHandlerState.ts';
@@ -452,6 +454,11 @@ export function useSurfaceInterfaceModalState(
       >,
     [generatedSlices],
   );
+  const pageDocs = useMemo<SurfaceInterfaceModalPageDocs>(() =>
+    buildSurfaceInterfaceModalPageDocs({
+      generatedSlices: generatedSliceEntries,
+      handlerPlan,
+    }), [generatedSliceEntries, handlerPlan]);
 
   const interfaceAzi = workspaceMgr.InterfaceAzis?.[interfaceLookup];
   const enterpriseLookup = workspaceMgr.EaC.GetEaC().EnterpriseLookup ?? 'workspace';
@@ -942,6 +949,7 @@ export function useSurfaceInterfaceModalState(
     handler: handlerState,
     page: pageState,
     preview: previewState,
+    pageDocs,
     handleAccessModeChange,
     handleDataConnectionFeaturesChange,
     handleActionModeChange,

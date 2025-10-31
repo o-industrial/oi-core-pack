@@ -494,7 +494,7 @@ export function SurfaceInterfaceImportsTab({
                   <p class="text-[11px] text-neutral-400">
                     {isDraft
                       ? 'Fill in the fields below. The statement updates as you go.'
-                      : 'Tweaks here update instantly—remember to save when you are happy with it.'}
+                      : 'Tweaks here update instantly - remember to save when you are happy with it.'}
                   </p>
                 </div>
                 <div class="flex flex-wrap items-center justify-end gap-2 md:flex-nowrap md:gap-3 md:self-start">

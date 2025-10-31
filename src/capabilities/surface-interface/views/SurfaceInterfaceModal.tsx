@@ -63,6 +63,7 @@ export function SurfaceInterfaceModal({
     interfaceAzi,
     renderAziMessage,
     debouncedExtraInputs,
+    pageDocs,
   } = useSurfaceInterfaceModalState({
     isOpen,
     interfaceLookup,
@@ -155,6 +156,7 @@ export function SurfaceInterfaceModal({
         content: (
           <SurfaceInterfacePageTab
             imports={imports}
+            pageDocs={pageDocs}
             prefix={pagePrefix}
             body={pageBody}
             suffix={pageSuffix}
@@ -225,6 +227,7 @@ export function SurfaceInterfaceModal({
       pageMessagesText,
       pagePrefix,
       pageSuffix,
+      pageDocs,
       previewNonce,
       refreshPreview,
       setHandlerPlan,

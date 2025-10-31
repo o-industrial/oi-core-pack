@@ -5,8 +5,9 @@ import {
   IntentTypes,
   type JSONSchema7,
   type JSX,
+  useCallback,
   useEffect,
-  useMemo,
+  useRef,
   useState,
 } from '../../../.deps.ts';
 import { SurfaceCodeMirror } from '../../../components/code/SurfaceCodeMirror.tsx';
@@ -60,55 +61,110 @@ export function SurfaceInterfaceGeneratedCodeTab({
   isActive = false,
 }: SurfaceInterfaceGeneratedCodeTabProps): JSX.Element {
   const [generatedModule, setGeneratedModule] = useState<string>('');
+  const [status, setStatus] = useState<'idle' | 'generating' | 'ready' | 'error'>('idle');
+  const [isStale, setIsStale] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const hasGeneratedRef = useRef(false);
 
   useEffect(() => {
-    if (!isActive) {
-      setGeneratedModule('');
-      return;
+    if (status === 'ready') {
+      hasGeneratedRef.current = true;
     }
+  }, [status]);
 
-    setGeneratedModule('// Generating interface snapshot...');
-
-    const handle = globalThis.setTimeout(() => {
-      const next = buildGeneratedModulePreview(
-        interfaceLookup,
-        imports,
-        handlerPlan,
-        generatedSlices,
-        handlerCode,
-        handlerDescription,
-        handlerMessages,
-        pageCode,
-        pageDescription,
-        pageMessages,
-      );
-      setGeneratedModule(next);
-    }, 250);
-
-    return () => {
-      globalThis.clearTimeout(handle);
-    };
+  useEffect(() => {
+    if (!hasGeneratedRef.current) return;
+    setIsStale(true);
   }, [
-    isActive,
-    interfaceLookup,
-    imports,
-    handlerPlan,
-    generatedSlices,
     handlerCode,
     handlerDescription,
     handlerMessages,
+    handlerPlan,
+    generatedSlices,
+    imports,
+    interfaceLookup,
     pageCode,
     pageDescription,
     pageMessages,
   ]);
 
-  const canCopySnapshot =
-    isActive && generatedModule.trim().length > 0 &&
-    !generatedModule.startsWith('// Generating interface snapshot');
+  const runGeneration = useCallback(() => {
+    const nextModule = buildGeneratedModulePreview(
+      interfaceLookup,
+      imports,
+      handlerPlan,
+      generatedSlices,
+      handlerCode,
+      handlerDescription,
+      handlerMessages,
+      pageCode,
+      pageDescription,
+      pageMessages,
+    );
+    setGeneratedModule(nextModule);
+  }, [
+    generatedSlices,
+    handlerCode,
+    handlerDescription,
+    handlerMessages,
+    handlerPlan,
+    imports,
+    interfaceLookup,
+    pageCode,
+    pageDescription,
+    pageMessages,
+  ]);
 
-  const displayModule = isActive
-    ? generatedModule
-    : '// Open the Code Preview tab to generate a snapshot.';
+  const handleGenerate = useCallback(() => {
+    if (status === 'generating') return;
+    setStatus('generating');
+    setError(null);
+    globalThis.setTimeout(() => {
+      try {
+        runGeneration();
+        setStatus('ready');
+        setIsStale(false);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        setError(message);
+        setStatus('error');
+      }
+    }, 0);
+  }, [runGeneration, status]);
+
+  useEffect(() => {
+    if (!isActive) return;
+    if (status === 'idle') {
+      handleGenerate();
+    }
+  }, [handleGenerate, isActive, status]);
+
+  const canCopySnapshot = status === 'ready' && generatedModule.trim().length > 0;
+
+  const displayModule = (() => {
+    if (!isActive) {
+      return '// Open the Code Preview tab and generate a snapshot.';
+    }
+    if (status === 'generating') {
+      return '// Generating interface snapshot...';
+    }
+    if (status === 'error') {
+      return `// Failed to generate snapshot.\n// ${error ?? 'Unknown error.'}`;
+    }
+    if (status === 'ready') {
+      return generatedModule;
+    }
+    return '// Snapshot not generated yet. Click "Generate snapshot" to build the preview.';
+  })();
+
+  const statusLabel = (() => {
+    if (!isActive) return 'Preview paused while tab is hidden.';
+    if (status === 'generating') return 'Generating snapshot...';
+    if (status === 'error') return `Generation failed${error ? `: ${error}` : ''}`;
+    if (status === 'ready' && isStale) return 'Snapshot out of date. Regenerate to refresh.';
+    if (status === 'ready') return 'Snapshot up to date.';
+    return 'Snapshot not generated yet.';
+  })();
 
   return (
     <div class='flex h-full min-h-0 flex-col gap-3'>
@@ -119,19 +175,32 @@ export function SurfaceInterfaceGeneratedCodeTab({
             Snapshot of the virtual DFS emitted by the InterfaceApp processor. Each section mirrors
             a file that the runtime can load dynamically.
           </p>
+          <p class='text-xs text-neutral-500'>{statusLabel}</p>
         </div>
-        <Action
-          styleType={ActionStyleTypes.Outline | ActionStyleTypes.Rounded}
-          intentType={IntentTypes.Secondary}
-          disabled={!canCopySnapshot}
-          onClick={() => {
-            if (canCopySnapshot) {
-              copyToClipboard(generatedModule);
-            }
-          }}
-        >
-          Copy snapshot
-        </Action>
+        <div class='flex flex-wrap items-center gap-2'>
+          <Action
+            styleType={ActionStyleTypes.Solid | ActionStyleTypes.Rounded}
+            intentType={IntentTypes.Primary}
+            disabled={!isActive || status === 'generating'}
+            onClick={() => {
+              handleGenerate();
+            }}
+          >
+            {status === 'ready' ? 'Regenerate snapshot' : 'Generate snapshot'}
+          </Action>
+          <Action
+            styleType={ActionStyleTypes.Outline | ActionStyleTypes.Rounded}
+            intentType={IntentTypes.Secondary}
+            disabled={!canCopySnapshot}
+            onClick={() => {
+              if (canCopySnapshot) {
+                copyToClipboard(generatedModule);
+              }
+            }}
+          >
+            Copy snapshot
+          </Action>
+        </div>
       </header>
 
       <div class='flex-1 min-h-0 overflow-auto rounded border border-neutral-800 bg-neutral-950'>
